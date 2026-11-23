@@ -1,0 +1,734 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://littlecity.io/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>1.0</priority>
+    <image:image><image:loc>https://littlecity.io/og.jpg</image:loc><image:title>Little City: a hand-drawn town diorama builder</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/about/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.9</priority>
+    <image:image><image:loc>https://littlecity.io/og.jpg</image:loc><image:title>Little City: a hand-drawn town diorama builder</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.8</priority>
+    <image:image><image:loc>https://littlecity.io/guide/auto.webp</image:loc><image:title>The Auto block in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/chapel.webp</image:loc><image:title>Chapel in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/shop.webp</image:loc><image:title>Shop in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/inn.webp</image:loc><image:title>Inn in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/town-hall.webp</image:loc><image:title>Town hall in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/manor.webp</image:loc><image:title>Manor in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/barn.webp</image:loc><image:title>Barn in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/smithy.webp</image:loc><image:title>Smithy in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/schoolhouse.webp</image:loc><image:title>Schoolhouse in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/townhouse.webp</image:loc><image:title>Townhouse in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/row-house.webp</image:loc><image:title>Row house in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/stilt-house.webp</image:loc><image:title>Stilt house in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/boathouse.webp</image:loc><image:title>Boathouse in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/watermill.webp</image:loc><image:title>Watermill in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/cliff-house.webp</image:loc><image:title>Cliff house in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/greenhouse.webp</image:loc><image:title>Greenhouse in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/mill-house.webp</image:loc><image:title>Mill house in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/keepers-cottage.webp</image:loc><image:title>Keeper's cottage in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/lookout-cottage.webp</image:loc><image:title>Lookout cottage in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/steeple.webp</image:loc><image:title>Steeple in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/clock-tower.webp</image:loc><image:title>Clock tower in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/castle-turret.webp</image:loc><image:title>Castle turret in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/campanile.webp</image:loc><image:title>Campanile in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/observatory.webp</image:loc><image:title>Observatory in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/dovecote.webp</image:loc><image:title>Dovecote in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/lighthouse.webp</image:loc><image:title>Lighthouse in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/folly-tower.webp</image:loc><image:title>Folly tower in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/temple.webp</image:loc><image:title>Temple in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/keep.webp</image:loc><image:title>Keep in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/gatehouse.webp</image:loc><image:title>Gatehouse in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/grand-steps.webp</image:loc><image:title>Grand steps in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/quay-wall.webp</image:loc><image:title>Quay wall in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/plinth.webp</image:loc><image:title>Plinth and statue in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/bandstand.webp</image:loc><image:title>Bandstand in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/stoa.webp</image:loc><image:title>Stoa in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/obelisk.webp</image:loc><image:title>Obelisk or column in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/podium.webp</image:loc><image:title>Podium in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/theatre.webp</image:loc><image:title>Theatre in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/wall-shops.webp</image:loc><image:title>Shops in the wall in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/stone-bridge.webp</image:loc><image:title>Stone bridge in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/bridge-shop.webp</image:loc><image:title>Bridge shops in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/sky-bridge.webp</image:loc><image:title>Sky bridge in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/viaduct.webp</image:loc><image:title>Viaduct in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/gateway.webp</image:loc><image:title>Gateway in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/loggia.webp</image:loc><image:title>Loggia in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/flying-buttress.webp</image:loc><image:title>Flying buttress in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/pier.webp</image:loc><image:title>Pier in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/dug-river.webp</image:loc><image:title>Dug river and barge in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/quay.webp</image:loc><image:title>Quay in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/boardwalk.webp</image:loc><image:title>Boardwalk in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/warehouse.webp</image:loc><image:title>Warehouse in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/ships.webp</image:loc><image:title>Boats and ships in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/cog.webp</image:loc><image:title>Merchant cog in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/wheat-field.webp</image:loc><image:title>Wheat field in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/park.webp</image:loc><image:title>Park in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/walled-garden.webp</image:loc><image:title>Walled garden in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/paddock.webp</image:loc><image:title>Paddock in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/country-lane.webp</image:loc><image:title>Country lane in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/burgage-plots.webp</image:loc><image:title>Back gardens in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/village-green.webp</image:loc><image:title>Village green in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/orchard.webp</image:loc><image:title>Orchard in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/pocket-park.webp</image:loc><image:title>Pocket park in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/churchyard.webp</image:loc><image:title>Churchyard in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/herb-garden.webp</image:loc><image:title>Herb garden in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/street-lamps.webp</image:loc><image:title>Street lamps in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/laundry-lines.webp</image:loc><image:title>Laundry lines in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/garrison.webp</image:loc><image:title>Garrison in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/rider.webp</image:loc><image:title>Rider in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/market-cross.webp</image:loc><image:title>Market cross in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/basketball-court.webp</image:loc><image:title>Basketball court in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/tennis-court.webp</image:loc><image:title>Tennis court in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/football-pitch.webp</image:loc><image:title>Football pitch in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/bowling-green.webp</image:loc><image:title>Bowling green in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/croquet-lawn.webp</image:loc><image:title>Croquet lawn in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/boules-court.webp</image:loc><image:title>Boules court in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/running-track.webp</image:loc><image:title>Running track in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/kickabout-green.webp</image:loc><image:title>Kickabout green in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/market-day.webp</image:loc><image:title>Market day in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/wedding.webp</image:loc><image:title>A wedding in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/raid.webp</image:loc><image:title>A raid in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/festival.webp</image:loc><image:title>The midwinter festival in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/beach-day.webp</image:loc><image:title>A beach day in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/picnic.webp</image:loc><image:title>Picnics in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/snow-day.webp</image:loc><image:title>A snow day in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/harvest-supper.webp</image:loc><image:title>A harvest supper in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/carols.webp</image:loc><image:title>Carol singers in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/harvest.webp</image:loc><image:title>The harvest in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/unloading.webp</image:loc><image:title>Ships unloading in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/waving-ships-in.webp</image:loc><image:title>Waving a ship in in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/the-catch.webp</image:loc><image:title>The catch comes in in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/bread.webp</image:loc><image:title>Bread from the mill in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/fetching-water.webp</image:loc><image:title>Fetching water in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/washing-day.webp</image:loc><image:title>Washing day in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/school-lesson.webp</image:loc><image:title>School and hopscotch in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/smith-at-work.webp</image:loc><image:title>The smith at work in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/a-show.webp</image:loc><image:title>A show in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/games.webp</image:loc><image:title>Games on the field in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/dogs.webp</image:loc><image:title>Dogs in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/scuffle.webp</image:loc><image:title>A scuffle in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/lamplighter.webp</image:loc><image:title>The lamplighter in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/night-watch.webp</image:loc><image:title>The night watch in Little City</image:title></image:image>
+    <image:image><image:loc>https://littlecity.io/guide/fire-brigade.webp</image:loc><image:title>The fire brigade in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/auto/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/auto.webp</image:loc><image:title>The Auto block in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/chapel/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/chapel.webp</image:loc><image:title>Chapel in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/shop/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/shop.webp</image:loc><image:title>Shop in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/inn/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/inn.webp</image:loc><image:title>Inn in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/town-hall/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/town-hall.webp</image:loc><image:title>Town hall in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/manor/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/manor.webp</image:loc><image:title>Manor in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/barn/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/barn.webp</image:loc><image:title>Barn in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/smithy/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/smithy.webp</image:loc><image:title>Smithy in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/schoolhouse/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/schoolhouse.webp</image:loc><image:title>Schoolhouse in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/townhouse/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/townhouse.webp</image:loc><image:title>Townhouse in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/row-house/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/row-house.webp</image:loc><image:title>Row house in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/stilt-house/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/stilt-house.webp</image:loc><image:title>Stilt house in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/boathouse/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/boathouse.webp</image:loc><image:title>Boathouse in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/watermill/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/watermill.webp</image:loc><image:title>Watermill in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/cliff-house/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/cliff-house.webp</image:loc><image:title>Cliff house in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/greenhouse/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/greenhouse.webp</image:loc><image:title>Greenhouse in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/mill-house/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/mill-house.webp</image:loc><image:title>Mill house in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/keepers-cottage/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/keepers-cottage.webp</image:loc><image:title>Keeper's cottage in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/lookout-cottage/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/lookout-cottage.webp</image:loc><image:title>Lookout cottage in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/steeple/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/steeple.webp</image:loc><image:title>Steeple in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/clock-tower/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/clock-tower.webp</image:loc><image:title>Clock tower in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/castle-turret/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/castle-turret.webp</image:loc><image:title>Castle turret in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/campanile/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/campanile.webp</image:loc><image:title>Campanile in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/observatory/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/observatory.webp</image:loc><image:title>Observatory in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/dovecote/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/dovecote.webp</image:loc><image:title>Dovecote in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/lighthouse/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/lighthouse.webp</image:loc><image:title>Lighthouse in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/folly-tower/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/folly-tower.webp</image:loc><image:title>Folly tower in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/temple/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/temple.webp</image:loc><image:title>Temple in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/keep/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/keep.webp</image:loc><image:title>Keep in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/gatehouse/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/gatehouse.webp</image:loc><image:title>Gatehouse in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/grand-steps/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/grand-steps.webp</image:loc><image:title>Grand steps in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/quay-wall/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/quay-wall.webp</image:loc><image:title>Quay wall in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/plinth/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/plinth.webp</image:loc><image:title>Plinth and statue in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/bandstand/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/bandstand.webp</image:loc><image:title>Bandstand in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/stoa/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/stoa.webp</image:loc><image:title>Stoa in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/obelisk/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/obelisk.webp</image:loc><image:title>Obelisk or column in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/podium/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/podium.webp</image:loc><image:title>Podium in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/theatre/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/theatre.webp</image:loc><image:title>Theatre in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/wall-shops/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/wall-shops.webp</image:loc><image:title>Shops in the wall in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/stone-bridge/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/stone-bridge.webp</image:loc><image:title>Stone bridge in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/bridge-shop/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/bridge-shop.webp</image:loc><image:title>Bridge shops in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/sky-bridge/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/sky-bridge.webp</image:loc><image:title>Sky bridge in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/viaduct/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/viaduct.webp</image:loc><image:title>Viaduct in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/gateway/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/gateway.webp</image:loc><image:title>Gateway in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/loggia/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/loggia.webp</image:loc><image:title>Loggia in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/flying-buttress/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/flying-buttress.webp</image:loc><image:title>Flying buttress in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/pier/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/pier.webp</image:loc><image:title>Pier in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/dug-river/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/dug-river.webp</image:loc><image:title>Dug river and barge in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/quay/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/quay.webp</image:loc><image:title>Quay in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/boardwalk/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/boardwalk.webp</image:loc><image:title>Boardwalk in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/warehouse/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/warehouse.webp</image:loc><image:title>Warehouse in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/ships/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/ships.webp</image:loc><image:title>Boats and ships in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/cog/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/cog.webp</image:loc><image:title>Merchant cog in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/wheat-field/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/wheat-field.webp</image:loc><image:title>Wheat field in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/park/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/park.webp</image:loc><image:title>Park in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/walled-garden/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/walled-garden.webp</image:loc><image:title>Walled garden in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/paddock/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/paddock.webp</image:loc><image:title>Paddock in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/country-lane/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/country-lane.webp</image:loc><image:title>Country lane in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/burgage-plots/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/burgage-plots.webp</image:loc><image:title>Back gardens in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/village-green/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/village-green.webp</image:loc><image:title>Village green in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/orchard/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/orchard.webp</image:loc><image:title>Orchard in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/pocket-park/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/pocket-park.webp</image:loc><image:title>Pocket park in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/churchyard/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/churchyard.webp</image:loc><image:title>Churchyard in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/herb-garden/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/herb-garden.webp</image:loc><image:title>Herb garden in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/street-lamps/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/street-lamps.webp</image:loc><image:title>Street lamps in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/laundry-lines/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/laundry-lines.webp</image:loc><image:title>Laundry lines in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/garrison/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/garrison.webp</image:loc><image:title>Garrison in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/rider/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/rider.webp</image:loc><image:title>Rider in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/market-cross/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/market-cross.webp</image:loc><image:title>Market cross in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/basketball-court/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/basketball-court.webp</image:loc><image:title>Basketball court in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/tennis-court/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/tennis-court.webp</image:loc><image:title>Tennis court in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/football-pitch/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/football-pitch.webp</image:loc><image:title>Football pitch in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/bowling-green/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/bowling-green.webp</image:loc><image:title>Bowling green in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/croquet-lawn/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/croquet-lawn.webp</image:loc><image:title>Croquet lawn in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/boules-court/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/boules-court.webp</image:loc><image:title>Boules court in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/running-track/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/running-track.webp</image:loc><image:title>Running track in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/kickabout-green/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/kickabout-green.webp</image:loc><image:title>Kickabout green in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/market-day/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/market-day.webp</image:loc><image:title>Market day in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/wedding/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/wedding.webp</image:loc><image:title>A wedding in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/raid/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/raid.webp</image:loc><image:title>A raid in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/festival/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/festival.webp</image:loc><image:title>The midwinter festival in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/beach-day/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/beach-day.webp</image:loc><image:title>A beach day in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/picnic/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/picnic.webp</image:loc><image:title>Picnics in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/snow-day/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/snow-day.webp</image:loc><image:title>A snow day in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/harvest-supper/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/harvest-supper.webp</image:loc><image:title>A harvest supper in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/carols/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/carols.webp</image:loc><image:title>Carol singers in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/harvest/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/harvest.webp</image:loc><image:title>The harvest in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/unloading/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/unloading.webp</image:loc><image:title>Ships unloading in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/waving-ships-in/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/waving-ships-in.webp</image:loc><image:title>Waving a ship in in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/the-catch/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/the-catch.webp</image:loc><image:title>The catch comes in in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/bread/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/bread.webp</image:loc><image:title>Bread from the mill in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/fetching-water/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/fetching-water.webp</image:loc><image:title>Fetching water in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/washing-day/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/washing-day.webp</image:loc><image:title>Washing day in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/school-lesson/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/school-lesson.webp</image:loc><image:title>School and hopscotch in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/smith-at-work/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/smith-at-work.webp</image:loc><image:title>The smith at work in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/a-show/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/a-show.webp</image:loc><image:title>A show in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/games/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/games.webp</image:loc><image:title>Games on the field in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/dogs/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/dogs.webp</image:loc><image:title>Dogs in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/scuffle/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/scuffle.webp</image:loc><image:title>A scuffle in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/lamplighter/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/lamplighter.webp</image:loc><image:title>The lamplighter in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/night-watch/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/night-watch.webp</image:loc><image:title>The night watch in Little City</image:title></image:image>
+  </url>
+  <url>
+    <loc>https://littlecity.io/guide/fire-brigade/</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.6</priority>
+    <image:image><image:loc>https://littlecity.io/guide/fire-brigade.webp</image:loc><image:title>The fire brigade in Little City</image:title></image:image>
+  </url>
+</urlset>

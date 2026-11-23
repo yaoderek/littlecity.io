@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#f2ede3" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>Little City: A hand-drawn city builder in your browser</title>
+    <meta name="description" content="A hand-drawn town diorama builder, free in your browser. Place a few blocks, watch them turn into a town, then watch it come to life." />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-video-preview:-1" />
+    <meta name="application-name" content="Little City" />
+    <meta name="author" content="Derek Yao" />
+    <meta name="apple-mobile-web-app-title" content="Little City" />
+    <!-- Link previews (iMessage, Discord, Slack, X). Crawlers need absolute URLs and do not run scripts,
+         so every link shows this one picture, whichever town the link carries. -->
+    <link rel="canonical" href="https://littlecity.io/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Little City" />
+    <meta property="og:title" content="Little City: A hand-drawn city builder in your browser" />
+    <meta property="og:description" content="A hand-drawn town diorama builder, free in your browser. Place a few blocks, watch them turn into a town, then watch it come to life." />
+    <meta property="og:url" content="https://littlecity.io/" />
+    <meta property="og:image" content="https://littlecity.io/og.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="A hand-drawn island town with a castle, a harbour, a chapel and a lighthouse." />
+    <!-- The preview is the promo video: apps that play link videos (Discord, Slack, iMessage, Telegram) show it; X shows the still. -->
+    <meta property="og:video" content="https://littlecity.io/preview.mp4" />
+    <meta property="og:video:secure_url" content="https://littlecity.io/preview.mp4" />
+    <meta property="og:video:type" content="video/mp4" />
+    <meta property="og:video:width" content="1280" />
+    <meta property="og:video:height" content="720" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Little City: A hand-drawn city builder in your browser" />
+    <meta name="twitter:description" content="A hand-drawn town diorama builder, free in your browser. Place a few blocks, watch them turn into a town, then watch it come to life." />
+    <meta name="twitter:image" content="https://littlecity.io/og.jpg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon.png" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":["VideoGame","WebApplication"],"@id":"https://littlecity.io/#game","name":"Little City","url":"https://littlecity.io/","description":"A hand-drawn town diorama builder, free in your browser. Place a few blocks, watch them turn into a town, then watch it come to life.","image":"https://littlecity.io/og.jpg","genre":["City builder","Town builder","Diorama","Sandbox","Relaxing"],"keywords":"diorama builder, town builder, city builder, hand-drawn, cozy game, relaxing game, sandbox, browser game, free online game","gamePlatform":["Web browser","PC","Mac","iPhone","iPad","Android"],"applicationCategory":"GameApplication","operatingSystem":"Any (runs in a web browser)","playMode":"SinglePlayer","isAccessibleForFree":true,"inLanguage":"en","offers":{"@type":"Offer","price":"0","priceCurrency":"USD","availability":"https://schema.org/InStock"},"author":{"@type":"Person","@id":"https://littlecity.io/#creator","name":"Derek Yao"},"creator":{"@type":"Person","@id":"https://littlecity.io/#creator","name":"Derek Yao"},"publisher":{"@type":"Person","@id":"https://littlecity.io/#creator","name":"Derek Yao"},"trailer":{"@type":"VideoObject","@id":"https://littlecity.io/about/#trailer","name":"Little City trailer: a hand-drawn town diorama builder","description":"A drone flies in from the sea over a hand-drawn island town in Little City: under the washing lines, through the square where a wedding is on, and out over the quay. Little City is a hand-drawn town diorama builder by Derek Yao.","thumbnailUrl":["https://littlecity.io/og.jpg"],"contentUrl":"https://littlecity.io/preview.mp4","embedUrl":"https://littlecity.io/about/","uploadDate":"2026-11-21T00:00:00-08:00","duration":"PT58S","width":1280,"height":720,"author":{"@type":"Person","@id":"https://littlecity.io/#creator","name":"Derek Yao"},"publisher":{"@type":"Person","@id":"https://littlecity.io/#creator","name":"Derek Yao"}}}</script>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","@id":"https://littlecity.io/#site","name":"Little City","alternateName":["littlecity.io","Little City game","Little City city builder"],"url":"https://littlecity.io/","creator":{"@type":"Person","@id":"https://littlecity.io/#creator","name":"Derek Yao"}}</script>
+    <style>html,body{overscroll-behavior:none;color:#3a2f2a;background:#f2ede3;height:100%;margin:0;overflow:hidden}body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;position:fixed;inset:0}.lc-about{clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;width:1px;height:1px;margin:-1px;padding:0;position:absolute;overflow:hidden}#town{touch-action:none;outline:none;width:100%;height:100%;display:block;position:absolute;inset:0}</style>
+    <script type="module" crossorigin src="/assets/app-D0dfmg6x.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/save-CkqRhc9y.js">
+    <link rel="modulepreload" crossorigin href="/assets/pointer-CxPhLeqb.js">
+    <link rel="modulepreload" crossorigin href="/assets/towns-BO-MnIlJ.js">
+    <link rel="stylesheet" crossorigin href="/assets/pointer-DvVmpf8y.css">
+    <link rel="stylesheet" crossorigin href="/assets/app-D7x9qMPz.css">
+  </head>
+  <body>
+    <canvas id="town" aria-label="Little City: your town, drawn in ink and pencil"></canvas>
+    <!-- What the page is, for search engines and screen readers: the game itself is the canvas above.
+         Kept true to the game (tools/seo/site.ts has the long version, published at /about/). -->
+    <main class="lc-about">
+      <h1>Little City: a hand-drawn city builder in your browser</h1>
+      <p>A hand-drawn town diorama builder, free in your browser. Place a few blocks, watch them turn into a town, then watch it come to life.</p>
+      <p>A house beside a tall tower becomes a chapel. Four blocks stacked by the sea become a lighthouse. Then people move in: the miller carries flour to the bakery, boats go out for fish, and some days there's a market or a wedding on the square. The seasons turn and the lamps come on at dusk.</p>
+      <p>Or grow a whole town on a new island, a harbour town, a castle town or a farming village, and just watch it.</p>
+      <p>Works on computers, iPhone, iPad and Android. Made by Derek Yao.</p>
+      <nav><a href="/about/" tabindex="-1">About Little City</a> · <a href="/guide/" tabindex="-1">The guide: every special building and how to get it</a></nav>
+    </main>
+  </body>
+</html>
