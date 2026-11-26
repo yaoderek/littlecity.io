@@ -10,14 +10,15 @@
 // its residents at their doors.
 
 import { shipInFor } from '../ships/news';
-import { DIR4, keyX, keyZ, SEA_Y } from '@/core/grid';
+import { CELL_H, columnIndex, DIR4, inColumnBounds, key, keyX, keyZ, SEA_Y, type CellKey } from '@/core/grid';
 import type { Mat4Like } from '@/core/mat4';
 import { defineSystem, type InstanceHandle, type LifeStage, type Signals, type SignalsDriver } from '@/life/api';
 import type { MeshData } from '@/gen/mesh';
-import { bubbleMesh, kiteMesh, lineMesh, TOOL_PIECE, toolMesh, UMBRELLAS, type Tool } from '@/parts/people/extras';
+import { bubbleMesh, castLine, castLineMesh, floatMesh, kiteMesh, lineMesh, TOOL_PIECE, toolMesh, UMBRELLAS, type Tool } from '@/parts/people/extras';
+import { wakeRing } from '../boats/afloat';
 import { buildPerson, DESIGN_HEIGHT, lookOf, PIECES, rigOf, type Look, type Rig } from '@/parts/people/person';
 import { poseOf, rigMatrices, sitDrop } from '@/parts/people/pose';
-import type { NavDoor } from '@/resolve/plan';
+import type { DressingPlan, NavDoor } from '@/resolve/plan';
 import { PEOPLE, PERSON } from '@/style/people';
 import { obstaclesOf, setCrowd, setDoorTable } from '../doors/table';
 import { deferLamp, lightLamp } from '../dusk/lamps.system';
@@ -216,6 +217,40 @@ interface Drawn {
   hatless?: boolean;
   /** The broom's stroke last drawn (a puff of dust at each). */
   stroke: number;
+  /** Fishing: the line from the rod's tip to the float on the water, and whether a fish was tugging at the last drawing. */
+  cast?: { line: InstanceHandle; float: InstanceHandle; tugged: boolean; ring: number } | null;
+  /** The fishing pose's tug on the line is on (the float dips). */
+  tug?: boolean;
+  /** Fishing: how far the figure is drawn from its place in the crowd, stepped up to the dock's edge; which foot leads. */
+  edgeX?: number;
+  edgeZ?: number;
+  edgeStride?: boolean;
+}
+
+/**
+ * Fishing: the crowd keeps a fisher on the fishing spot (on the walking graph, 0.3 out from the middle of the cell);
+ * the figure steps from there up to PEOPLE.fishReach out, toward where it faces, so it stands at the dock's edge in
+ * front of a pier head's seat and bucket with its rod well out over the water, and steps back when it stops. Moves
+ * `d.edgeX`, `d.edgeZ` toward that (or back to nothing) at PEOPLE.fishStep; true while it is stepping.
+ */
+function stepToEdge(p: Person, d: Drawn, fishing: boolean): boolean {
+  let tx = 0, tz = 0;
+  if (fishing) {
+    const fx = Math.sin(p.heading), fz = Math.cos(p.heading);
+    // How far out it stands now, from the middle of its cell toward where it faces.
+    const out = (p.x - (Math.floor(p.x) + 0.5)) * fx + (p.z - (Math.floor(p.z) + 0.5)) * fz;
+    const step = Math.max(0, Math.min(PEOPLE.fishReach - 0.3, PEOPLE.fishReach - out));
+    tx = fx * step;
+    tz = fz * step;
+  }
+  const dx = tx - (d.edgeX ?? 0), dz = tz - (d.edgeZ ?? 0);
+  const gap = Math.hypot(dx, dz);
+  if (gap < 1e-6) return false;
+  const k = Math.min(1, PEOPLE.fishStep / PERSON.drawRate / gap);
+  d.edgeX = (d.edgeX ?? 0) + dx * k;
+  d.edgeZ = (d.edgeZ ?? 0) + dz * k;
+  d.edgeStride = !d.edgeStride;
+  return true;
 }
 
 /**
@@ -308,6 +343,90 @@ interface State {
   unsubscribe: () => void;
   /** L50: the scuffle's drawings, while one is on. */
   art: ScuffleArt | null;
+  /** The ground under the town, for where a fishing line can reach the water. */
+  sea: Sea | null;
+}
+
+interface Sea {
+  height: Uint8Array;
+  kinds: ReadonlyMap<CellKey, unknown>;
+  /** Boats lying at their moorings and berths: (x, z) and how far round it the water is taken up. Read at sync. */
+  boats: readonly (readonly [x: number, z: number, r: number])[];
+}
+
+/** Room taken on the water round a rowboat's mooring (it lies 0.44 out and swings, 0.62 long) and a fishing boat's berth. */
+const ROWBOAT_ROOM = 0.85;
+const BERTH_ROOM = 0.75;
+
+/** The boats at rest in a dressing plan, from their moorings (rowboats) and berths (the fishing boat). */
+function boatsOf(dressing: DressingPlan | null, stage: LifeStage): Sea['boats'] {
+  const out: [number, number, number][] = [];
+  for (const a of dressing?.actors ?? []) {
+    if (a.type === 'rowboat' && a.at && 'socket' in a.at) {
+      const m = stage.socket(a.at.socket);
+      if (m) out.push([m[12]!, m[14]!, ROWBOAT_ROOM]);
+    } else if (a.type === 'fishing-boat') {
+      const at = a.params as { berthX?: unknown; berthZ?: unknown } | undefined;
+      const x = Number(at?.berthX), z = Number(at?.berthZ);
+      if (Number.isFinite(x) && Number.isFinite(z)) out.push([x, z, BERTH_ROOM]);
+    }
+  }
+  return out;
+}
+
+/**
+ * Open sea straight under (x, z): no land within half a cell (the drawn shore spills a little sand over the water
+ * cells next to it), nothing built in its column from the water up to `top` (a deck, a boat house), and no boat
+ * lying there at its mooring or berth (a sailboat under way, or a boat rowed off, is not looked for).
+ */
+function openWater(sea: Sea | null, x: number, z: number, top: number): boolean {
+  if (!sea) return false;
+  for (const [dx, dz] of SHORE_SAMPLES) {
+    const cx = Math.floor(x + dx), cz = Math.floor(z + dz);
+    if (!inColumnBounds(cx, cz) || sea.height[columnIndex(cx, cz)] !== 0) return false;
+  }
+  const cx = Math.floor(x), cz = Math.floor(z);
+  for (let y = 0; y * CELL_H < top; y++) if (sea.kinds.has(key(cx, y, cz))) return false;
+  for (const [bx, bz, r] of sea.boats) if ((x - bx) ** 2 + (z - bz) ** 2 < r * r) return false;
+  return true;
+}
+const SHORE_SAMPLES: readonly (readonly [number, number])[] = [[0, 0], [0.5, 0], [-0.5, 0], [0, 0.5], [0, -0.5], [0.35, 0.35], [0.35, -0.35], [-0.35, 0.35], [-0.35, -0.35]];
+
+/** How far the float goes under while a fish tugs, and a ring on the water every this many seconds while it sits. */
+const FLOAT_DIP = 0.012;
+const FLOAT_RING = 4.5;
+const castM = { line: [] as number[], float: [] as number[] };
+let castMeshes: { line: MeshData; float: MeshData } | null = null;
+
+function releaseCast(d: Drawn): void {
+  d.cast?.line.release();
+  d.cast?.float.release();
+  d.cast = null;
+}
+
+/**
+ * Fishing: the line hangs from the rod's tip to a float on the sea, whatever the height of the deck (only where the
+ * tip is out over open water: a rod held over planks or land has no line). Placed from the rod as last drawn; the
+ * float dips and leaves a ring when a fish tugs, and a small ring now and then while it sits.
+ */
+function drawCast(p: Person, d: Drawn, stage: LifeStage, sea: Sea | null, seconds: number): void {
+  const rod = d.tool?.kind === 'rod' && d.shown;
+  const at = rod ? castLine(d.last.subarray(80, 96), SEA_Y, d.tug ? FLOAT_DIP : 0, castM.line, castM.float) : null;
+  if (!at || !openWater(sea, at.x, at.z, at.tipY)) {
+    if (d.cast) releaseCast(d);
+    return;
+  }
+  if (!d.cast) {
+    castMeshes ??= { line: castLineMesh(), float: floatMesh() };
+    d.cast = { line: stage.spawnMesh(castMeshes.line, castM.line), float: stage.spawnMesh(castMeshes.float, castM.float), tugged: false, ring: Math.floor(seconds / FLOAT_RING + p.rank) };
+  } else {
+    d.cast.line.setMatrix(castM.line);
+    d.cast.float.setMatrix(castM.float);
+  }
+  const ring = Math.floor(seconds / FLOAT_RING + p.rank);
+  if ((d.tug && !d.cast.tugged) || ring !== d.cast.ring) wakeRing(stage, at.x, at.z, d.tug ? 0.03 : 0.022, d.tug ? 3 : 2.4, d.tug ? 1.4 : 1.8);
+  d.cast.tugged = d.tug === true;
+  d.cast.ring = ring;
 }
 
 /** The five pieces' matrices, then (slot 5) a long tool's, in the figure's frame and in the world. */
@@ -360,6 +479,7 @@ function draw(p: Person, d: Drawn, stage: LifeStage, gust: boolean): void {
     d.askew?.release();
     d.askew = null;
     d.finery?.setVisible(false);
+    d.edgeX = d.edgeZ = 0;
     return;
   }
   // Seasons: each puts on (or takes off) their winter things at their own point as it turns cold.
@@ -392,6 +512,8 @@ function draw(p: Person, d: Drawn, stage: LifeStage, gust: boolean): void {
   const name = p.react ?? p.pose;
   const walking = !tumble?.pose && (name === 'walk' || name === 'run' || name === 'panic');
   const pose = tumble?.pose ? { ...tumble.pose } : poseOf(name, walking ? p.stride : p.poseTime, p.rank);
+  // Fishing: the pose's tug on the line (it leans back), which dips the float (drawCast).
+  d.tug = name === 'fish' && pose.lean < 0;
   // L26: a strong gust, and a hand goes to the hat.
   if (gust && d.look.hat !== 'none' && (walking || name === 'stand')) {
     pose.armR = 2.95;
@@ -404,6 +526,12 @@ function draw(p: Person, d: Drawn, stage: LifeStage, gust: boolean): void {
     (sky.rain > 0.25 && !p.load && rand(0, p.id, 'umbrella') < 0.75 && (walking || name === 'stand' || name === 'look' || name === 'chat')
       ? UMBRELLAS[Math.floor(rand(0, p.id, 'umbrella-colour') * UMBRELLAS.length)]!
       : null);
+  // Fishing: a short step up to the dock's edge as they start, and back as they stop (only the figure moves).
+  if (stepToEdge(p, d, tool === 'rod' && name === 'fish' && p.mode === 'linger' && !p.goal?.errand?.tag?.startsWith('fire:'))) {
+    const s = d.edgeStride ? 0.35 : -0.35;
+    pose.legL = s;
+    pose.legR = -s;
+  }
   // A load is in the hands whatever the pose (a cheer, a turn to look, a flinch): only the scythe leaves them, to mow.
   const holding = p.load !== null && name !== 'mow';
   const longTool = applyHold(pose, d.rig, {
@@ -418,7 +546,7 @@ function draw(p: Person, d: Drawn, stage: LifeStage, gust: boolean): void {
   const away = edge ? 1 - p.fade : 0;
   // Down below the water (SEA_Y) by the end, head and all: a step out, then the drop.
   const depth = Math.max(0.5, p.y - SEA_Y + DESIGN_HEIGHT * scale + 0.05);
-  const px = p.x + p.edgeX * away + (p.drawX ?? 0), pz = p.z + p.edgeZ * away + (p.drawZ ?? 0);
+  const px = p.x + p.edgeX * away + (p.drawX ?? 0) + (d.edgeX ?? 0), pz = p.z + p.edgeZ * away + (p.drawZ ?? 0) + (d.edgeZ ?? 0);
   // The drop comes over the last part of the way: off a dock's end at once, down a beach into the shallows.
   const len = Math.hypot(p.edgeX, p.edgeZ);
   const from = len > 1 ? 0.62 : 0.15;
@@ -583,6 +711,7 @@ export default defineSystem<State>({
           d?.bubble?.release();
           d?.kite?.kite.release();
           d?.kite?.line.release();
+          if (d) releaseCast(d);
           d?.tool?.handle.release();
           d?.load?.handle.release();
           d?.askew?.release();
@@ -607,9 +736,10 @@ export default defineSystem<State>({
     // The debug handle for browser tests and for watching (like the app's window.__lc): the newest crowd.
     (globalThis as { __lcPeople?: Crowd }).__lcPeople = crowd;
     (globalThis as { __lcTown?: LivingTown }).__lcTown = town;
-    return { crowd, town, drawn, bubbleMesh: null, lineMesh: null, standIns: [], tick: -1, fresh: true, unsubscribe, art: null };
+    return { crowd, town, drawn, bubbleMesh: null, lineMesh: null, standIns: [], tick: -1, fresh: true, unsubscribe, art: null, sea: null };
   },
   sync(state, next, _prev, ctx) {
+    state.sea = { height: next.shape.facts.terrain.height, kinds: next.shape.facts.kinds, boats: next.dressing ? boatsOf(next.dressing, ctx.stage) : (state.sea?.boats ?? []) };
     if (!next.dressing) {
       // Just after an edit: the town's chains take the new shape now (L54 reads what landed).
       state.town.sync(next.shape, null, ctx.signals.time);
@@ -671,6 +801,7 @@ export default defineSystem<State>({
       if (!d) continue;
       const gust = p.visible && d.look.hat !== 'none' && signals.wind(p.x, p.z).strength > PEOPLE.gust;
       draw(p, d, ctx.stage, gust);
+      drawCast(p, d, ctx.stage, state.sea, signals.time.seconds);
       // The chat bubble over whoever is talking (L26).
       const talking = p.bubble && p.visible;
       if (talking) {
@@ -725,6 +856,7 @@ export default defineSystem<State>({
       d.bubble?.release();
       d.kite?.kite.release();
       d.kite?.line.release();
+      releaseCast(d);
       d.tool?.handle.release();
       d.load?.handle.release();
       d.askew?.release();

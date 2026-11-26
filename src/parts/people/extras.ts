@@ -70,7 +70,7 @@ export function lineMesh(): MeshData {
 /**
  * What a worker holds (animation polish: nobody works empty-handed).
  *   broom   the shopkeeper sweeping       body frame: from the hands down to a brush on the ground ahead
- *   rod     anyone fishing                body frame: from the hands out and up, a line hanging from its tip
+ *   rod     anyone fishing                figure frame: from the hands out and up (its line and float: castLine)
  *   can     a gardener tending            body frame: a watering can in the hands, by the bed
  *   sack    the miller walking            body frame: a flour sack hugged to the chest
  *   tray    the baker                     body frame: a tray of loaves on the forearms
@@ -82,6 +82,78 @@ export type Tool = 'broom' | 'rod' | 'can' | 'sack' | 'tray' | 'pole' | 'reach' 
 export const TOOLS: readonly Tool[] = ['broom', 'rod', 'can', 'sack', 'tray', 'pole', 'reach', 'pike', 'torch', 'lance', 'hammer', 'balls-a', 'balls-b', 'scythe', 'umbrella-a', 'umbrella-b', 'umbrella-c', 'racket', 'mallet', 'book', 'spade', ...RAID_TOOLS];
 /** Which piece of the figure (PIECES order) a tool is held by; 5: a long tool laid in the hands along its own line (hands.ts). */
 export const TOOL_PIECE: Readonly<Record<Tool, number>> = { broom: 5, rod: 5, can: 4, sack: 0, tray: 0, pole: 4, reach: 4, pike: 0, torch: 0, lance: 0, hammer: 4, 'balls-a': 0, 'balls-b': 0, scythe: 5, 'umbrella-a': 0, 'umbrella-b': 0, 'umbrella-c': 0, racket: 4, mallet: 4, book: 0, spade: 4, brand: 0, axe: 0, club: 0, horn: 0, standard: 0, pan: 0 };
+/**
+ * The fishing rod, figure frame: points along hands.ts's longToolLine('rod') (the butt at the chest, out and up),
+ * the last of them dipping a little below that line, as a rod bends at its tip with a line on it.
+ */
+const ROD_FROM = [0, 0.24, 0.02] as const, ROD_ALONG = [0, 0.25, 0.44] as const;
+const ROD_POINTS: [number, number, number][] = [-0.05, 0.45, 0.9, 1.3, 1.65].map((t) => {
+  const bend = t > 0.9 ? 0.03 * ((t - 0.9) / 0.75) ** 2 : 0;
+  return [ROD_FROM[0] + ROD_ALONG[0] * t, ROD_FROM[1] + ROD_ALONG[1] * t - bend, ROD_FROM[2] + ROD_ALONG[2] * t];
+});
+/** Where the line leaves the rod, in the figure's frame (the rod's piece matrix takes it to the world). */
+export const ROD_TIP: readonly [number, number, number] = ROD_POINTS[ROD_POINTS.length - 1]!;
+
+/**
+ * A fishing line: a hair of a box from the origin one unit up +Y, to be stretched from the float on the water up
+ * to the rod's tip. As thick as the kite's line, so the pen line round it is the line, unbroken at any zoom.
+ */
+export function castLineMesh(): MeshData {
+  const b = new MeshBuilder({ ink: 'fishing-line' });
+  b.setInk('line').setColor(PALETTE.ink).setPattern(PATTERN.none);
+  b.box([-0.004, 0, -0.004], [0.004, 1, 0.004]);
+  return b.build();
+}
+
+/**
+ * The float on a fishing line, world units, its origin at the waterline: a white belly under the water, a red cap
+ * above it and a little stalk the line ties to. Half of it is below the surface (the sea hides that part).
+ */
+export const FLOAT_TOP = 0.046;
+export function floatMesh(): MeshData {
+  const b = new MeshBuilder({ ink: 'fishing-float' });
+  // One ink group: too small to outline piece by piece; the red and the white read by colour.
+  b.setInk('float').setPattern(PATTERN.none).setColor(PALETTE.white);
+  b.lathe([[0, -0.02], [0.016, -0.016], [0.024, -0.004], [0.024, 0.01]], { segments: 8 });
+  b.setColor(PALETTE.red);
+  b.lathe([[0.024, 0.01], [0.021, 0.022], [0.011, 0.031], [0, 0.033]], { segments: 8 });
+  b.setColor(PALETTE.ink);
+  b.box([-0.004, 0.03, -0.004], [0.004, FLOAT_TOP, 0.004]);
+  return b.build();
+}
+
+/**
+ * Where a cast line goes, from the rod's world matrix (`rod`, column-major: the figure's T · Ry · S, as the people
+ * system places the rod): the float sits on the water at `seaY` (`dip` lower while a fish tugs) straight under the
+ * rod's tip, and the line runs from the top of its stalk up to the tip. Writes the line's matrix (castLineMesh:
+ * one unit up +Y, stretched to the gap) and the float's into `line` and `float`, and returns where the float is;
+ * null when the tip is not above the water (nothing to hang).
+ */
+export function castLine(rod: ArrayLike<number>, seaY: number, dip: number, line: number[], float: number[]): { x: number; z: number; tipY: number } | null {
+  const [tx, ty, tz] = ROD_TIP;
+  const x = rod[0]! * tx + rod[4]! * ty + rod[8]! * tz + rod[12]!;
+  const y = rod[1]! * tx + rod[5]! * ty + rod[9]! * tz + rod[13]!;
+  const z = rod[2]! * tx + rod[6]! * ty + rod[10]! * tz + rod[14]!;
+  const top = seaY - dip + FLOAT_TOP;
+  if (y <= top + 0.02) return null;
+  line.length = 16;
+  line.fill(0);
+  line[0] = 1;
+  line[5] = y - top;
+  line[10] = 1;
+  line[12] = x;
+  line[13] = top;
+  line[14] = z;
+  line[15] = 1;
+  float.length = 16;
+  float.fill(0);
+  float[0] = float[5] = float[10] = float[15] = 1;
+  float[12] = x;
+  float[13] = seaY - dip;
+  float[14] = z;
+  return { x, z, tipY: y };
+}
+
 /** Seasons: the umbrellas residents put up in the rain, in three colours. */
 export const UMBRELLAS: readonly Tool[] = ['umbrella-a', 'umbrella-b', 'umbrella-c'];
 
@@ -111,18 +183,13 @@ export function toolMesh(tool: Tool, colour: string = PALETTE.red): MeshData {
       b.setInk('binding').setColor(PALETTE.redDark).setPattern(PATTERN.none);
       b.box([-0.03, 0.03, -0.012], [0.03, 0.042, 0.012]);
       break;
-    case 'rod': {
-      // In the figure's frame, along hands.ts's line for it: the butt at the chest, out over the water, the line
-      // hanging from the tip.
-      const a = [0, 0.24, 0.02], d = [0, 0.25, 0.44];
-      const at = (t: number): [number, number, number] => [a[0]! + d[0]! * t, a[1]! + d[1]! * t, a[2]! + d[2]! * t];
+    case 'rod':
+      // In the figure's frame, along hands.ts's line for it: the butt at the chest, long enough to reach well out
+      // over the water, bending a little at the tip. The line is its own thing (castLineMesh), hung from ROD_TIP
+      // down to the water by the people system, whatever the height of the deck above the sea.
       b.setColor(PALETTE.trunk);
-      tube(b, [at(-0.05), at(0.6), at(1.15)], [0.007, 0.005, 0.003], { seg: 4 });
-      const tip = at(1.15);
-      b.setInk('line').setColor(PALETTE.ink);
-      b.box([tip[0] - 0.0015, 0.05, tip[2] - 0.002], [tip[0] + 0.0015, tip[1], tip[2] + 0.002]);
+      tube(b, ROD_POINTS, [0.009, 0.008, 0.007, 0.0055, 0.0045], { seg: 5 });
       break;
-    }
     case 'can':
       // Hanging from the right hand by its handle (arm frame: the hand is 0.093 down the arm).
       b.setColor('#6f9fae').setPattern(PATTERN.metal);
