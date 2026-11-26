@@ -196,8 +196,8 @@ export interface Yard {
   /** The harbour office, its cell; the aisle where unpacked goods are set down. */
   office: { i: number; r: number } | null;
   pile: { i: number; r: number } | null;
-  /** Two tall floodlight masts: cells, and the corner of the cell they stand at (+1 / −1 along, in from the water). */
-  masts: { i: number; r: number }[];
+  /** Two tall floodlight masts: their cells, at the land-side corner toward this end of the port (−1 the i = 0 end, +1 the far one). */
+  masts: { i: number; r: number; end: -1 | 1 }[];
   /** The rows the stacks are in. */
   rows: number[];
 }
@@ -237,14 +237,10 @@ export function yardOf(p: Port, taken: (i: number, r: number) => boolean = () =>
       } else i++;
     }
   }
+  // At the two ends of the yard on the land side: out of reach of every crane's jib and boom.
   const masts: Yard['masts'] = [];
-  if (pile) masts.push(pile);
-  const lastAisle = (() => {
-    for (let i = p.length - 1; i > 3; i--) if (aisleAt(i) && !taken(i, front)) return i;
-    return -1;
-  })();
-  if (lastAisle > 0) masts.push({ i: lastAisle, r: front });
-  else if (p.length >= 6 && !taken(p.length - 1, front) && !stacks.some((s) => s.r === front && s.i + 1 >= p.length - 1)) masts.push({ i: p.length - 1, r: front });
+  const back = rows[rows.length - 1] ?? 0;
+  for (const [i, end] of [[0, -1], [p.length - 1, 1]] as const) if (p.length >= 6 && !taken(i, back)) masts.push({ i, r: back, end });
   return { stacks: stacks.sort((a, b) => a.r - b.r || a.i - b.i), office, pile, masts, rows };
 }
 

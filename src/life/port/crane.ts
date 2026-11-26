@@ -33,14 +33,18 @@ export interface Place {
   yaw: number;
 }
 
-/** A job: where from and where to; `take` hands over the container at the grab, `put` takes it at the drop. */
+/**
+ * A job: where from and where to; `take` hands over the container at the grab, `put` takes it at the
+ * let-go (where it hangs: `at`). `to` may change while the crane carries it (its place went: it is carried
+ * back where it came from). `abandon`: the job cannot finish; the container (if any) is given up where it
+ * hangs, in the removal puff.
+ */
 export interface Job {
   from: () => Place | null;
   to: () => Place | null;
   take(): InstanceHandle | null;
-  put(h: InstanceHandle): void;
-  /** The job cannot finish (its place has gone): the container goes back if it can, else it is given up. */
-  abandon(h: InstanceHandle | null): void;
+  put(h: InstanceHandle, at: Place): void;
+  abandon(h: InstanceHandle | null, at: Place | null): void;
 }
 
 type Phase = 'idle' | 'boom-down' | 'to-pick' | 'down-pick' | 'grab' | 'up-pick' | 'to-drop' | 'down-drop' | 'let-go' | 'up-drop' | 'rest' | 'boom-up';
@@ -87,6 +91,8 @@ export class Crane {
   private dur = 1;
   job: Job | null = null;
   load: InstanceHandle | null = null;
+  /** Where the load hangs (its floor's middle, world), for a puff if it must be given up. */
+  private loadPlace: Place = { x: 0, y: 0, z: 0, yaw: 0 };
   /** True once it has been told to stand idle with its boom up (no ship, or over the cap). */
   private parked = true;
 
@@ -162,6 +168,23 @@ export class Crane {
   /** No ship to work: finish what is in hand, then stand with the boom up. */
   park(): void {
     this.parked = true;
+    if (this.phase === 'idle' && !this.atRest()) this.go('boom-up');
+  }
+
+  /** A ship is coming alongside: the boom comes down (a large crane) and it waits for work. */
+  ready(): void {
+    this.parked = false;
+    if (this.phase === 'idle' && this.large && this.pose.raise > 0.02) this.go('boom-down');
+  }
+
+  /** Standing as it does with no ship in: boom up, jib raised. */
+  private atRest(): boolean {
+    return this.large ? Math.abs(this.pose.raise - BOOM_UP) < 0.02 : Math.abs(this.pose.luff - LUFF_IDLE) < 0.02;
+  }
+
+  /** At work on a job, or on the way to or from one. */
+  get working(): boolean {
+    return this.job !== null || this.phase === 'rest';
   }
 
   /** Loads the pose a phase moves to, and its duration. */
@@ -311,7 +334,8 @@ export class Crane {
     switch (this.phase) {
       case 'boom-down':
         if (job) this.go('to-pick');
-        else this.go('boom-up');
+        else if (this.parked) this.go('boom-up');
+        else this.phase = 'idle';
         return false;
       case 'to-pick':
         if (!job || !job.from()) return this.giveUp();
@@ -330,15 +354,20 @@ export class Crane {
       case 'up-pick':
         this.go('to-drop');
         return false;
-      case 'to-drop':
-        if (!job?.to()) return this.giveUp();
-        this.go('down-drop');
+      case 'to-drop': {
+        const p = job?.to();
+        if (!p) return this.giveUp();
+        // Its place changed on the way (it goes back where it came from): over there first.
+        const [lx, , lz] = this.local(p.x, p.y, p.z);
+        const off = this.large ? Math.hypot(Math.max(this.lo, Math.min(this.hi, lx)) - this.pose.travel, lz - this.pose.trolley) : Math.abs(angleDelta(this.pose.slew, Math.atan2(lx, lz)));
+        this.go(off > 0.25 ? 'to-drop' : 'down-drop');
         return false;
+      }
       case 'down-drop':
         this.go('let-go');
         return false;
       case 'let-go':
-        if (this.load && job) job.put(this.load);
+        if (this.load && job) job.put(this.load, { ...this.loadPlace });
         this.load = null;
         this.go('up-drop');
         return false;
@@ -363,7 +392,7 @@ export class Crane {
   private giveUp(): boolean {
     const job = this.job;
     this.job = null;
-    job?.abandon(this.load);
+    job?.abandon(this.load, this.load ? { ...this.loadPlace } : null);
     this.load = null;
     this.go('rest');
     return true;
@@ -425,7 +454,12 @@ export class Crane {
       const b = transformPoint(jib, [0, 0.1, PORT.mediumJib - 0.1]);
       this.stays[0]?.setMatrix(ropeMatrix(a, b));
     }
-    if (this.load) this.load.setMatrix(loadAt);
+    if (this.load) {
+      this.load.setMatrix(loadAt);
+      this.loadPlace.x = loadAt[12]!;
+      this.loadPlace.y = loadAt[13]!;
+      this.loadPlace.z = loadAt[14]!;
+    }
   }
 
   release(): void {

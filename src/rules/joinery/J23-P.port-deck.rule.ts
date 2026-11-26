@@ -6,7 +6,7 @@
 //               container bays
 //   port-office the harbour office at the land end of the yard, its door
 //               toward the water, a flagstaff on its roof (socket flag-mount)
-//   port-mast   two tall floodlight masts at the corners of aisles, lamps that
+//   port-mast   two tall floodlight masts at the yard's land-side corners, lamps that
 //               glow at night (socket perch on the lamp gallery)
 //
 // The cranes and the containers move, so they are not here: D15-P puts the
@@ -27,10 +27,10 @@ function cornerPos(sx: number, sz: number): CellPos {
   return `${sz < 0 ? 'n' : 's'}${sx < 0 ? 'w' : 'e'}` as CellPos;
 }
 
-/** The mast's corner: on the land side of its aisle cell, toward i = 0. */
-export function mastCorner(p: Port): [number, number] {
+/** The mast's corner: on the land side of its cell, toward its end of the port. */
+export function mastCorner(p: Port, end: -1 | 1): [number, number] {
   const [ax, az] = DIR4[p.along]!, [lx, lz] = DIR4[p.landward]!;
-  return [Math.sign(lx - ax), Math.sign(lz - az)];
+  return [Math.sign(lx + end * ax), Math.sign(lz + end * az)];
 }
 
 export default defineRule<Piece>({
@@ -38,7 +38,7 @@ export default defineRule<Piece>({
   part: 'joinery',
   tier: 2,
   priority: 765,
-  about: 'Reads: port roles, dock cells and what stands on them. Claims: the office’s deck cell, each mast’s corner slot. Emits: port-deck, port-office (socket flag-mount), port-mast (socket perch).',
+  about: 'Reads: port roles, dock cells and what stands on them. Claims: the office’s deck cell, each mast’s corner. Emits: port-deck, port-office (socket flag-mount), port-mast (socket perch).',
   find({ facts, plan }) {
     const out: Candidate<Piece>[] = [];
     const walls = quayWallsOf({ structureAt: facts.structureAt, roles: plan.roles });
@@ -49,15 +49,18 @@ export default defineRule<Piece>({
       const { port, yard } = pp;
       out.push({ anchor: portCell(port, 0, port.depth - 1), structure: s.id, key: 'deck', data: { what: 'deck', port } });
       if (yard.office) out.push({ anchor: portCell(port, yard.office.i, yard.office.r), structure: s.id, key: 'office', data: { what: 'office', dir: port.seaward } });
-      const [cx, cz] = mastCorner(port);
-      yard.masts.forEach((m, k) => out.push({ anchor: portCell(port, m.i, m.r), structure: s.id, key: `mast${k}`, data: { what: 'mast', cx, cz, pos: cornerPos(cx, cz) } }));
+      yard.masts.forEach((m, k) => {
+        const [cx, cz] = mastCorner(port, m.end);
+        out.push({ anchor: portCell(port, m.i, m.r), structure: s.id, key: `mast${k}`, data: { what: 'mast', cx, cz, pos: cornerPos(cx, cz) } });
+      });
     }
     return out;
   },
   claims(c) {
     const deck = above(c.anchor);
     if (c.data.what === 'office') return slot.cell(deck);
-    if (c.data.what === 'mast') return [slot.floor(deck, c.data.pos)];
+    // A mast stands in its corner beside the office or a bay: only its own place.
+    if (c.data.what === 'mast') return [slot.custom('J23-P', 'mast', deck, c.data.pos)];
     return [];
   },
   apply(c, out) {

@@ -1552,6 +1552,23 @@ const LISTED: readonly GuideEntry[] = [
     frame: [19, 22, 27, 28, 2],
   },
   {
+    id: 'cargo-ship',
+    group: 'by-water',
+    name: 'Cargo ship',
+    when: 'Whenever its berth is free',
+    how: 'Build a port ten or more docks long with open sea off it. A steel cargo ship stacked with containers comes in behind a little tug; the cranes lower their booms, unload some containers and load others, and it sails out again with the tug.',
+    proof: { actor: { rule: 'L38-F.freighter', type: 'ship-call' } },
+    seed: 7531,
+    ground: seaSouth,
+    build(b) {
+      for (let x = 15; x <= 26; x++) for (let z = 21; z <= 24; z++) b.block('dock', x, 0, z);
+      b.path(14, 20, 27, 20);
+    },
+    view: { yaw: 30, pitch: 30 },
+    pad: 0.2,
+    life: { settle: 14 },
+  },
+  {
     id: 'waving-ships-in',
     group: 'by-water',
     name: 'Waving a ship in',

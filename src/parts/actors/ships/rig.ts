@@ -11,9 +11,10 @@
 
 import type { Vec3 } from '@/core/mat4';
 import { rand } from '@/core/rand';
+import { freighterRig } from './freighter-rig';
 import { shipShape, smooth, type ShipHull, type ShipHullSpec } from './hull';
 
-export const SHIP_KINDS = ['galleon', 'cog', 'galley', 'barge'] as const;
+export const SHIP_KINDS = ['galleon', 'cog', 'galley', 'barge', 'freighter'] as const;
 export type ShipKind = (typeof SHIP_KINDS)[number];
 
 export interface Mast {
@@ -82,6 +83,10 @@ export interface ShipRig {
   oars: Oars | null;
   /** Spots on deck where the crew stand and work. */
   crew: Vec3[];
+  /** A cargo ship's containers (L38-F): where each can stand on deck, and the columns they stack in, bottom first. */
+  cargo?: { slots: Vec3[]; columns: number[][] };
+  /** A steamer's funnel top, where its smoke comes out. */
+  funnel?: Vec3;
 }
 
 /** The rail: `waist` amidships, rising to `aft` over the stern and `fore` over the bow, with an extra `poop` right aft. */
@@ -298,7 +303,7 @@ export function rigOf(kind: ShipKind, look = 0): ShipRig {
   const k = `${kind}:${look}`;
   let rig = RIGS.get(k);
   if (!rig) {
-    rig = kind === 'galleon' ? galleon(look) : kind === 'cog' ? cog(look) : kind === 'galley' ? galley(look) : barge(look);
+    rig = kind === 'galleon' ? galleon(look) : kind === 'cog' ? cog(look) : kind === 'galley' ? galley(look) : kind === 'freighter' ? freighterRig(look) : barge(look);
     RIGS.set(k, rig);
   }
   return rig;

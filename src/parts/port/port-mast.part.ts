@@ -1,4 +1,4 @@
-// J23-P: a floodlight mast at the corner of an aisle in the port's yard: a
+// J23-P: a floodlight mast at a land-side corner of the port's yard: a
 // tall pole as high as the cranes' portals and more, a ladder up it, and at
 // the top a gallery with a ring of floodlights that light up at dusk.
 //
@@ -18,10 +18,10 @@ export default definePart({
   feature: 'port-mast',
   build(item, ctx) {
     const b = ctx.mesh();
-    const x = (item.params?.cx ?? 1) * 0.36, z = (item.params?.cz ?? 1) * 0.36;
+    const x = (item.params?.cx ?? 1) * 0.43, z = (item.params?.cz ?? 1) * 0.43;
     const y = CELL_H + 0.02;
     const top = y + MAST_H;
-    b.with({ color: PALETTE.stoneShade, pattern: PATTERN.stone, ink: 'foot' }, () => b.box([x - 0.09, y - 0.02, z - 0.09], [x + 0.09, y + 0.08, z + 0.09], { skip: ['bottom'] }));
+    b.with({ color: PALETTE.stoneShade, pattern: PATTERN.stone, ink: 'foot' }, () => b.box([x - 0.065, y - 0.02, z - 0.065], [x + 0.065, y + 0.08, z + 0.065], { skip: ['bottom'] }));
     b.with({ color: PALETTE.stoneShade, pattern: PATTERN.metal, ink: 'pole' }, () => b.at(translation(x, 0, z), () => b.lathe([[0.055, y + 0.08], [0.03, top]], { segments: 8 })));
     // A ladder up the pole's land side.
     b.with({ color: PALETTE.metal, pattern: PATTERN.none, ink: 'ladder' }, () => {
