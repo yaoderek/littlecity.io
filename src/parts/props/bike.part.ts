@@ -8,10 +8,14 @@
 import { definePart } from '@/gen/api';
 import { BIKE_PAINT, drawBike, leaningAt } from '@/parts/people/bike';
 
-/** Where the bike leans, in the door's frame: right of the door, a little out from the wall. */
+/**
+ * Where the bike leans, in the door's frame: right of the door (clear of its frame and the leaf, which
+ * swings the other way), its wheels far enough out that the handlebar's near end and the saddle just touch
+ * the wall as it leans back on it.
+ */
 export function doorBikeSpot(steps: number): { x: number; z: number } {
   const out = 0.17 + Math.max(0, steps) * 0.1;
-  return { x: 0.32, z: -(out + 0.2) + 0.045 };
+  return { x: 0.36, z: -(out + 0.2) + 0.075 };
 }
 
 export const doorBike = definePart({
