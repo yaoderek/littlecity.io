@@ -66,6 +66,13 @@ export const FEEDBACK = defineStyle(
     popMany: 18,
     /** An edit that changes more structures than this is a new town, not an edit: nothing plays. */
     quietAbove: 24,
+    // The unlock moment (src/life/feedback/celebrate.ts): a building built by hand for the first time pops
+    // up out of its foot instead of landing, in a burst of stars big enough to read from the opening view.
+    unlockTime: 0.62,
+    unlockStars: 14,
+    unlockStarTime: 1.25,
+    unlockReach: 1.15,
+    unlockStarSize: 0.42,
   },
   {
     landTime: [0.1, 0.8, 0.01],
@@ -88,6 +95,11 @@ export const FEEDBACK = defineStyle(
     removeTime: [0.05, 0.6, 0.01],
     popGap: [0, 0.4, 0.01],
     popTime: [0.05, 0.8, 0.01],
+    unlockTime: [0.2, 1.5, 0.02],
+    unlockStars: [0, 24, 1],
+    unlockStarTime: [0.4, 2.5, 0.05],
+    unlockReach: [0.3, 3, 0.05],
+    unlockStarSize: [0.1, 0.9, 0.02],
   },
 );
 
