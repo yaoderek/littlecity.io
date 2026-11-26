@@ -536,7 +536,7 @@ export function createFly(host: FlyHost): FlyMode {
       if (!disposed) api.enter();
     });
   });
-  if (!touch && view.prepareEye) {
+  if (!touch && view.prepareEye && view.buildsAhead?.() !== false) {
     const prepare = (): void => void view.prepareEye?.();
     const idle = (globalThis as { requestIdleCallback?: (fn: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
     if (idle) idle(prepare, { timeout: 4000 });

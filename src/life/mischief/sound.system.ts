@@ -32,6 +32,8 @@ interface State {
   d: Director;
   /** The UFOs' phases last frame (a zip as one shoots off), and the stage they are found on. */
   ufoPhases: Map<number, string>;
+  /** When the next zip may sound. */
+  zipAt: number;
   stage: LifeStage;
   wanted: boolean;
   audio: Audio | null;
@@ -294,7 +296,7 @@ export default defineSystem<State>({
   id: 'mischief.sound',
   order: 101,
   create(ctx) {
-    const st: State = { stage: ctx.stage, ufoPhases: new Map(), d: mischiefOf(ctx.stage), wanted: false, audio: null, off: [], crackleIn: 0, bellUntil: 0, bellAt: 0, n: 0 };
+    const st: State = { stage: ctx.stage, ufoPhases: new Map(), zipAt: 0, d: mischiefOf(ctx.stage), wanted: false, audio: null, off: [], crackleIn: 0, bellUntil: 0, bellAt: 0, n: 0 };
     if (!hasAudio()) return st;
     st.wanted = soundOn();
     const gesture = (): void => {
@@ -353,7 +355,7 @@ export default defineSystem<State>({
       st.crackleIn = 0.05 + rand(hash(st.n++), 'crackle') * (0.5 / Math.min(4, 1 + heat));
       pop(a.ac, a.master, a.noise, Math.min(0.06, 0.02 + heat * 0.005), (st.n % 9) * 0.11);
     }
-    // The UFO: hum while one is about, the beam's tone rising while it lifts somebody, a zip as it shoots off.
+    // The UFO: one hum while any is about (however many), one beam tone rising while any lifts somebody, a zip as one shoots off.
     const ufos = st.stage ? ufosOf(st.stage) : null;
     let about = 0, beaming = 0;
     const live = new Set<number>();
@@ -362,7 +364,11 @@ export default defineSystem<State>({
       if (u.phase !== 'gone' && u.phase !== 'done') about++;
       if (u.beam > 0.05) beaming = Math.max(beaming, u.phase === 'lift' ? Math.min(1, u.t / 3) : 0.3);
       const was = st.ufoPhases.get(u.n);
-      if (was !== u.phase && (u.phase === 'away' || u.phase === 'leave')) zip(a);
+      // (Many going at once: a zip at most every 0.3 s, never a pile of them.)
+      if (was !== u.phase && (u.phase === 'away' || u.phase === 'leave') && t >= st.zipAt) {
+        zip(a);
+        st.zipAt = t + 0.3;
+      }
       st.ufoPhases.set(u.n, u.phase);
     }
     for (const n of [...st.ufoPhases.keys()]) if (!live.has(n)) st.ufoPhases.delete(n);

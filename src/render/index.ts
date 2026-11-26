@@ -61,6 +61,7 @@ import { PoolMesh } from './poolmesh';
 import { createPrecip } from './precip';
 import { registriesFor, type Registries } from './registries';
 import { compositeFragment, paperFragment, screenVertex, skyFragment } from './shaders/composite';
+import { packOutputs, unpackFragment, usesDirect3D, type Properties } from './packed';
 import { GROUND_MAP, heightFragment, heightVertex, shadeFragment } from './shaders/ground';
 import { surfaceFragment, surfaceVertex } from './shaders/surface';
 import { SLOT_AIR, SLOT_LIFTED, SLOT_WIDTH, SlotTable } from './slots';
@@ -188,26 +189,72 @@ export function createTownView(canvas: HTMLCanvasElement, opts: ViewOptions = {}
   renderer.autoClear = false;
   renderer.setClearColor(0x000000, 0);
   renderer.info.autoReset = false;
+  // A debug handle for measuring what the renderer holds (tools, browser tests): geometries, textures, programs.
+  (globalThis as { __lcRenderer?: THREE.WebGLRenderer }).__lcRenderer = renderer;
 
   let width = Math.max(1, canvas.clientWidth || canvas.width || 1);
   let height = Math.max(1, canvas.clientHeight || canvas.height || 1);
 
   // ── render targets ───────────────────────────────────────────────────────
-  const sceneRT = new THREE.WebGLRenderTarget(4, 4, {
-    count: 2,
-    type: THREE.UnsignedByteType,
-    format: THREE.RGBAFormat,
-    minFilter: THREE.NearestFilter,
-    magFilter: THREE.NearestFilter,
-    generateMipmaps: false,
-    depthBuffer: true,
-    stencilBuffer: false,
-    colorSpace: THREE.NoColorSpace,
-  });
-  sceneRT.depthTexture = new THREE.DepthTexture(4, 4, THREE.UnsignedIntType);
+  // Where the browser draws through Direct3D the town goes into one packed target, split afterwards into
+  // the two below (./packed.ts says why). `opts.packed` is for the tests.
+  const packed = opts.packed ?? usesDirect3D(renderer.getContext());
+  // Asked once, now: a question to the graphics card waits for whatever shaders are being built.
+  const gpuName = ((): string => {
+    const gl = renderer.getContext();
+    const info = gl.getExtension('WEBGL_debug_renderer_info');
+    return String((info && gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) ?? '');
+  })();
+  /** The two pictures the page is made from, the target the town is drawn into (the same one, unless packed), and its depth. */
+  interface TownTarget {
+    out: THREE.WebGLRenderTarget;
+    draw: THREE.WebGLRenderTarget;
+    depth: THREE.DepthTexture;
+  }
+  const townTarget = (w: number, h: number, depthType: THREE.TextureDataType): TownTarget => {
+    const out = new THREE.WebGLRenderTarget(w, h, {
+      count: 2,
+      type: THREE.UnsignedByteType,
+      format: THREE.RGBAFormat,
+      minFilter: THREE.NearestFilter,
+      magFilter: THREE.NearestFilter,
+      generateMipmaps: false,
+      depthBuffer: !packed,
+      stencilBuffer: false,
+      colorSpace: THREE.NoColorSpace,
+    });
+    const depth = new THREE.DepthTexture(w, h, depthType);
+    out.textures[0]!.minFilter = out.textures[0]!.magFilter = THREE.LinearFilter; // averages the super-sampled colour down
+    if (!packed) {
+      out.depthTexture = depth;
+      return { out, draw: out, depth };
+    }
+    const draw = new THREE.WebGLRenderTarget(w, h, {
+      type: THREE.UnsignedShortType,
+      format: THREE.RGBAIntegerFormat,
+      internalFormat: 'RGBA16UI',
+      minFilter: THREE.NearestFilter,
+      magFilter: THREE.NearestFilter,
+      generateMipmaps: false,
+      depthBuffer: true,
+      stencilBuffer: false,
+      colorSpace: THREE.NoColorSpace,
+    });
+    draw.depthTexture = depth;
+    return { out, draw, depth };
+  };
+  const disposeTarget = (t: TownTarget): void => {
+    t.depth.dispose();
+    t.out.dispose();
+    if (t.draw !== t.out) t.draw.dispose();
+  };
+  const town = townTarget(4, 4, THREE.UnsignedIntType);
+  const sceneRT = town.out;
   const colorTex = sceneRT.textures[0]!;
   const idTex = sceneRT.textures[1]!;
-  colorTex.minFilter = colorTex.magFilter = THREE.LinearFilter; // averages the super-sampled colour down
+  /** The town's shaders, writing whichever the town's target takes. */
+  const townPass = (fragment: string): string => (packed ? packOutputs(fragment) : fragment);
+  const townFragment = townPass(surfaceFragment);
   /** The half-resolution ink mask: made the first time a level uses it. */
   let inkRT: THREE.WebGLRenderTarget | null = null;
   const inkTarget = (): THREE.WebGLRenderTarget => {
@@ -319,7 +366,7 @@ export function createTownView(canvas: HTMLCanvasElement, opts: ViewOptions = {}
     uFocal: { value: 1 },
     uClip: { value: new THREE.Vector2(0.01, 100) },
     // overlay only
-    tDepth: { value: sceneRT.depthTexture as THREE.Texture },
+    tDepth: { value: town.depth as THREE.Texture },
     uCanvas: { value: new THREE.Vector2(1, 1) },
     uTint: v3(),
     uLift: v3(),
@@ -330,7 +377,7 @@ export function createTownView(canvas: HTMLCanvasElement, opts: ViewOptions = {}
   const surfaceMaterial = new THREE.RawShaderMaterial({
     glslVersion: THREE.GLSL3,
     vertexShader: surfaceVertex,
-    fragmentShader: surfaceFragment,
+    fragmentShader: townFragment,
     uniforms: surfaceUniforms,
   });
   // Seasons: while broadleaves are losing or have lost their leaves, the page is drawn with this one
@@ -340,7 +387,7 @@ export function createTownView(canvas: HTMLCanvasElement, opts: ViewOptions = {}
     glslVersion: THREE.GLSL3,
     defines: { BARE: 1 },
     vertexShader: surfaceVertex,
-    fragmentShader: surfaceFragment,
+    fragmentShader: townFragment,
     uniforms: surfaceUniforms,
   });
   // The movers (actors and spawned things) are drawn the same way, except that the edge of the map is a
@@ -350,14 +397,14 @@ export function createTownView(canvas: HTMLCanvasElement, opts: ViewOptions = {}
     glslVersion: THREE.GLSL3,
     defines: { EDGECUT: 1 },
     vertexShader: surfaceVertex,
-    fragmentShader: surfaceFragment,
+    fragmentShader: townFragment,
     uniforms: surfaceUniforms,
   });
   const capMaterial = new THREE.RawShaderMaterial({
     glslVersion: THREE.GLSL3,
     defines: { EDGECUT: 1, CAP: 1 },
     vertexShader: surfaceVertex,
-    fragmentShader: surfaceFragment,
+    fragmentShader: townFragment,
     uniforms: surfaceUniforms,
     side: THREE.BackSide,
   });
@@ -424,7 +471,7 @@ export function createTownView(canvas: HTMLCanvasElement, opts: ViewOptions = {}
   const paperMaterial = new THREE.RawShaderMaterial({
     glslVersion: THREE.GLSL3,
     vertexShader: screenVertex,
-    fragmentShader: paperFragment,
+    fragmentShader: townPass(paperFragment),
     uniforms: paperUniforms,
     depthTest: false,
     depthWrite: false,
@@ -432,7 +479,7 @@ export function createTownView(canvas: HTMLCanvasElement, opts: ViewOptions = {}
   const compositeUniforms = {
     tColor: { value: colorTex as THREE.Texture },
     tId: { value: idTex as THREE.Texture },
-    tDepth: { value: sceneRT.depthTexture as THREE.Texture },
+    tDepth: { value: town.depth as THREE.Texture },
     tNoise: { value: noiseTex as THREE.Texture },
     tInk: { value: null as THREE.Texture | null },
     uOut: { value: new THREE.Vector2(1, 1) },
@@ -576,24 +623,8 @@ export function createTownView(canvas: HTMLCanvasElement, opts: ViewOptions = {}
   const revz = renderer.extensions.has('EXT_clip_control');
   /** The fly mode's coplanar tie-break: float steps nearer per level of the ink id, relative. */
   const EYE_Z_STEP = revz ? 3 * 2 ** -23 : Z_STEP;
-  let eyeRT: THREE.WebGLRenderTarget | null = null;
-  const eyeTarget = (): THREE.WebGLRenderTarget => {
-    if (eyeRT) return eyeRT;
-    eyeRT = new THREE.WebGLRenderTarget(sceneRT.width, sceneRT.height, {
-      count: 2,
-      type: THREE.UnsignedByteType,
-      format: THREE.RGBAFormat,
-      minFilter: THREE.NearestFilter,
-      magFilter: THREE.NearestFilter,
-      generateMipmaps: false,
-      depthBuffer: true,
-      stencilBuffer: false,
-      colorSpace: THREE.NoColorSpace,
-    });
-    eyeRT.depthTexture = new THREE.DepthTexture(sceneRT.width, sceneRT.height, revz ? THREE.FloatType : THREE.UnsignedIntType);
-    eyeRT.textures[0]!.minFilter = eyeRT.textures[0]!.magFilter = THREE.LinearFilter;
-    return eyeRT;
-  };
+  let eye: TownTarget | null = null;
+  const eyeTarget = (): TownTarget => (eye ??= townTarget(sceneRT.width, sceneRT.height, revz ? THREE.FloatType : THREE.UnsignedIntType));
   const perspMaterials = (): Persp => {
     if (persp) return persp;
     const twin = (m: THREE.RawShaderMaterial, uniforms?: Record<string, THREE.IUniform>, more: Record<string, number> = {}): THREE.RawShaderMaterial => {
@@ -611,7 +642,7 @@ export function createTownView(canvas: HTMLCanvasElement, opts: ViewOptions = {}
       movers: twin(moverMaterial, undefined, { NEAR_FADE: 1 }),
       cap: twin(capMaterial, undefined, { NEAR_FADE: 1 }),
       overlay: twin(overlayMaterial),
-      sky: new THREE.RawShaderMaterial({ glslVersion: THREE.GLSL3, vertexShader: screenVertex, fragmentShader: skyFragment, uniforms: skyUniforms, depthTest: false, depthWrite: false }),
+      sky: new THREE.RawShaderMaterial({ glslVersion: THREE.GLSL3, vertexShader: screenVertex, fragmentShader: townPass(skyFragment), uniforms: skyUniforms, depthTest: false, depthWrite: false }),
       composite: twin(compositeMaterial),
       ink: twin(inkMaterial, inkUniforms),
     };
@@ -645,6 +676,10 @@ export function createTownView(canvas: HTMLCanvasElement, opts: ViewOptions = {}
   const inkMesh = screenMesh(inkMaterial);
   const inkScene = new THREE.Scene().add(inkMesh);
   const shadeScene = new THREE.Scene().add(screenMesh(shadeMaterial));
+  // Packed only: the pass that splits the town's one target into the colour and the ink ids.
+  const unpackUniforms = { tPacked: { value: town.draw.texture as THREE.Texture } };
+  const unpackMaterial = packed ? new THREE.RawShaderMaterial({ glslVersion: THREE.GLSL3, vertexShader: screenVertex, fragmentShader: unpackFragment, uniforms: unpackUniforms, depthTest: false, depthWrite: false }) : null;
+  const unpackScene = unpackMaterial ? new THREE.Scene().add(screenMesh(unpackMaterial)) : null;
   // The height pass ignores this camera's matrices (its shader maps the map square itself), but
   // Three.js still culls against it, so it looks straight down at the whole map from above.
   const mapCamera = new THREE.OrthographicCamera(-40, 40, 40, -40, 1, 120);
@@ -696,6 +731,8 @@ export function createTownView(canvas: HTMLCanvasElement, opts: ViewOptions = {}
   const ghostScene = new THREE.Scene().add(dynamic.addView(ghostMaterial));
   const ghostPostScene = new THREE.Scene().add(screenMesh(ghostComposite));
   const allPools = [...chunkPools.values(), dynamic, ...moverPools];
+  // The debug handle on the moving things' pool (tools): vertices drawn, and how many of them are retired.
+  (globalThis as { __lcMovers?: { count: number; garbage: number } }).__lcMovers = movers.pool;
   const chunkKeyOf = (x: number, z: number): string => `${Math.floor(x / CHUNK)}:${Math.floor(z / CHUNK)}`;
   // Shaping the land: raised and dug columns bounce and sink for a moment (ground-motion.ts).
   const groundMotion = createGroundMotion(dynamic.pool, slots, (cols, plan) => buildTerrainColumns(cols, plan).build());
@@ -797,11 +834,11 @@ export function createTownView(canvas: HTMLCanvasElement, opts: ViewOptions = {}
     if (wearing === mode) return;
     wearing = mode;
     dress();
-    const rt = mode === 'fly' ? eyeTarget() : sceneRT;
-    compositeUniforms.tColor.value = rt.textures[0]!;
-    compositeUniforms.tId.value = rt.textures[1]!;
-    compositeUniforms.tDepth.value = rt.depthTexture!;
-    surfaceUniforms.tDepth.value = rt.depthTexture!;
+    const rt = mode === 'fly' ? eyeTarget() : town;
+    compositeUniforms.tColor.value = rt.out.textures[0]!;
+    compositeUniforms.tId.value = rt.out.textures[1]!;
+    compositeUniforms.tDepth.value = rt.depth;
+    surfaceUniforms.tDepth.value = rt.depth;
   };
 
   const resizeTargets = (): void => {
@@ -809,8 +846,10 @@ export function createTownView(canvas: HTMLCanvasElement, opts: ViewOptions = {}
     const h = Math.max(1, Math.round(height * pixelRatio));
     // (1.5 times is not a whole number of pixels on every size.)
     const sw = Math.max(1, Math.round(w * superSample)), sh = Math.max(1, Math.round(h * superSample));
-    sceneRT.setSize(sw, sh);
-    eyeRT?.setSize(sw, sh);
+    for (const t of eye ? [town, eye] : [town]) {
+      t.out.setSize(sw, sh);
+      if (t.draw !== t.out) t.draw.setSize(sw, sh);
+    }
     if (halfInk) inkTarget().setSize(Math.max(1, w >> 1), Math.max(1, h >> 1));
   };
   /** Changes how sharp the page is drawn: the targets are resized, the composite recompiled if it must be. */
@@ -1243,13 +1282,46 @@ export function createTownView(canvas: HTMLCanvasElement, opts: ViewOptions = {}
   // each used to be asked for in the first frame, one after the other, and waited for there. (A program is
   // keyed by its shader and defines alone, so any mesh and any target will do. The page's own waits for the
   // script that made the view to say how sharp to draw: that is in its defines.)
+  //
+  // Packed (Direct3D): the driver takes seconds over them, in the background, and nothing is drawn until
+  // they are done, so the page stays alive meanwhile instead of freezing in its first frame (`starting`).
+  let starting: Set<THREE.Material> | null = packed ? new Set() : null;
+  /** Whether shaders are worth building before they are needed: not where each one stops the page (api.ts). */
+  const buildsAhead = !packed || renderer.extensions.has('KHR_parallel_shader_compile');
+  let startFence: WebGLSync | null = null;
   const compile = (...materials: THREE.Material[]): void => {
     const all = new THREE.Scene();
     for (const m of materials) all.add(screenMesh(m));
     renderer.compile(all, camera);
+    if (starting) for (const m of materials) starting.add(m);
   };
-  compile(surfaceMaterial, moverMaterial, overlayMaterial, shadeMaterial, heightMaterial, paperMaterial);
+  compile(surfaceMaterial, moverMaterial, overlayMaterial, shadeMaterial, heightMaterial, paperMaterial, ...(unpackMaterial ? [unpackMaterial] : []));
   queueMicrotask(() => compile(compositeMaterial, ...(halfInk ? [inkMaterial] : [])));
+  /** Packed only: whether the first frame's shaders are built, asked without waiting for them. */
+  const shadersReady = (): boolean => {
+    if (!starting) return true;
+    const gl = renderer.getContext() as WebGL2RenderingContext;
+    const known = (renderer as unknown as { properties: Properties }).properties;
+    for (const m of starting) {
+      const program = known.get(m).currentProgram;
+      if (program && !program.isReady()) return false;
+    }
+    if (!renderer.extensions.has('KHR_parallel_shader_compile')) {
+      // Firefox cannot say whether a program is built. A fence after the last of them is passed when they are.
+      if (!startFence) {
+        startFence = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+        gl.flush();
+      }
+      if (startFence && gl.clientWaitSync(startFence, 0, 0) === gl.TIMEOUT_EXPIRED) return false;
+      if (startFence) gl.deleteSync(startFence);
+      startFence = null;
+    }
+    starting = null;
+    // The fly mode's are as slow: built now, in the background, not at the first tap. (Only where they can
+    // be built in the background: in Firefox the town would wait behind them.)
+    if (buildsAhead) queueMicrotask(() => void view.prepareEye?.());
+    return true;
+  };
 
   let drawCalls = 0;
   let triangles = 0;
@@ -1399,7 +1471,7 @@ export function createTownView(canvas: HTMLCanvasElement, opts: ViewOptions = {}
       wearing = 'fly';
       dress();
       const was = renderer.getRenderTarget();
-      renderer.setRenderTarget(eyeTarget());
+      renderer.setRenderTarget(eyeTarget().draw);
       const compiling = [renderer.compileAsync(scene, perspCamera)];
       renderer.setRenderTarget(null);
       compiling.push(renderer.compileAsync(postScene, postCamera), renderer.compileAsync(overlayScene, perspCamera));
@@ -1412,8 +1484,12 @@ export function createTownView(canvas: HTMLCanvasElement, opts: ViewOptions = {}
       wearing = 'orbit';
       dress();
       // The target's storage is made by drawing into it once (a clear).
-      renderer.setRenderTarget(eyeTarget());
+      renderer.setRenderTarget(eyeTarget().draw);
       renderer.clear(true, true, false);
+      if (packed) {
+        renderer.setRenderTarget(eyeTarget().out);
+        renderer.clear(true, false, false);
+      }
       renderer.setRenderTarget(was);
       return eyeReady;
     },
@@ -1430,12 +1506,10 @@ export function createTownView(canvas: HTMLCanvasElement, opts: ViewOptions = {}
       // And what is first drawn in the middle of play, in one frame: rain and snow, a ship at the edge of the
       // map, the leaves coming down.
       void renderer.compileAsync(precip.scene, camera).catch(() => undefined);
-      void renderer.compileAsync(new THREE.Scene().add(screenMesh(capMaterial), screenMesh(bareMaterial)), camera).catch(() => undefined);
+      void renderer.compileAsync(new THREE.Scene().add(screenMesh(capMaterial), ...(buildsAhead ? [screenMesh(bareMaterial)] : [])), camera).catch(() => undefined);
     },
     gpu() {
-      const gl = renderer.getContext();
-      const info = gl.getExtension('WEBGL_debug_renderer_info');
-      return String((info && gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) ?? '');
+      return gpuName;
     },
     quality() {
       return { level, levels: levels.map((q) => ({ ...q })) };
@@ -1450,7 +1524,15 @@ export function createTownView(canvas: HTMLCanvasElement, opts: ViewOptions = {}
       return eyePose ? { ...eyePose, eye: [eyePose.eye[0], eyePose.eye[1], eyePose.eye[2]] } : null;
     },
 
+    buildsAhead() {
+      return buildsAhead;
+    },
+    started() {
+      return starting === null;
+    },
     render(signals: Signals) {
+      // Packed: nothing is drawn, and nothing waited for, until the first frame's shaders are built.
+      if (!shadersReady()) return;
       // A style value changed (the tuning panel, the gallery's sliders): redraw the town with it,
       // whether or not anyone calls setTown again.
       if (shape && styleVersion() !== seenStyle) {
@@ -1710,11 +1792,17 @@ export function createTownView(canvas: HTMLCanvasElement, opts: ViewOptions = {}
       const eyeCamera = lens ? perspCamera : camera;
       const depthBuffer = renderer.state.buffers.depth;
       const reversed = lens !== null && revz;
-      renderer.setRenderTarget(lens ? eyeTarget() : sceneRT);
+      const target = lens ? eyeTarget() : town;
+      renderer.setRenderTarget(target.draw);
       if (reversed) depthBuffer.setReversed(true);
       renderer.clear(true, true, false);
       renderer.render(scene, eyeCamera);
       if (reversed) depthBuffer.setReversed(false);
+      if (unpackScene) {
+        unpackUniforms.tPacked.value = target.draw.texture;
+        renderer.setRenderTarget(target.out);
+        renderer.render(unpackScene, postCamera);
+      }
       mark('town');
       if (halfInk) {
         renderer.setRenderTarget(inkTarget());
@@ -1772,10 +1860,9 @@ export function createTownView(canvas: HTMLCanvasElement, opts: ViewOptions = {}
       heightRT.depthTexture?.dispose();
       heightRT.dispose();
       shadeRT.dispose();
-      sceneRT.depthTexture?.dispose();
-      sceneRT.dispose();
-      eyeRT?.depthTexture?.dispose();
-      eyeRT?.dispose();
+      disposeTarget(town);
+      if (eye) disposeTarget(eye);
+      unpackMaterial?.dispose();
       inkRT?.dispose();
       slotTex.dispose();
       windTex.dispose();

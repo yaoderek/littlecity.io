@@ -39,7 +39,9 @@ function load(name: string): BuiltScenario {
   if (!scn) throw new Error(`no scenario named '${name}'`);
   view?.dispose();
   life?.dispose();
-  view = createTownView(canvas, { preserveDrawingBuffer: true, pixelRatio: window.devicePixelRatio });
+  // ?draw=packed or ?draw=plain: the town's target as on Windows or as elsewhere (src/render/packed.ts).
+  const draw = new URLSearchParams(location.search).get('draw');
+  view = createTownView(canvas, { preserveDrawingBuffer: true, pixelRatio: window.devicePixelRatio, ...(draw === 'packed' || draw === 'plain' ? { packed: draw === 'packed' } : {}) });
   view.resize(window.innerWidth, window.innerHeight);
   signals = createSignals(scn.seed);
   life = createLife(view.stage, signals);
@@ -74,6 +76,11 @@ const api = {
     const steps = Math.round((opts.settle ?? 2) * 30);
     for (let i = 0; i < steps; i++) life!.update(signals!.advance(1 / 30));
     view!.render(signals!);
+    // Packed: the first frame waits for its shaders without blocking; so does this.
+    while (view!.started?.() === false) {
+      await new Promise((r) => setTimeout(r, 30));
+      view!.render(signals!);
+    }
     await nextFrame();
     view!.render(signals!);
     await nextFrame();

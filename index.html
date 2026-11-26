@@ -97,10 +97,12 @@
           pt: ['Desenhando sua cidade…', 'Este navegador não conseguiu desenhar a cidade. Tente recarregar ou use outro navegador.', 'pt'],
           ja: ['町をかいています…', 'このブラウザでは町をかけませんでした。再読み込みするか、別のブラウザで試してください。', 'ja'],
           ko: ['마을을 그리는 중…', '이 브라우저에서는 마을을 그릴 수 없어요. 새로고침하거나 다른 브라우저로 열어 보세요.', 'ko'],
+          de: ['Deine Stadt wird gezeichnet…', 'Dieser Browser konnte die Stadt nicht zeichnen. Lade die Seite neu oder versuch einen anderen Browser.', 'de'],
+          tr: ['Kasaban çiziliyor…', 'Bu tarayıcı kasabayı çizemedi. Sayfayı yenile ya da başka bir tarayıcı dene.', 'tr'],
         };
         var tags = [];
         try { tags.push(new URLSearchParams(location.search).get('lang') || '', localStorage.getItem('little-city.lang') || ''); } catch (e) {}
-        tags = tags.concat(navigator.languages || [navigator.language || '']);
+        tags = tags.concat(navigator.languages || [navigator.language || ''], location.pathname.split('/')[1] || '');
         for (var i = 0; i < tags.length; i++) {
           var base = String(tags[i]).toLowerCase().split(/[-_]/)[0];
           if (base === 'en') return null;

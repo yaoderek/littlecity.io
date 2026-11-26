@@ -2063,3 +2063,84 @@ the machine at a load of 35 (other sessions' test runs), all in
 it is slow even alone and worth looking at). Known weak: the pool is a
 flat disc (hidden under raised edges on steps); the beam is gentle by
 day.
+
+**Derek, 2026-11-25 late.** On the UFO preview: "make the beam
+slightly more opaque, it's a bit thin": done by the orchestrator on
+`preview/ufo-fixes` (`45f3e75`: about a third more opacity, thinning
+less toward the ground); only typecheck run on that commit; preview
+served at :5180 by `.context/lc-ufo-preview.mjs`; still not signed off,
+nothing live. Raids: the boat should land on the coast nearest the
+click, not come from a random direction, and clicking again should
+bring more raiders (no one-at-a-time limit) → raid agent
+(`af67b2b62016bdcfb`, `swarm/barbarians`), resumed, with the new house
+rules (no deploy, no attribution, translations in the same change,
+other chats in the harbour code).
+
+**Derek, 2026-11-25 late: "ufo looks good to me. publish it on
+deploy."** Signed off on the :5180 preview (`45f3e75`). The
+orchestrator merged `preview/ufo-fixes` into the working branch
+(`9049eb2`, no conflicts, `.env.production` intact) and started the
+gate. While it ran, the languages chat merged `9049eb2` into
+`feat/languages`, added the UFO's reworded line in German and Turkish,
+fast-forwarded the working branch to `ab28224` and published from
+there (22:14). So the UFO's fixes went live in that publish, not in
+one of the orchestrator's: the live site serves `app-CKQ7H0ml.js`, its
+shader chunk carries the more opaque beam, and the three-saucer line
+is gone from the bundle. Gate: typecheck and lint on `9049eb2`, the
+test run began two minutes before the branch moved to `ab28224`, so
+the tests ran on a mix of the two: 207 files, 2,552 passed, 12
+skipped, none timed out. Not re-run on `ab28224` alone. Also from
+Derek: the castle's garrison should fight raiders and can repel one
+raid → raid agent, same round as landing where clicked and spamming
+(local only, needs his sign-off).
+
+**Derek, 2026-11-25 late: two fixes.** "the orchards in winter/when
+theyre destroyed still have ladders that are upright resting on
+nothing" → agent on `fix/orchard-ladders` (lean on the trunk so it
+holds in winter; lie fallen beside a stump, no picker climbs it).
+"the fishing appearance looks chopped and the line doesnt go into the
+water" → agent on `fix/fishing-line` (the line ends at the fisher's
+feet, in mid-air above the sea; reach the surface with a float; find
+what reads as chopped). Both local only, one preview for his sign-off
+together with nothing else unless the raid round is ready.
+
+**Windows start freeze: live as `c1d6604` (2026-11-25, 22:50; the
+analytics chat, not the orchestrator).** Derek: "merge it in this is
+much better" and "deploy live on littlecity". Cause, found on GitHub's
+Windows machines: Direct3D's compiler takes about 4 s over each variant
+of the surface shader, and a shader that writes two targets is built a
+second time, with the whole browser frozen, at its first draw. Now,
+where the renderer says Direct3D, the town is drawn into one packed
+target and a small pass splits it (`src/render/packed.ts`; `?draw=packed`
+or `?draw=plain` forces either); the first frame waits for its shaders
+without blocking (`view.started()`); Firefox there, which cannot build in
+the background, leaves fly mode's and the bare trees' shaders until
+needed (`view.buildsAhead()`). Off Windows the 18 shaders the browser is
+given are byte for byte the same. Measured there without a graphics
+card: Chrome's frames stopped 8 to 15 s at the start and 6 to 14 s on
+the first Fly before, no such stall after; Firefox about 30 s at the
+start before, about 8 s after (its first Fly still waits about 9 s); 0
+pixels differ in four scenes. Gate on a GitHub Linux machine (this Mac
+was at load 40): typecheck, lint, 182 unit files passed. NOT measured:
+a real graphics card. The Windows tests live on the branch
+`test/windows-wait` (workflows that run only there, `tools/wintest`).
+Any new variant of the surface shader costs Windows players about 4 s
+of building each: keep them few.
+
+**2026-11-25, night: preview `preview/next` at :5180 (not live).**
+Orchard ladders back (`fix/orchard-ladders` `b260797`): the ladder
+rests in the fork of its tree, lies on the grass beside a stump or a
+burnt or regrowing tree (done in `src/resolve/ruins.ts`), no picker at
+a fallen one; weaker in summer, where the top half is in the leaves.
+Fishing back (`fix/fishing-line` `f5a2023`): rod longer, line to a
+float on the sea, fishers at the dock's edge (`PEOPLE.fishReach`), but
+it fails three crowd tests in the gate (a jump in `under-fire`, 31
+sustained overlaps against 30 and one walking backwards in `solid`;
+pass on the base and on the orchard fix alone) → agent sent back, not
+in the preview. Raids back (`swarm/barbarians` `a6c82ca`): land at the
+shore nearest the click, any number at once, a ceiling of 40 raiders
+alive (24 on a phone), one shared undo step; phone-sized page p95
+34 ms at 10 raids and 126 ms at 20, fires suspected. The orchestrator
+added German and Turkish for the raid's reworded lines (`6c8dfcd`).
+`preview/next` = working branch `3f21dc3` (live `c1d6604`) + orchard +
+raids; gate running. Garrison sally: raid agent resumed for it.

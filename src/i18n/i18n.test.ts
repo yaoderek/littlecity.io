@@ -34,11 +34,17 @@ describe('t', () => {
 });
 
 describe('pickLang', () => {
-  test('the address, then the player\'s choice, then the browser, then English', () => {
+  test('?lang=, then the player\'s choice, then the browser, then the address\'s language, then English', () => {
     expect(pickLang({ browser: ['ja-JP', 'en-US'] })).toBe('ja');
-    expect(pickLang({ browser: ['de-DE', 'fr-CA'] })).toBe('fr');
+    expect(pickLang({ browser: ['it-IT', 'fr-CA'] })).toBe('fr');
+    expect(pickLang({ browser: ['de-AT'] })).toBe('de');
+    expect(pickLang({ browser: ['tr-TR'] })).toBe('tr');
     expect(pickLang({ browser: ['zh-TW'] })).toBe('zh');
-    expect(pickLang({ browser: ['de-DE'] })).toBe('en');
+    expect(pickLang({ browser: ['it-IT'] })).toBe('en');
+    // The address's language (/ja/, a shared link) only when the browser's is none we have.
+    expect(pickLang({ browser: ['it-IT'], path: '/ja/' })).toBe('ja');
+    expect(pickLang({ browser: ['ko-KR'], path: '/ja/' })).toBe('ko');
+    expect(pickLang({ browser: [], path: '/guide/' })).toBe('en');
     expect(pickLang({ chosen: 'ko', browser: ['ja'] })).toBe('ko');
     expect(pickLang({ param: 'pt', chosen: 'ko', browser: ['ja'] })).toBe('pt');
     expect(pickLang({ param: 'xx', chosen: 'nope', browser: [] })).toBe('en');

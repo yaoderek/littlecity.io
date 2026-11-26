@@ -85,6 +85,11 @@ export interface ViewOptions {
    * touch screen, 'full' elsewhere.
    */
   ink?: 'auto' | 'full' | 'half';
+  /**
+   * Draw the town into one packed target (src/render/packed.ts). Default: only where the browser draws
+   * through Direct3D (Windows). For the tests.
+   */
+  packed?: boolean;
 }
 
 export interface TownView {
@@ -147,6 +152,17 @@ export interface TownView {
    * does not stall a frame. Call when the page is idle; harmless twice.
    */
   prepareGhost?(): void;
+  /**
+   * False while the first frame is still waiting for its shaders to be built (Windows: seconds, in the
+   * background): render draws nothing until then. Absent or true: what render drew is on screen.
+   */
+  started?(): boolean;
+  /**
+   * False where building a shader stops the page for seconds and cannot be done in the background (Firefox
+   * on Windows): there, the shaders that many never need (fly mode's, the bare trees') are left until they
+   * are needed. Absent or true: they are built ahead, while the page is idle.
+   */
+  buildsAhead?(): boolean;
 
   /**
    * Added for the quality governor (src/render/quality.ts). How sharp the page is drawn: the levels

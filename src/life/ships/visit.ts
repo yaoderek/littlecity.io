@@ -485,7 +485,7 @@ export function createHarbour(stage: LifeStage, seed: number): Harbour {
       const stage: 0 | 1 | 2 | 3 = d <= r3 ? 3 : d <= r2 ? 2 : d <= r1 ? 1 : 0;
       if (stage === 0 || stage <= (ship.hurt ?? 0)) continue;
       ship.hurt = stage;
-      out.push({ ship, stage, d, kind: ship.kind, x: ship.pose.x, z: ship.pose.z, yaw: ship.pose.yaw, stern: ship.hull.stern, bow: ship.hull.bow, halfBeam: ship.hull.halfBeam, crew: CREW[ship.kind] });
+      out.push({ ship, stage, d, kind: ship.kind, x: ship.pose.x, z: ship.pose.z, yaw: ship.pose.yaw, stern: ship.hull.stern, bow: ship.hull.bow, halfBeam: ship.hull.halfBeam, crew: ship.crew ? ship.crew.hands : CREW[ship.kind] });
       if (stage === 3) {
         // It goes down: nobody stays aboard, nothing is tied to the quay.
         ship.crew?.release();

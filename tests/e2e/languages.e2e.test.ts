@@ -27,13 +27,35 @@ describe('languages', () => {
   });
 
   test('English for a language the game does not have, and ?lang= wins over the browser', async () => {
-    const de = await app.open('/?seed=1', { locale: 'de-DE' });
-    await de.page.waitForFunction('window.__lc !== undefined');
-    expect(await de.page.evaluate(menuLabel)).toBe('Menu');
+    const it = await app.open('/?seed=1', { locale: 'it-IT' });
+    await it.page.waitForFunction('window.__lc !== undefined');
+    expect(await it.page.evaluate(menuLabel)).toBe('Menu');
     const fr = await app.open('/?seed=1&lang=fr', { locale: 'en-US' });
     await fr.page.waitForFunction('window.__lc !== undefined');
     expect(await fr.page.evaluate('document.documentElement.lang')).toBe('fr');
     expect(await fr.page.evaluate(menuLabel)).toBe(table('fr').Menu);
+  });
+
+  test('a language\'s address (a shared link, a search result): the reader\'s own language first, else the address\'s', async () => {
+    const it = await app.open('/ja/?seed=1', { locale: 'it-IT' });
+    await it.page.waitForFunction('window.__lc !== undefined');
+    expect(await it.page.evaluate('document.documentElement.lang')).toBe('ja');
+    const en = await app.open('/ja/?seed=1', { locale: 'en-US' });
+    await en.page.waitForFunction('window.__lc !== undefined');
+    expect(await en.page.evaluate('document.documentElement.lang')).toBe('en');
+  });
+
+  test('a share link opens at the sharer\'s language\'s address, so its preview is in their language', async () => {
+    const { page, errors } = await app.open('/?seed=4&gen=1', { locale: 'ja-JP', permissions: ['clipboard-read', 'clipboard-write'] });
+    await page.waitForFunction('window.__lc !== undefined');
+    await page.mouse.click(640, 400);
+    await page.click('[data-ui="menu-button"]');
+    await page.click('[data-menu="share"]');
+    await page.waitForSelector('[data-ui="toast"], [data-ui="link-box"]');
+    const link = (await page.locator('[data-ui="link-box"] input').count()) ? await page.inputValue('[data-ui="link-box"] input') : ((await page.evaluate('navigator.clipboard.readText()')) as string);
+    expect(new URL(link).pathname).toBe('/ja/');
+    expect(link).toContain('#t=');
+    expect(errors).toEqual([]);
   });
 
   test('the menu changes the language and keeps the town', async () => {

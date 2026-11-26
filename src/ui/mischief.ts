@@ -37,7 +37,7 @@ export const mischiefGuide = (): readonly { tool: MischiefToolId; name: string; 
   { tool: 'raid', name: t('Raid'), how: t('Click near a shore: a longship with a striped sail and a dragon at its prow comes in off the nearest coast, or a little fleet of rowing boats rows in, each to its own landing. The raiders storm ashore roaring, set the thatch alight, kick in doors and carry off sacks, chests and a pig, then sail away with the town in flames. Sink their ship with a bomb or a bolt of lightning and they are stranded: the town chases them into the sea. Undo puts it all back.') },
   { tool: 'mallet', name: t('Mallet'), how: t('Click a building to knock it a stage worse: cracked, then half-wrecked, then a heap of its own bricks.') },
   { tool: 'hand', name: t('Hand'), how: t('Press on anybody out in the town, a dog, a cat, a hen, a sheep, a soldier, the knight or his horse, a little boat or a big ship: up it comes, kicking. Drag it over the roofs and let go to drop it, or flick to throw it across the island. People land, see stars, get up and carry on; whoever they hit goes over too. A ship dropped on the land lies there until it is refloated. Press on a building and it wobbles on its foundations until you let go.') },
-  { tool: 'ufo', name: t('UFO'), how: t('Click anywhere: a flying saucer swoops in, hovers over somebody out of doors near where you clicked, and beams them up, kicking and shouting for help. Half a minute later it brings them back somewhere else in town, a little dizzy. With nobody about, it searches the empty streets with its beam and flies off. Three at most at once.') },
+  { tool: 'ufo', name: t('UFO'), how: t('Click anywhere: a flying saucer swoops in, hovers over somebody out of doors near where you clicked, and beams them up, kicking and shouting for help. Half a minute later it brings them back somewhere else in town, a little dizzy. With nobody about, it searches the empty streets with its beam and flies off.') },
   { tool: 'mend', name: t('Mend'), how: t('Click something damaged: scaffolding goes up, and each click mends a stage until it is exactly as you built it. Shift-click mends it at once.') },
 ];
 
@@ -160,6 +160,19 @@ export function createMischiefTools(host: {
     if (e.nuke) whiteout();
   });
 
+  /** Whether a world point is on screen now, a little in from the edges and not under the tray or an open menu. */
+  const onScreen = (): ((x: number, y: number, z: number) => boolean) => {
+    const box = host.view.canvas.getBoundingClientRect();
+    const covers = [...document.querySelectorAll('.lc-tray, .lc-menu:not([hidden])')].map((e) => e.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0);
+    const m = 16;
+    return (x, y, z) => {
+      const [sx, sy] = host.view.worldToScreen([x, y, z]);
+      if (!(sx >= m && sy >= m && sx <= box.width - m && sy <= box.height - m)) return false;
+      const px = box.left + sx, py = box.top + sy;
+      return !covers.some((r) => px >= r.left && px <= r.right && py >= r.top && py <= r.bottom);
+    };
+  };
+
   const blockOf = (pick: Pick | null): CellKey | null => (pick && pick.hit === 'block' ? pick.cell : null);
 
   return {
@@ -167,14 +180,12 @@ export function createMischiefTools(host: {
       // The Hand works by pressing (./hand.ts): a click on nothing does nothing.
       if (tool === 'hand') return false;
       if (tool === 'ufo') {
-        // Anywhere: a saucer comes for somebody near the click (src/life/mischief/ufo.system.ts).
+        // Anywhere: a saucer comes for the nearest person to the click of those on screen now (never anybody
+        // the player cannot see: off the edges, or under the tray or the menu) (src/life/mischief/ufo.system.ts).
         const at = pick?.point ?? null;
         const ufos = ufosOf(host.view.stage);
         if (!at || !ufos) return false;
-        if (!ufos.call(at[0], at[1], at[2])) {
-          host.refuse(phrase('three saucers are about already', {}));
-          return false;
-        }
+        ufos.call(at[0], at[1], at[2], onScreen());
         hint(tool);
         return true;
       }

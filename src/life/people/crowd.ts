@@ -313,6 +313,12 @@ export interface Crowd {
    */
   ashore(x: number, y: number, z: number, heading: number, look: number): Person | null;
   /**
+   * Mischief (the UFO): somebody who was not one of the town's people out of doors (a sailor off a ship's deck),
+   * standing at (x, y, z) off the walking graph, for the caller to take off their feet at once (thrower.grab).
+   * Set down in town, they are as somebody come ashore: into town and in at the nearest door.
+   */
+  stray(x: number, y: number, z: number, heading: number, look: number): Person;
+  /**
    * Mischief (src/life/mischief/thrown.ts): somebody out in the town is taken off their feet now (blown
    * over, picked up): out of their walk, their haunt and their errand (its chain hears it failed, as if
    * they had been called away), mode 'thrown', left exactly where they are for the caller to move. False
@@ -1798,6 +1804,25 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
       p.fade = 1;
       p.pose = 'stand';
       // A moment to catch their breath on the quay, then off.
+      p.timer = 1.2;
+      people.push(p);
+      byId.set(id, p);
+      events.added?.(p);
+      return p;
+    },
+    stray(x, y, z, heading, look) {
+      const id = `ashore:${(ashoreCount = ashoreCount + 1)}`;
+      const p = makePerson(id, -1 as StructureId, 0, look, false);
+      p.ashore = true;
+      p.leaving = true;
+      p.x = x;
+      p.y = y;
+      p.z = z;
+      p.heading = heading;
+      p.mode = 'wait';
+      p.visible = true;
+      p.fade = 1;
+      p.pose = 'stand';
       p.timer = 1.2;
       people.push(p);
       byId.set(id, p);

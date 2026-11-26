@@ -477,7 +477,9 @@
 }
 .lc-menu-volume-label {
   flex: none;
-  width: 52px;
+  /* Room for "Sounds"; a longer name in another language (German "Geräusche") takes what it needs. */
+  min-width: 52px;
+  white-space: nowrap;
 }
 .lc-menu-volume input[type='range'] {
   flex: 1;

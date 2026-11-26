@@ -20,7 +20,7 @@
 // festival|<year 0..1> and ?weather=auto|clear|cloudy|rain|storm|fog|wind|snow hold them (a scenario
 // can name them too), and &settle=1 brings the weather in at once (settled snow included).
 //
-// The words are in the player's language (src/i18n): ?lang=en|zh|es|fr|pt|ja|ko shows one without remembering it.
+// The words are in the player's language (src/i18n): ?lang=en|zh|es|fr|pt|ja|ko|de|tr shows one without remembering it.
 //
 // window.__lc is the debug handle browser tests and the console use.
 
@@ -76,7 +76,9 @@ const newSeed = (): number => hash(Date.now() | 0, 'island', Math.floor(Math.ran
 
 // ── which language (src/i18n) ────────────────────────────────────────────
 // Before anything says a word: ?lang= (a preview), the player's choice in the menu, the browser's languages.
-await loadLanguage(pickLang({ param: new URLSearchParams(location.search).get('lang'), chosen: storage()?.getItem(LANG_KEY), browser: navigator.languages ?? [navigator.language] }));
+await loadLanguage(pickLang({ param: new URLSearchParams(location.search).get('lang'), chosen: storage()?.getItem(LANG_KEY), browser: navigator.languages ?? [navigator.language], path: location.pathname }));
+// The tab's name in the player's language (a link shared in another opens with that language's title).
+document.title = t('Little City: A hand-drawn city builder in your browser');
 
 // ── which town ───────────────────────────────────────────────────────────
 const params = new URLSearchParams(location.search);
@@ -130,7 +132,12 @@ const tiered = (s: GameStart): GameStart => (density === undefined ? s : { ...s,
 
 // ── the parts ────────────────────────────────────────────────────────────
 const canvas = document.getElementById('town') as HTMLCanvasElement;
-const view = createTownView(canvas, { ink: inkParam === 'full' || inkParam === 'half' ? inkParam : 'auto' });
+// ?draw=packed or ?draw=plain: how the town's target is laid out (src/render/packed.ts), for the tests.
+const drawParam = params.get('draw');
+const view = createTownView(canvas, {
+  ink: inkParam === 'full' || inkParam === 'half' ? inkParam : 'auto',
+  ...(drawParam === 'packed' || drawParam === 'plain' ? { packed: drawParam === 'packed' } : {}),
+});
 let signals: TownSignals = createSignals(start.world.seed);
 applyCalendar(signals, params.get('season') ?? scn?.season, params.get('weather') ?? scn?.weather, params.get('settle') === '1' || (scn !== undefined && (scn.season !== undefined || scn.weather !== undefined)));
 let life: LifeRuntime = createLife(view.stage, signals);
@@ -159,6 +166,8 @@ let lastDressed = -Infinity;
 /** Mischief's edit is being shown: its changed buildings are redrawn a few a frame, not all in this one. */
 let fromMischief = false;
 let ghostQueued = false;
+/** The dressed town is ready and the loading drawing is to go once it has been drawn. */
+let loaderDue = false;
 const BUSY_FRAMES = 3;
 /** Milliseconds of the page's own work on the town since the last frame began. */
 let townWork = 0;
@@ -529,7 +538,12 @@ function frame(now: number): void {
   // A frame that rebuilds what mischief left waiting says nothing of how fast the page draws either.
   if (view.pending() > 0) busyFrames = Math.max(busyFrames, 1);
   render();
-  if (ready) dismissLoader();
+  // The loading drawing goes when the dressed town is on screen (on Windows the view may still be waiting for its shaders).
+  if (ready) loaderDue = true;
+  if (loaderDue && view.started?.() !== false) {
+    loaderDue = false;
+    dismissLoader();
+  }
   ui?.frame();
   // L57, L63: a note when a wedding, a beach day or another scene is on (one at a time, now and then).
   if (ui) (note ??= sceneNote(ui)).update(view.stage);

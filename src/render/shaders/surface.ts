@@ -504,16 +504,67 @@ void main(){
     }
     oColor = vec4(c * a, a);
   } else if (vParams.w < -0.5) {
-    // A tractor beam (the UFO, param d = -1): light of its own colour, laid over the page (a strong
-    // tint by day, cover param a) and added to it (bright at night), brightest at its walls' edges
-    // where you look through more of it, fading along its edge value toward its tip. No fade near its source:
-    // it comes straight out of the saucer's hatch. Not graded: it is its own light.
-    float across = abs(vn.z);
-    float wall = smoothstep(0.0, 0.1, across) * (0.8 + 0.6 * (1.0 - across));
-    float k = pow(clamp(1.0 - vEdge, 0.0, 1.0), 1.1) * max(vParams.x, 0.0) * wall;
-    float over = clamp(k * (0.68 - 0.38 * uGlow), 0.0, 0.85);
-    float add = k * (0.2 + 0.95 * uGlow);
-    oColor = vec4(toSrgb(base) * (over + add), over);
+    // A tractor beam (the UFO, param d = -1): a wash of turquoise light painted over the finished page,
+    // ink and all, as the mist is (no pen line of its own, the paper's grain through it). Its vertex colour
+    // is not a colour but where the fragment is: param c < 0.5, the beam, a flat shape the UFO turns to
+    // face the camera, r across it (0 one edge, 1 the other) and g down it (0 at the hatch, 1 at the
+    // ground); param c >= 0.5, the pool of light on the ground, r out from its middle (1 at its outer
+    // edge). Param a is how far on it is, b the phase of the bands travelling along it; c 0.25 leaves
+    // the sparkles out (a weak device). By day a pale, see-through wash that also lifts what is under
+    // it (the town's ink turns a pale turquoise line, not black); at night it glows and lights the page.
+#ifdef PERSP
+    vec2 spx = gl_FragCoord.xy / uPx;
+#else
+    vec2 spx = vec2(dot(vW, uCamRight), dot(vW, uCamUp)) * CSS;
+#endif
+    float grain = 0.8 + 0.2 * n2(spx * 0.09) + 0.12 * (n2(spx * 0.31) - 0.5);
+    vec3 tint = vec3(0.13, 0.8, 0.78), pale = vec3(0.78, 1.0, 0.97);
+    float m = clamp(vParams.x, 0.0, 1.0);
+    float a, lift, add;
+    vec3 c;
+    if (vParams.z < 0.5) {
+      float u = vCol.r * 2.0 - 1.0, g = clamp(vCol.g, 0.0, 1.0);
+      // Its edges drawn by hand: they waver a little down their length (and drift slowly).
+      float wob = 0.09 * (n2(vec2(spx.y * 0.035, uTime * 0.35)) - 0.5) + 0.05 * (n2(vec2(spx.y * 0.11, 7.0 + u)) - 0.5);
+      float x = abs(u) / 0.86 + wob;
+      float body = 1.0 - smoothstep(0.7, 1.0, x);
+      // Brighter soft walls (you look through more of it there) and a soft core.
+      float walls = smoothstep(0.35, 0.85, x) * body;
+      float core = exp(-x * x * 5.0);
+      // Strong under the hatch, thinning toward the ground; melting into the pool at its foot.
+      float along = mix(1.0, 0.52, smoothstep(0.0, 1.0, g)) * (1.0 - 0.6 * smoothstep(0.86, 1.0, g));
+      // Bands of slightly deeper turquoise travelling along it, curved like rings seen from above.
+      float gg = fract(g * 4.0 + vParams.y + 0.05 * sqrt(max(0.0, 1.0 - u * u)));
+      float band = smoothstep(0.0, 0.05, gg) * (1.0 - smoothstep(0.06, 0.2, gg)) * body;
+      float wash = body * along * (0.55 + 0.25 * core + 0.35 * walls);
+      // A little more body than at first (Derek, 2026-11-25: "slightly more opaque, it's a bit thin").
+      a = m * grain * (wash * 0.66 + band * 0.14);
+      c = mix(pale, tint, 0.72 + 0.25 * band + 0.03 * walls);
+      lift = m * wash * 0.1;
+      add = m * wash * (0.04 + 0.5 * uGlow) * grain;
+      // Sparkles: small soft glints rising in it (page pixels, so the same size at every zoom).
+      if (vParams.z < 0.1) {
+        vec2 q = vec2(spx.x, spx.y - uTime * 26.0) / 13.0;
+        vec2 cell = floor(q), f = fract(q) - 0.5;
+        float h = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
+        vec2 at = vec2(fract(h * 7.13), fract(h * 3.71)) - 0.5;
+        float d = length(f - at * 0.6) * 13.0;
+        float tw = 0.5 + 0.5 * sin(uTime * 6.0 + h * 40.0);
+        add += m * body * along * step(0.72, h) * (1.0 - smoothstep(0.4, 1.8, d)) * tw * (0.5 + 0.6 * uGlow);
+      }
+    } else {
+      // The pool: a soft glow fading out from its middle, a pale soft rim (pulsing a little) where the
+      // beam's foot meets the ground, the whole edge wavering by hand.
+      float r = clamp(vCol.r, 0.0, 1.0) * 1.6 + 0.07 * (n2(spx * 0.045 + 5.0) - 0.5);
+      float glow = 1.0 - smoothstep(0.15, 1.35, r);
+      float ring = exp(-pow((r - 1.0 - 0.04 * sin(uTime * 7.0)) / 0.09, 2.0));
+      a = m * grain * (0.38 * glow + 0.18 * ring);
+      c = mix(tint, pale, 0.45 + 0.5 * ring);
+      lift = m * (0.12 * glow + 0.12 * ring);
+      add = m * (glow * 0.7 + ring * 0.5) * (0.03 + 0.55 * uGlow);
+    }
+    a = clamp(a, 0.0, 0.7);
+    oColor = vec4(c * a + pale * lift + tint * add + vec3(add * 0.35), a);
   } else {
     // A shaft of light. Seen end on (pointing at you) its walls are edge-on: it fades away there,
     // instead of laying a flat sheet of light over the lighthouse it comes out of.

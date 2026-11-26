@@ -40,6 +40,9 @@ describe('languages', () => {
       } else if (typeof v !== 'string') wrong.push(`${l.key}: should be a plain line`);
       else if (details(v).join(',') !== want) wrong.push(`${l.key}: ${v}`);
       if (typeof v === 'string' && v.trim() === '') wrong.push(`${l.key}: empty`);
+      // Lines for the web pages carry a little HTML (<strong>, <a href="{guide}">): the same tags, in any order.
+      const tags = (x: string): string => [...x.matchAll(/<[^>]+>/g)].map((m) => m[0]).sort().join('');
+      for (const form of typeof v === 'string' ? [v] : Object.values(v)) if (tags(form) !== tags(l.key)) wrong.push(`${l.key}: its tags differ: ${form}`);
     }
     expect(wrong).toEqual([]);
   });

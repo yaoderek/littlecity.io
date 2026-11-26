@@ -3,7 +3,8 @@
 // (nothing missing, nothing stale, details match, no bare English in the interface).
 //
 // Found two ways:
-//  - calls in the source: t('…'), t({ one: '…', other: '…' }), phrase('…', …) anywhere in src, and the
+//  - calls in the source: t('…'), t({ one: '…', other: '…' }), phrase('…', …) anywhere in src or in
+//    tools/seo/site.ts (the search and link-preview pages), and the
 //    refusals no('…') in src/world/world.ts;
 //  - tables shown with t(value) where they are shown (DATA below): add yours there.
 
@@ -91,7 +92,8 @@ export function scan(): Found {
   const lines: Line[] = [];
   const dynamic: string[] = [];
   const bare: Found['bare'] = [];
-  for (const file of sourceFiles(path.join(ROOT, 'src'))) {
+  // src, and the pages search engines and link previews read (tools/seo/site.ts).
+  for (const file of [...sourceFiles(path.join(ROOT, 'src')), path.join(ROOT, 'tools', 'seo', 'site.ts')]) {
     const rel = path.relative(ROOT, file);
     const text = fs.readFileSync(file, 'utf8');
     if (!/\b(t|phrase|no|el|iconButton|toast|banner)\(/.test(text)) continue;

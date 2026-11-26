@@ -67,6 +67,9 @@ export interface Pile {
   items: (InstanceHandle | null)[];
 }
 
+/** Where a sailor is on deck (not on the plank, the rail's top or the quay). */
+const ON_DECK = new Set<string>(['idle', 'to-cargo', 'cargo', 'deck', 'back-deck', 'stow', 'home']);
+
 type Leg = 'idle' | 'to-cargo' | 'cargo' | 'deck' | 'up' | 'plank' | 'quay' | 'drop' | 'back-quay' | 'back-plank' | 'down' | 'back-deck' | 'stow' | 'home';
 
 /** Cargo carried in front at the chest: forward of the feet and up off the ground (world units, its bottom's middle). */
@@ -91,6 +94,24 @@ interface Sailor {
   slot: number;
   item: InstanceHandle | null;
   heading: number;
+  /** The number its face and hair come from (as the town's people's `look`). */
+  seed: number;
+  /** Taken off the ship (mischief: the UFO): not drawn here, no work, and the ship does not wait for him. */
+  taken: boolean;
+  /** Where it was last drawn (world) and facing. */
+  at: [number, number, number];
+  yaw: number;
+}
+
+/** A sailor standing at his place on deck now (mischief: one the UFO could take). */
+export interface DeckHand {
+  crew: Crew;
+  i: number;
+  x: number;
+  y: number;
+  z: number;
+  heading: number;
+  look: number;
 }
 
 /** Kinds of goods each ship carries. */
@@ -112,6 +133,8 @@ export class Crew {
   private time = 0;
   private claimed = new Set<number>();
   private claimedSlots = new Set<number>();
+  /** The ship's matrix last update (for where a sailor's place is now). */
+  private hull: Mat4Like | null = null;
 
   constructor(private stage: LifeStage, seed: number, kind: string, places: readonly Vec3[], hatch: Vec3, cargo: number, private landing: number) {
     // Cargo slots: two rows either side of the hatch, aft and forward of it.
@@ -124,10 +147,11 @@ export class Crew {
       return h;
     });
     places.forEach((at, i) => {
-      const base = lookOf(rand(seed, 'sailor', i) * 1e9 >>> 0);
+      const lookSeed = rand(seed, 'sailor', i) * 1e9 >>> 0;
+      const base = lookOf(lookSeed);
       const look: Look = { ...base, dress: false, top: i % 2 === 0 ? PALETTE.white : RAMPS.roof[1]!, bottom: PALETTE.metal, hat: i === 0 ? 'cap' : base.hat === 'straw' ? 'none' : base.hat, hatColor: PALETTE.redDark, child: false };
       const meshes = buildPerson(look, `sailor-${seed}-${i}`);
-      this.sailors.push({ look, rig: rigOf(look), pieces: PIECES.map((p) => stage.spawnMesh(meshes[p], HIDDEN)), place: at, leg: 'idle', t: 1, len: 1, stride: rand(seed, 'stride', i), wait: 1.5 + i * 2.2, loading: false, spot: -1, slot: -1, item: null, heading: rand(seed, 'face', i) * Math.PI * 2 });
+      this.sailors.push({ look, rig: rigOf(look), pieces: PIECES.map((p) => stage.spawnMesh(meshes[p], HIDDEN)), place: at, leg: 'idle', t: 1, len: 1, stride: rand(seed, 'stride', i), wait: 1.5 + i * 2.2, loading: false, spot: -1, slot: -1, item: null, heading: rand(seed, 'face', i) * Math.PI * 2, seed: lookSeed, taken: false, at: [0, -50, 0], yaw: 0 });
     });
   }
 
@@ -137,9 +161,51 @@ export class Crew {
     this.pile = pile;
   }
 
-  /** True once everyone is back at their places aboard. */
+  /** True once everyone is back at their places aboard (one taken off it is not waited for). */
   get aboard(): boolean {
-    return this.sailors.every((s) => s.leg === 'idle');
+    return this.sailors.every((s) => s.leg === 'idle' || s.taken);
+  }
+
+  /** How many of the crew are aboard (not taken off it). */
+  get hands(): number {
+    return this.sailors.filter((s) => !s.taken).length;
+  }
+
+  /** Mischief (the UFO): the sailors on deck now (at their places or at work there, not on the plank or the quay), where they are drawn. */
+  deckHands(): DeckHand[] {
+    const out: DeckHand[] = [];
+    this.sailors.forEach((s, i) => {
+      if (!s.taken && ON_DECK.has(s.leg) && s.at[1] > -10) out.push({ crew: this, i, x: s.at[0], y: s.at[1], z: s.at[2], heading: s.yaw, look: s.seed });
+    });
+    return out;
+  }
+
+  /** Mischief: sailor `i` is taken off the ship now (if he is on deck): what he carried is left on deck, and he is drawn here no more. */
+  take(i: number): boolean {
+    const s = this.sailors[i];
+    if (!s || s.taken || !ON_DECK.has(s.leg)) return false;
+    this.recall(s);
+    s.taken = true;
+    for (const h of s.pieces) h.setMatrix(HIDDEN);
+    return true;
+  }
+
+  /** Mischief: where sailor `i`'s place on deck is now (world), or null if the ship has gone. */
+  placeOf(i: number): Vec3 | null {
+    const s = this.sailors[i], m = this.hull;
+    if (!s || !m) return null;
+    const p = s.place;
+    return [m[0]! * p[0] + m[4]! * p[1] + m[8]! * p[2] + m[12]!, m[1]! * p[0] + m[5]! * p[1] + m[9]! * p[2] + m[13]!, m[2]! * p[0] + m[6]! * p[1] + m[10]! * p[2] + m[14]!];
+  }
+
+  /** Mischief: sailor `i` is back at his place on deck. */
+  giveBack(i: number): void {
+    const s = this.sailors[i];
+    if (!s || !s.taken) return;
+    s.taken = false;
+    s.leg = 'idle';
+    s.t = 1;
+    s.wait = 1.5;
   }
 
   private nextJob(): { loading: boolean; spot: number; slot: number } | null {
@@ -162,6 +228,7 @@ export class Crew {
     this.time += dt;
     const w = (p: Vec3): Vec3 => [hull[0]! * p[0] + hull[4]! * p[1] + hull[8]! * p[2] + hull[12]!, hull[1]! * p[0] + hull[5]! * p[1] + hull[9]! * p[2] + hull[13]!, hull[2]! * p[0] + hull[6]! * p[1] + hull[10]! * p[2] + hull[14]!];
     const yaw = Math.atan2(hull[8]!, hull[10]!);
+    this.hull = hull;
     // The cargo on deck rides with the ship.
     this.deck.forEach((d, i) => {
       if (!d) return;
@@ -170,6 +237,7 @@ export class Crew {
     });
     const dist = (a: Vec3, b: Vec3): number => Math.hypot(b[0] - a[0], b[2] - a[2]) + Math.abs(b[1] - a[1]) * 0.5;
     this.sailors.forEach((s, i) => {
+      if (s.taken) return;
       const home = w(s.place);
       if (!way) {
         // At sea: at their places, now and then turning to look out.
@@ -304,6 +372,10 @@ export class Crew {
   }
 
   private draw(s: Sailor, x: number, y: number, z: number, heading: number, pose: PoseName): void {
+    s.at[0] = x;
+    s.at[1] = y;
+    s.at[2] = z;
+    s.yaw = heading;
     const phase = pose === 'walk' || pose === 'carry' ? s.stride : this.time;
     const p = poseOf(pose === 'carry' ? 'walk' : pose, phase);
     // Carrying: the arms round the cargo, a hand on either side of it (hands.ts; the cargo is placed below).
@@ -336,5 +408,6 @@ export class Crew {
     for (const d of this.deck) d?.release();
     this.deck = [];
     this.sailors = [];
+    this.hull = null;
   }
 }

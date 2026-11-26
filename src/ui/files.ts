@@ -5,7 +5,7 @@
 // only the browser side of it.
 
 import type { World } from '@/core/world';
-import { t } from '@/i18n';
+import { currentLang, langPath, t } from '@/i18n';
 import { PALETTE } from '@/style/palette';
 import { decodeTown, encodeTown, type DecodeResult } from '@/world/save';
 
@@ -15,8 +15,12 @@ export const LINK_LIMIT = 6000;
 export const LINK_PREFIX = '#t=';
 export const TOWN_FILE_NAME = 'my-town.littlecity';
 
-/** The share link for a town, or null if it is too big for one. */
-export function shareLink(world: World, base: string = location.origin + location.pathname): string | null {
+/**
+ * The share link for a town, or null if it is too big for one. It opens at the sharer's language's address
+ * (/ja/), so the link's preview card is in their language (tools/seo writes those pages); whoever opens it
+ * still plays in their own.
+ */
+export function shareLink(world: World, base: string = location.origin + langPath(currentLang())): string | null {
   const code = encodeTown(world);
   return code.length > LINK_LIMIT ? null : `${base}${LINK_PREFIX}${code}`;
 }

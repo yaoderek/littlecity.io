@@ -119,6 +119,8 @@ export interface Thrower {
   /** The Hand picks somebody up: they hang where `carry` puts them until `fling`. False if they cannot be. */
   grab(p: Person): boolean;
   carry(p: Person, x: number, y: number, z: number): void;
+  /** Somebody held is set down where the town's people do not go (the UFO's sailor, back on his ship's deck): no longer thrown, and gone from the crowd. */
+  letGo(p: Person): void;
   step(dt: number): void;
   /** Everyone back on their feet now, where the walking graph has room for them (undo, a new town). */
   reset(): void;
@@ -284,11 +286,12 @@ export function createThrower(crowd: Crowd, critters: Map<string, Critter> = new
   };
   // ── the Hand's grip: what it holds hangs below the pointer on a short arm and swings ─────────────
   /** Per held body: where the hand is (and was), how far below it hangs, and its swing (two angles and their rates). */
-  const grips = new Map<Body, { hx: number; hy: number; hz: number; lx: number; lz: number; vx: number; vz: number; len: number; ax: number; az: number; wx: number; wz: number; fresh: boolean }>();
-  const grip = (b: Body, x: number, y: number, z: number, len: number): void => {
+  const grips = new Map<Body, { hx: number; hy: number; hz: number; lx: number; lz: number; vx: number; vz: number; len: number; ax: number; az: number; wx: number; wz: number; fresh: boolean; still: boolean }>();
+  /** `still`: no swing (held in a beam: it rises straight, under the grip). */
+  const grip = (b: Body, x: number, y: number, z: number, len: number, still = false): void => {
     const g = grips.get(b);
     if (!g) {
-      grips.set(b, { hx: x, hy: y, hz: z, lx: x, lz: z, vx: 0, vz: 0, len, ax: 0, az: 0, wx: 0, wz: 0, fresh: true });
+      grips.set(b, { hx: x, hy: y, hz: z, lx: x, lz: z, vx: 0, vz: 0, len, ax: 0, az: 0, wx: 0, wz: 0, fresh: true, still });
       // Hanging straight down from the first grip.
       b.x = x;
       b.y = y - len;
@@ -299,6 +302,7 @@ export function createThrower(crowd: Crowd, critters: Map<string, Critter> = new
     g.hy = y;
     g.hz = z;
     g.len = len;
+    g.still = still;
   };
   const swingQ = new Float64Array(4);
   /** One step of a pendulum for every held body: swung by the hand's movement, damped, hanging under gravity. */
@@ -309,6 +313,22 @@ export function createThrower(crowd: Crowd, critters: Map<string, Critter> = new
         continue;
       }
       if (dt <= 0) continue;
+      if (g.still) {
+        // In a beam: straight under the grip, upright, no swing (it only turns, by its heading).
+        const nx = g.hx, ny = g.hy - g.len, nz = g.hz;
+        b.vx = (nx - b.x) / dt;
+        b.vy = (ny - b.y) / dt;
+        b.vz = (nz - b.z) / dt;
+        b.x = nx;
+        b.y = ny;
+        b.z = nz;
+        b.q[0] = 0;
+        b.q[1] = Math.sin(b.heading / 2);
+        b.q[2] = 0;
+        b.q[3] = Math.cos(b.heading / 2);
+        g.ax = g.az = g.wx = g.wz = 0;
+        continue;
+      }
       // The hand's velocity and acceleration (from where it was last step).
       const nvx = g.fresh ? 0 : (g.hx - g.lx) / dt;
       const nvz = g.fresh ? 0 : (g.hz - g.lz) / dt;
@@ -730,10 +750,20 @@ export function createThrower(crowd: Crowd, critters: Map<string, Critter> = new
       hold(t.body);
       return true;
     },
+    letGo(p) {
+      const t = thrown.get(p);
+      if (t?.hat) pickedUp(t);
+      if (t) grips.delete(t.body);
+      thrown.delete(p);
+      thrower.beamed.delete(p);
+      p.tumble = null;
+      p.visible = false;
+      p.mode = 'gone';
+    },
     carry(p, x, y, z) {
       const b = thrown.get(p)?.body;
       if (!b || b.phase !== 'held') return;
-      grip(b, x, y, z, 0.3);
+      grip(b, x, y, z, 0.3, thrower.beamed.has(p));
     },
     step(dt) {
       // The nuke's ring: everyone it has reached since the last frame.

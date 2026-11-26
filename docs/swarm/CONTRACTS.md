@@ -737,9 +737,9 @@ await app.close();                                             // afterAll
 undo, drag does not place). **Lint** is `eslint.config.js`; `tests/lint.test.ts`
 shows what each directory may and may not do.
 
-**Words the player reads are in seven languages** (`@/i18n`, since 2026-11-25:
+**Words the player reads are in nine languages** (`@/i18n`, since 2026-11-25:
 English, Simplified Chinese, Spanish, French, Brazilian Portuguese, Japanese,
-Korean). Any new or reworded line, in the same change:
+Korean; German and Turkish since 2026-11-26). Any new or reworded line, in the same change:
 
 ```ts
 t('Grow a town')                                    // never a bare string in el() text, title, aria-label, a toast

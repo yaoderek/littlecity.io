@@ -17,7 +17,7 @@ import { fill, phrased, type Vars } from '@/core/phrase';
 export { fill, phrase, type Vars } from '@/core/phrase';
 
 /** The languages there are, English first. Codes are the language part of a browser language. */
-export const LANGS = ['en', 'zh', 'es', 'fr', 'pt', 'ja', 'ko'] as const;
+export const LANGS = ['en', 'zh', 'es', 'fr', 'pt', 'ja', 'ko', 'de', 'tr'] as const;
 export type Lang = (typeof LANGS)[number];
 
 /** Each language in its own words, for the menu. */
@@ -29,10 +29,12 @@ export const LANG_NAMES: Record<Lang, string> = {
   pt: 'Português',
   ja: '日本語',
   ko: '한국어',
+  de: 'Deutsch',
+  tr: 'Türkçe',
 };
 
 /** The locale numbers, dates and plural rules use (Chinese is Simplified, Portuguese Brazilian). */
-const LOCALE: Record<Lang, string> = { en: 'en', zh: 'zh-CN', es: 'es', fr: 'fr', pt: 'pt-BR', ja: 'ja', ko: 'ko' };
+const LOCALE: Record<Lang, string> = { en: 'en', zh: 'zh-CN', es: 'es', fr: 'fr', pt: 'pt-BR', ja: 'ja', ko: 'ko', de: 'de', tr: 'tr' };
 
 export const LANG_KEY = 'little-city.lang';
 
@@ -53,16 +55,30 @@ const isLang = (s: string | null | undefined): s is Lang => !!s && (LANGS as rea
 
 /**
  * The language to use: `?lang=` in the address (a preview, a test; not remembered), then the player's own
- * choice from the menu, then the first of the browser's languages we have, else English.
+ * choice from the menu, then the first of the browser's languages we have, then the address's language
+ * (/ja/: a link someone shared, a search result), else English. The player reads their own language even
+ * on a link shared in another; the address's language is for the link's preview and for search engines.
  */
-export function pickLang(opts: { param?: string | null; chosen?: string | null; browser?: readonly string[] }): Lang {
+export function pickLang(opts: { param?: string | null; chosen?: string | null; browser?: readonly string[]; path?: string }): Lang {
   if (isLang(opts.param)) return opts.param;
   if (isLang(opts.chosen)) return opts.chosen;
   for (const tag of opts.browser ?? []) {
     const base = tag.toLowerCase().split(/[-_]/)[0];
     if (isLang(base)) return base;
   }
-  return 'en';
+  const fromPath = pathLang(opts.path ?? '');
+  return fromPath ?? 'en';
+}
+
+/** The language an address is in: /ja/… is Japanese; / and anything else, none. */
+export function pathLang(path: string): Lang | null {
+  const first = path.split('/')[1] ?? '';
+  return first !== 'en' && isLang(first) ? first : null;
+}
+
+/** Where a language's pages live: '/' for English, '/ja/' for Japanese. */
+export function langPath(l: Lang): string {
+  return l === 'en' ? '/' : `/${l}/`;
 }
 
 const tables = import.meta.glob<Table>('./locales/*.json', { import: 'default' });

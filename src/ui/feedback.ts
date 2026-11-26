@@ -6,7 +6,7 @@ import { cellFloorCenter, CELL_H, type CellKey } from '@/core/grid';
 import { compose, rotationZ, translation } from '@/core/mat4';
 import type { LifeStage } from '@/life/api';
 import type { StructureId } from '@/resolve/plan';
-import { say, t } from '@/i18n';
+import { locale, say, t } from '@/i18n';
 import { el } from './dom';
 
 export interface Feedback {
@@ -21,7 +21,8 @@ export interface Feedback {
   refuse(reason: string, x: number, y: number): void;
 }
 
-const sentence = (s: string): string => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+// The language's own capitals (Turkish i is İ).
+const sentence = (s: string): string => (s ? s.charAt(0).toLocaleUpperCase(locale()) + s.slice(1) : s);
 
 export function createFeedback(layer: HTMLElement): Feedback {
   const toasts = el('div', { class: 'lc-toasts', attrs: { 'aria-live': 'polite' } });
