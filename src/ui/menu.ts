@@ -281,7 +281,7 @@ export function createMenu(actions: MenuActions): Menu {
           )
         : null;
     panel.replaceChildren(
-      ...(actions.guide && actions.showGuide?.() ? [item('guide', 'guide', t('Guide to special buildings'), actions.guide)] : []),
+      ...(actions.guide && actions.showGuide?.() ? [item('guide', 'guide', t('Almanac'), actions.guide)] : []),
       item('grow', 'grow', t('Grow a town'), showGrow, true),
       el('div', { class: 'lc-menu-rule' }),
       ...(actions.myTowns ? [item('towns', 'towns', t('My towns'), actions.myTowns)] : []),

@@ -167,6 +167,64 @@
   animation: lc-guide-tick 0.32s ease-out;
 }
 
+/* The collection (the Almanac): how much is built, a stamp on what is, the rest a little paler. */
+.lc-guide-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 7px 0 0;
+  font-size: 12.5px;
+  font-weight: 800;
+}
+.lc-guide-built-n {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.lc-guide-bar {
+  position: relative;
+  flex: 1;
+  max-width: 150px;
+  height: 7px;
+  border: 1.4px solid var(--lc-ink);
+  border-radius: 5px 4px 6px 3px / 4px 6px 3px 5px;
+  background: var(--lc-card);
+  overflow: hidden;
+}
+.lc-guide-bar-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  min-width: 0;
+  /* A pencil fill: the highlighter yellow, hatched lightly. */
+  background:
+    repeating-linear-gradient(115deg, transparent 0 3px, color-mix(in srgb, var(--lc-ink) 14%, transparent) 3px 4px),
+    var(--lc-pick);
+  transition: width 0.4s ease-out;
+}
+.lc-guide-stamp {
+  display: none;
+  width: 23px;
+  height: 23px;
+  flex: none;
+  rotate: -10deg;
+}
+.lc-guide-entry[data-built] .lc-guide-stamp {
+  display: inline-block;
+}
+.lc-guide-entry[data-collect]:not([data-built]) .lc-guide-picture {
+  opacity: 0.55;
+  filter: grayscale(0.75);
+}
+.lc-guide-entry[data-collect]:not([data-built]) h4 {
+  opacity: 0.66;
+}
+/* Opened from the unlock moment: the entry glows for a moment. */
+.lc-guide-entry.lc-guide-flash {
+  animation: lc-guide-flash 1.8s ease-out;
+  border-radius: 10px;
+}
+
 /* The Auto block: the first thing to know, so a wider note at the top. */
 .lc-guide-auto .lc-guide-entry {
   grid-template-columns: 1fr;
@@ -260,6 +318,10 @@
   0% { scale: 0.2; rotate: -30deg; }
   70% { scale: 1.2; }
   100% { scale: 1; rotate: 0deg; }
+}
+@keyframes lc-guide-flash {
+  0%, 35% { background: color-mix(in srgb, var(--lc-pick) 55%, transparent); }
+  100% { background: transparent; }
 }
 @media (prefers-reduced-motion: reduce) {
   .lc-guide, .lc-guide-entry[data-found] .lc-guide-tick { animation: none; }
