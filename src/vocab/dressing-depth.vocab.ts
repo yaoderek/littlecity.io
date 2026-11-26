@@ -97,6 +97,11 @@ declare module '@/core/vocab' {
     'ladder': true;
     'ladder.look': number;
     'ladder.back': number; //         how far behind the slot the wall it leans on is; default 0.22
+    // U18 orchard: `tree`, the fruit tree behind the slot (its structure id), whose fork the part leans
+    // it into; `fallen` 1 (set by src/resolve/ruins.ts when that tree is a stump, burnt bare or growing
+    // back) lays it on the grass.
+    'ladder.tree': number;
+    'ladder.fallen': 0 | 1;
 
     // D26: a fingerpost at a junction, square to the world (anchor face 2): an arm toward each
     // side d with bit d set in `mask`, each with a little picture of what lies that way

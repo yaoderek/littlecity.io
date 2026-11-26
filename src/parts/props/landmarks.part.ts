@@ -6,10 +6,13 @@
 // Bold, few shapes; a handful of ink groups each; palette colours; seeded
 // irregularity from the item's `look`.
 
-import { CELL_H } from '@/core/grid';
-import { compose, rotationX, rotationY, rotationZ, scaling, translation, type Vec3 } from '@/core/mat4';
+import { CELL_H, keyX, keyY, keyZ, neighbor, NO_CELL, opposite } from '@/core/grid';
+import { compose, frame, invertAffine, rotationX, rotationY, rotationZ, scaling, transformPoint, translation, type Vec3 } from '@/core/mat4';
 import { definePart } from '@/gen/api';
+import { slotFrame } from '@/gen/frames';
 import { PATTERN, type MeshBuilder } from '@/gen/mesh';
+import { speciesOf, treeFork } from '@/gen/tree/tree.gen';
+import type { PropOf, ShapePlan } from '@/resolve/plan';
 import { PALETTE } from '@/style/palette';
 import { clothColors, dab, lump, mixColor, mound, rngOf, tube, vary, TONE } from './kit';
 
@@ -274,25 +277,96 @@ export const fogBell = definePart({
 });
 
 /**
- * Ladder (D25): a wooden ladder leaning on a wall. Frame: an edge slot, +Z
- * away from the wall (which is behind the slot at the cell line, 0.15 back,
- * and 0.07 further in for a house; a mill's body is round, so a little more).
+ * Where the fork of the broadleaf behind a ladder's edge slot is (U18's orchard: where its limbs leave the
+ * trunk), in the slot's frame, and the trunk's radius there. Null when there is no such tree right behind
+ * the slot on the same ground (a wall, a pine, a palm).
+ */
+export function forkBehind(item: PropOf<'ladder'>, plan: ShapePlan): { at: Vec3; radius: number } | null {
+  const at = item.at;
+  if (!('cell' in at) || at.face === undefined) return null;
+  const cell = neighbor(at.cell, opposite(at.face));
+  const id = cell === NO_CELL ? undefined : plan.structureAt.get(cell);
+  const s = id === undefined ? undefined : plan.structures.get(id);
+  // `tree` (U18) names it, so that the ladder is drawn again when another tree stands there.
+  if (!s || s.kind !== 'tree' || s.cells[0] !== cell || item.params?.tree !== s.id) return null;
+  const fork = treeFork(s.seed, speciesOf(s.seed, plan.roles.get(s.id)?.role));
+  if (!fork) return null;
+  const world: Vec3 = [keyX(cell) + 0.5 + fork.at[0], keyY(cell) * CELL_H + fork.at[1], keyZ(cell) + 0.5 + fork.at[2]];
+  const local = transformPoint(invertAffine(slotFrame(at.cell, at.pos, at.face)), world);
+  if (local[2] > -0.3 || local[2] < -1.1 || Math.abs(local[0]) > 0.4 || local[1] < 0.2 || local[1] > 1.2) return null;
+  return { at: local, radius: fork.radius };
+}
+
+/** A fallen ladder's rails lie on the mown grass (U18's sward is 0.011 up): their centre half a rail's thickness above it. */
+export const LADDER_FLAT_Y = 0.012 + 0.016;
+
+/** The ladder's rails and rungs, up +Y from its foot: rails `w0` either side at the foot, `w1` at the top. */
+function ladderBody(b: MeshBuilder, len: number, w0: number, w1: number, capped: boolean): void {
+  b.with({ color: PALETTE.wood, pattern: PATTERN.none, ink: 'ladder' }, () => {
+    const rail = Math.hypot(len, w0 - w1), tilt = Math.atan2(w0 - w1, len);
+    for (const s of [-1, 1]) {
+      b.at(compose(translation(s * w0, 0, 0), rotationZ(s * tilt)), () => b.box([-0.016, 0, -0.016], [0.016, rail, 0.016], capped ? {} : { skip: ['bottom'] }));
+    }
+    for (let y = 0.12; y < len - 0.07; y += 0.13) {
+      const w = w0 + ((w1 - w0) * y) / len;
+      b.box([-w, y - 0.011, -0.01], [w, y + 0.011, 0.01], { skip: ['e', 'w'] });
+    }
+  });
+}
+
+/**
+ * Ladder (D25, U18): a wooden ladder leaning on a wall or into a tree. Frame: an edge slot, +Z away
+ * from what it leans on.
+ *
+ * On a wall (D25's mill yard) a straight ladder whose top rests on the wall, `back` behind the slot (the
+ * wall is behind the slot at the cell line, 0.15 back, and 0.07 further in for a house; a mill's body is
+ * round, so a little more).
+ *
+ * Into a broadleaf (U18's orchard) an orchard ladder, narrowing to its top, which sits in the tree's
+ * fork where the limbs leave the trunk: wood that is still there in winter; in leaf it goes up into the
+ * crown. `fallen` (its tree is a stump, burnt bare or growing back; src/resolve/ruins.ts): the same
+ * ladder lies flat on the grass of its own cell.
  */
 export const ladder = definePart({
   prop: 'ladder',
   build(item, ctx) {
     const b = ctx.mesh();
     const r = rngOf(ctx.seed ^ ((item.params?.look ?? 0) * 151));
-    // `back`: how far behind the slot the wall is. The foot stands 0.3 out from it, the top rests on it.
-    const back = item.params?.back ?? 0.22;
-    const len = 0.95 + r('len') * 0.15, foot = -back + 0.3, lean = Math.asin(0.28 / len);
-    b.at(compose(translation((r('x') - 0.5) * 0.15, 0, foot), rotationX(-lean)), () => {
-      b.with({ color: PALETTE.wood, pattern: PATTERN.none, ink: 'ladder' }, () => {
-        for (const x of [-0.09, 0.09]) b.box([x - 0.016, 0, -0.016], [x + 0.016, len, 0.016], { skip: ['bottom'] });
-        for (let y = 0.12; y < len - 0.04; y += 0.13) b.box([-0.09, y - 0.011, -0.01], [0.09, y + 0.011, 0.01], { skip: ['e', 'w'] });
+    const fork = forkBehind(item, ctx.plan);
+    if (!fork && !item.params?.fallen) {
+      // `back`: how far behind the slot the wall is. The foot stands 0.3 out from it, the top rests on it.
+      const back = item.params?.back ?? 0.22;
+      const len = 0.95 + r('len') * 0.15, foot = -back + 0.3, lean = Math.asin(0.28 / len);
+      b.at(compose(translation((r('x') - 0.5) * 0.15, 0, foot), rotationX(-lean)), () => {
+        b.with({ color: PALETTE.wood, pattern: PATTERN.none, ink: 'ladder' }, () => {
+          for (const x of [-0.09, 0.09]) b.box([x - 0.016, 0, -0.016], [x + 0.016, len, 0.016], { skip: ['bottom'] });
+          for (let y = 0.12; y < len - 0.04; y += 0.13) b.box([-0.09, y - 0.011, -0.01], [0.09, y + 0.011, 0.01], { skip: ['e', 'w'] });
+        });
       });
-    });
-    // Where someone stands at its foot, facing the wall or tree it leans on (U18 orchard pickers).
-    return { mesh: b.build(), anchors: { pick: compose(translation(0, 0, foot + 0.14), rotationY(Math.PI)) } };
+      // Where someone stands at its foot, facing the wall or tree it leans on.
+      return { mesh: b.build(), anchors: { pick: compose(translation(0, 0, foot + 0.14), rotationY(Math.PI)) } };
+    }
+    // Into the tree: its top just over the fork on the near side of the trunk, its foot out in front.
+    const top: Vec3 = fork ? [fork.at[0], fork.at[1] - 0.01, fork.at[2] + fork.radius * 0.9] : [0, 0.5, -0.55];
+    // Far enough out that in leaf its lower rungs show below the crown.
+    const foot: Vec3 = [top[0], 0, top[2] + 0.32 + r('run') * 0.08];
+    const reach = Math.hypot(top[0] - foot[0], top[1], top[2] - foot[2]);
+    // The rails run on a little past the fork, up between the limbs.
+    const len = reach + 0.1 + r('len') * 0.04, w0 = 0.085, w1 = 0.045;
+    if (item.params?.fallen) {
+      // Flat on the grass of its own cell, clear of the stump: along the cell's edge, a little askew, rails side by side.
+      const flat = frame([0, 0, 0], [0, 0, 1], [1, 0, 0], [0, 1, 0]);
+      const at = translation((r('x') - 0.5) * 0.1, LADDER_FLAT_Y, 0.13 + r('z') * 0.04);
+      b.at(compose(at, rotationY((r('fall') - 0.5) * 0.3), flat, translation(0, -len / 2, 0)), () => ladderBody(b, len, w0, w1, true));
+      return { mesh: b.build(), anchors: { pick: compose(translation(0, 0, 0.3), rotationY(Math.PI)) } };
+    }
+    // Up +Y from the foot toward the fork, the rails side by side across it, level.
+    const up: Vec3 = [(top[0] - foot[0]) / reach, top[1] / reach, (top[2] - foot[2]) / reach];
+    const h = Math.hypot(up[0], up[2]) || 1;
+    const x: Vec3 = [-up[2] / h, 0, up[0] / h];
+    const z: Vec3 = [x[1] * up[2] - x[2] * up[1], x[2] * up[0] - x[0] * up[2], x[0] * up[1] - x[1] * up[0]];
+    b.at(frame(foot, x, up, z), () => ladderBody(b, len, w0, w1, false));
+    // Where someone stands at its foot, facing the tree (U18 orchard pickers).
+    return { mesh: b.build(), anchors: { pick: compose(translation(foot[0], 0, foot[2] + 0.14), rotationY(Math.PI)) } };
   },
 });

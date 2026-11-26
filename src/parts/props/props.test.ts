@@ -10,8 +10,10 @@ import { findDuplicateFaces, inkGroups, validateMesh } from '@/gen/checks';
 import { allParts } from '@/gen/discover';
 import { meshBounds, PATTERN, triangleCount } from '@/gen/mesh';
 import { resolveTown } from '@/resolve/index';
-import type { Prop } from '@/resolve/plan';
-import { flatTerrain, TownBuilder } from '@/scenario';
+import type { Prop, PropOf } from '@/resolve/plan';
+import { flatTerrain, resolveScenario, TownBuilder } from '@/scenario';
+import { findScenario } from '@/scenario/discover';
+import { forkBehind } from './landmarks.part';
 import { emptyWorld } from '@/world/world';
 
 const terrain = flatTerrain(5);
@@ -238,5 +240,50 @@ describe('dressing props', () => {
     const one = draw('laundry-line', undefined, { garments: 4, look: 11 }, 1.86).mesh;
     const two = draw('laundry-line', undefined, { garments: 4, look: 12 }, 1.86).mesh;
     expect(Array.from(one.color)).not.toEqual(Array.from(two.color));
+  });
+});
+
+describe('the orchard ladder (U18)', () => {
+  const orchard = resolveScenario(findScenario('U18.orchard')!);
+  const ladders = orchard.dressing.props.filter((p) => p.type === 'ladder');
+  const build = (p: Prop) => allParts().prop(p, { plan: orchard.shape, span: 0 });
+
+  test('it rests in the fork of its tree, where the limbs leave the trunk: wood that is there in winter too', () => {
+    expect(ladders.length).toBeGreaterThanOrEqual(2);
+    for (const p of ladders) {
+      const fork = forkBehind(p as PropOf<'ladder'>, orchard.shape);
+      expect(fork, `${p.id} has a tree behind it`).not.toBeNull();
+      const { mesh } = build(p);
+      expect(validateMesh(mesh)).toEqual([]);
+      const { min, max } = meshBounds(mesh);
+      // Its foot on the ground, its top just over the fork (the old one stood 0.95 tall, up out of the crown).
+      expect(min[1]).toBeGreaterThan(-0.03);
+      expect(max[1]).toBeGreaterThan(fork!.at[1]);
+      expect(max[1]).toBeLessThan(fork!.at[1] + 0.15);
+      // Its far end reaches the near side of the trunk at the fork, and no further than its middle.
+      expect(min[2]).toBeLessThan(fork!.at[2] + fork!.radius + 0.05);
+      expect(min[2]).toBeGreaterThan(fork!.at[2] - 0.12);
+      expect(Math.abs((min[0] + max[0]) / 2 - fork!.at[0])).toBeLessThan(0.08);
+    }
+  });
+
+  test('fallen, the same ladder lies flat on the grass of its own cell: not floating, not sunk', () => {
+    for (const p of ladders) {
+      const down = { ...p, params: { ...p.params, fallen: 1 } } as Prop;
+      const { mesh } = build(down);
+      expect(validateMesh(mesh)).toEqual([]);
+      const { min, max } = meshBounds(mesh);
+      expect(min[1]).toBeGreaterThan(0.005);
+      expect(min[1]).toBeLessThan(0.02);
+      expect(max[1]).toBeLessThan(0.06);
+      // On its own side of the cell line (0.15 behind the slot), clear of the stump, inside its cell.
+      expect(min[2]).toBeGreaterThan(-0.15);
+      expect(Math.max(-min[0], max[0])).toBeLessThan(0.5);
+    }
+  });
+
+  test('a ladder on a wall (the mill yard) is still the straight one', () => {
+    const { max } = meshBounds(draw('ladder', undefined, { look: 1, back: 0.27 }).mesh);
+    expect(max[1]).toBeGreaterThan(0.9);
   });
 });
