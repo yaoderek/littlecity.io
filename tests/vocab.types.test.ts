@@ -17,7 +17,7 @@ test('types, variants and params are read from the registries', () => {
   yes<Equal<FeatureVariant<'belfry'>, never>>();
   yes<Equal<PropVariant<'lamp'>, 'post' | 'four-arm' | 'bridge' | 'pier'>>();
   yes<Equal<PropParams<'laundry-line'>, { garments?: number; look?: number }>>();
-  yes<Equal<RolesOf<'dock'>, 'quay' | 'pier' | 'boardwalk' | 'jetty'>>();
+  yes<Equal<RolesOf<'dock'>, 'quay' | 'pier' | 'boardwalk' | 'jetty' | 'port'>>();
   const types: [FeatureType, PropType, ActorType, SocketType, Role, Tag] = ['window', 'flag', 'gull', 'mooring', 'chapel', 'shop:bakery'];
   expect(types).toHaveLength(6);
   // @ts-expect-error 'door/plain' is a variant key, not a type

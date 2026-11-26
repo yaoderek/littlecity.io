@@ -899,6 +899,34 @@ const LISTED: readonly GuideEntry[] = [
     view: FRONT,
   },
   {
+    id: 'port',
+    group: 'waterfront',
+    name: 'Container port',
+    how: 'Fill a big block of sea with docks along the shore, at least three deep and six long, with open water beyond it. It becomes a container port, with cranes, stacks of containers, an office and floodlights.',
+    proof: { role: 'port' },
+    seed: 7521,
+    ground: seaSouth,
+    build(b) {
+      for (let x = 17; x <= 24; x++) for (let z = 21; z <= 23; z++) b.block('dock', x, 0, z);
+      b.path(16, 20, 25, 20);
+    },
+    view: FRONT,
+  },
+  {
+    id: 'container-cranes',
+    group: 'waterfront',
+    name: 'Container cranes',
+    how: 'A port up to nine docks long gets a medium crane; from ten long, a big gantry crane as well, and from fourteen, more of both. With no ship in, the big crane holds its boom up high.',
+    proof: { actor: { rule: 'D15-P.port-yard', type: 'port-crane' } },
+    seed: 7522,
+    ground: seaSouth,
+    build(b) {
+      for (let x = 15; x <= 26; x++) for (let z = 21; z <= 24; z++) b.block('dock', x, 0, z);
+      b.path(14, 20, 27, 20);
+    },
+    view: { yaw: 35, pitch: 28 },
+  },
+  {
     id: 'boardwalk',
     group: 'waterfront',
     name: 'Boardwalk',

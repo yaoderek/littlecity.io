@@ -39,6 +39,8 @@ export default defineRule<{ thing: Thing; pos: CellPos }>({
     for (const s of facts.structures.values()) {
       if (s.kind !== 'dock') continue;
       const role = plan.roles.get(s.id)?.role;
+      // A port's deck is its yard (D15-P).
+      if (role === 'port') continue;
       const skip = new Set<CellKey>();
       for (const f of plan.featuresByStructure.get(s.id) ?? []) {
         if ((f.type === 'pier-head' || f.type === 'ramp' || f.type === 'dock-goods' || f.type === 'dock-crane') && f.cell !== undefined) skip.add(f.cell);

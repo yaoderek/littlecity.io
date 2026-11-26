@@ -43,7 +43,7 @@ export default defineRule<{ items: Placed[]; cells: CellKey[] }>({
     // Columns holding a quay or a quay wall.
     const quay = new Set<number>();
     for (const [id, { role }] of plan.roles) {
-      if (role !== 'quay' && role !== 'quay-wall') continue;
+      if (role !== 'quay' && role !== 'quay-wall' && role !== 'port') continue;
       for (const c of facts.structures.get(id)?.cells ?? []) quay.add(keyX(c) + keyZ(c) * 64);
     }
     if (!quay.size) return [];
