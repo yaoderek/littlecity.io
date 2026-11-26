@@ -55,6 +55,10 @@ export interface Tutorial {
   undone(): void;
   /** Once a frame. */
   frame(dt: number): void;
+  /** Where it is: place (no piece placed yet), undo, or done. */
+  readonly step: TutorialState['step'];
+  /** The hand is on screen. */
+  readonly showing: boolean;
   /** What it shows (tests, the console). */
   debug(): { step: string; showing: boolean; say: string };
 }
@@ -173,6 +177,12 @@ export function createTutorial(host: TutorialHost): Tutorial {
       apply({ type: 'tick', dt, visible: aim !== null });
       if (!aim || !showing(state)) return hide();
       draw(aim.x, aim.y, aim.up, aim.text);
+    },
+    get step() {
+      return state.step;
+    },
+    get showing() {
+      return !layer.hidden;
     },
     debug: () => ({ step: state.step, showing: !layer.hidden, say: layer.hidden ? '' : words }),
   };

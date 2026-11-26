@@ -61,6 +61,7 @@ export function installTheme(root: HTMLElement = document.body): void {
   style.setProperty('--lc-card', PALETTE.white);
   style.setProperty('--lc-pick', PALETTE.yellow);
   style.setProperty('--lc-refuse', PALETTE.red);
+  style.setProperty('--lc-dot', PALETTE.red);
 }
 
 /** True where the main pointer is a finger (phones, tablets): no hover, bigger targets. */
