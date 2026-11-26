@@ -10,6 +10,9 @@
 //                  lose their slot pop
 //   F05 pop-in     newly derived props appear one after another, nearest
 //                  the click first, each with a small bounce
+//   unlock         the first time the player builds one of the almanac's
+//                  buildings by hand (celebrate.ts): it pops up out of its
+//                  foot instead of landing, in a burst of stars
 //
 // How: `sync` reads what changed off the two towns (diff.ts). A structure
 // is moved with the stage's lift (it is re-pointed at a slot, no geometry is
@@ -29,9 +32,10 @@ import { fxOf } from '../fx/fx';
 import { arc, easeIn, easeInOut, easeOut, lerp, pop, settle } from '../motion/ease';
 import { mulInto, place, squash } from '../motion/pose';
 import { carryTable } from './carry';
+import { takeCelebrations, type Celebration } from './celebrate';
 import { cellCentre, changedStructures, diffTowns, edgeCentre, footOf, isFloorStructure, type EditDiff } from './diff';
 
-type ActKind = 'land' | 'wobble' | 'morph' | 'vanish' | 'ride';
+type ActKind = 'land' | 'wobble' | 'morph' | 'vanish' | 'ride' | 'unlock';
 
 interface Act {
   kind: ActKind;
@@ -70,6 +74,8 @@ interface State {
   pops: Pop[];
   /** The dressing last seen, and where each of its props was drawn. */
   dressing: DressingPlan | null;
+  /** The town last seen (an unlock moment finds its building in it). */
+  shape: ShapePlan | null;
   where: Map<string, [number, number, number]>;
   /** The middle of the last edit, until its dressing has arrived. */
   editAt: [number, number, number] | null;
@@ -164,6 +170,10 @@ function poseAct(a: Act): void {
       const w = bulge(tall);
       squash(a.px, a.py, a.pz, w, tall, w, drop * CELL_H, 0, 0, a.m);
     }
+  } else if (a.kind === 'unlock') {
+    // Up out of its own foot, past its height and back: from nothing, not from a drop.
+    const s = t >= 1 ? 1 : Math.max(0.02, pop(t));
+    squash(a.px, a.py, a.pz, s, s, s, 0, 0, 0, a.m);
   } else if (a.kind === 'morph') {
     const h = 1 + (morphAt(t) - 1) * Math.max(a.amp, 0.4);
     const w = bulge(h);
@@ -210,7 +220,7 @@ function start(state: State, ctx: SystemContext, shape: ShapePlan, kind: ActKind
   const old = state.byStructure.get(s.id);
   // A mass already landing that is landed on again (a run of edits, Grow a town) carries on with its bounce
   // rather than jumping back to the top of it every few frames.
-  if (old && old.kind === 'land' && kind !== 'vanish' && old.age < old.time * 0.7) return old;
+  if (old && old.kind === 'land' && kind !== 'vanish' && kind !== 'unlock' && old.age < old.time * 0.7) return old;
   if (old) {
     finish(state, ctx.stage, old);
     state.acts = state.acts.filter((a) => a !== old);
@@ -312,6 +322,42 @@ function sparkle(state: State, ctx: SystemContext, x: number, y: number, z: numb
       place(x + cos * d, y + up * easeOut(t), z + sin * d, a + spin * t, s, s, s, m);
     }, { smooth: true, delay: i * 0.012 });
   }
+}
+
+/** The unlock moment's stars: a ring of them thrown out and up round the building, spinning, falling back a little. */
+function stars(state: State, ctx: SystemContext, x: number, y: number, z: number, size: number, scale: number): void {
+  const fx = fxOf(ctx.stage);
+  const k = state.n++;
+  const count = Math.round(FEEDBACK.unlockStars);
+  const reach = FEEDBACK.unlockReach * Math.min(2, Math.max(1, Math.sqrt(size))) * scale;
+  for (let i = 0; i < count; i++) {
+    const a = ((i + 0.6 * rand(ctx.seed, 'unlock', k, i, 'a')) / count) * TAU;
+    // Every third a higher, smaller one, so the burst has depth and not one flat ring.
+    const high = i % 3 === 0;
+    const up = ((high ? 1.0 : 0.45) + 0.5 * rand(ctx.seed, 'unlock', k, i, 'u')) * scale;
+    const far = reach * (high ? 0.55 : 0.85 + 0.35 * rand(ctx.seed, 'unlock', k, i, 'r'));
+    const big = FEEDBACK.unlockStarSize * scale * (high ? 0.7 : 0.85 + 0.35 * rand(ctx.seed, 'unlock', k, i, 's'));
+    const spin = (rand(ctx.seed, 'unlock', k, i, 'w') - 0.5) * 7;
+    const cos = Math.cos(a), sin = Math.sin(a);
+    const life = FEEDBACK.unlockStarTime * (0.8 + 0.35 * rand(ctx.seed, 'unlock', k, i, 't'));
+    fx.play(SPARKLES[i % SPARKLES.length]!, life, (t, m) => {
+      const d = far * easeOut(t);
+      // Up fast, then a slow fall back: thrown, not floating.
+      const lift = up * (easeOut(Math.min(1, t * 1.6)) - 0.35 * t * t);
+      const s = big * (t < 0.18 ? pop(t / 0.18) : t > 0.7 ? 1 - easeIn((t - 0.7) / 0.3) : 1);
+      place(x + cos * d, y + 0.15 + lift, z + sin * d, a + spin * t, s, s, s, m);
+    }, { smooth: true, delay: 0.04 + (i % 7) * 0.018 });
+  }
+}
+
+function unlock(state: State, ctx: SystemContext, c: Celebration): void {
+  const shape = state.shape;
+  const s = c.structure === undefined || !shape ? undefined : shape.structures.get(c.structure);
+  if (s && shape) {
+    const act = start(state, ctx, shape, 'unlock', s, footOf(s), FEEDBACK.unlockTime);
+    if (act) act.dusted = true;
+  }
+  stars(state, ctx, c.at[0], c.at[1], c.at[2], c.size ?? 1, Math.min(4, Math.max(1, c.scale ?? 1)));
 }
 
 // ─────────────────────────────────────────────────── a town changed ──
@@ -572,15 +618,17 @@ const SEASONAL: ReadonlySet<string> = new Set(['festival-lights', 'wreath', 'fes
 export default defineSystem<State>({
   id: 'feedback',
   order: 10,
-  create: () => ({ acts: [], byStructure: new Map(), pops: [], dressing: null, where: new Map(), editAt: null, n: 0, scratch: identity(), clock: 0, lastDust: -1 }),
+  create: () => ({ acts: [], byStructure: new Map(), pops: [], dressing: null, shape: null, where: new Map(), editAt: null, n: 0, scratch: identity(), clock: 0, lastDust: -1 }),
 
   sync(state, next, prev, ctx) {
+    state.shape = next.shape;
     if (prev && next.shape !== prev.shape) shapeChanged(state, ctx, prev.shape, next.shape);
     if (next.dressing && next.dressing !== state.dressing) dressingChanged(state, ctx, next.dressing);
   },
 
   update(state, dt, _signals, ctx) {
     state.clock += dt;
+    for (const c of takeCelebrations(ctx.stage)) unlock(state, ctx, c);
     if (state.acts.length > 0) {
       let kept = 0;
       for (const a of state.acts) {
