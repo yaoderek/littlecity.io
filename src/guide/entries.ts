@@ -35,6 +35,7 @@ import harbourScn from '../../scenarios/life/ships-harbour.scenario';
 import jobsScn from '../../scenarios/rules/L23.jobs.scenario';
 import smithyScn from '../../scenarios/rules/R-H19.smithy.scenario';
 import courtScn from '../../scenarios/field/field-basketball.scenario';
+import yardScn from '../../scenarios/life/L75.shipyard.scenario';
 
 /** A happening's picture town: one of the living town's own fixtures (scenarios/life), as its tests run it. */
 const town = (s: Scenario): { seed: number; ground?: (t: TerrainBuilder) => void; build(b: TownBuilder): void } => ({ seed: s.seed + 7000, ...(typeof s.terrain === 'function' ? { ground: s.terrain } : {}), build: s.build });
@@ -42,6 +43,10 @@ const town = (s: Scenario): { seed: number; ground?: (t: TerrainBuilder) => void
 
 /** Seconds of life before the wedding's picture is taken: the couple on the doorstep in a shower of petals, the guard of honour either side, the doves going up (timed in a test run of its recipe). */
 const WEDDING_GUIDE_AT = 96;
+/** Seconds of life before the shipyard's picture: the ribs up and the planks climbing them (keel 30 s, frames 60, from 8 s in). */
+const SHIPYARD_GUIDE_AT = 150;
+/** Seconds of life before the launch's picture: the ship coming off the ways into a splash, the crowd on the decks (timed in a run of its recipe). */
+const LAUNCH_GUIDE_AT = 409;
 /** Seconds of life before the beach day's picture: the parasols up along the sand, the families there (timed in a run of its recipe). */
 const BEACH_GUIDE_AT = 130;
 /** Seconds of life before the picnics' picture: blankets spread, families round them. */
@@ -917,6 +922,24 @@ const LISTED: readonly GuideEntry[] = [
     },
     view: FRONT,
   },
+  {
+    id: 'shipyard',
+    group: 'waterfront',
+    name: 'Shipyard',
+    how: 'Lay docks three wide and six or more long, straight out from the shore, with a warehouse or a barn by the land end. Shipwrights build a ship on the slip down the middle, a cog (or a galleon on a slip of eight or more), and launch it with the town looking on.',
+    proof: { role: 'shipyard' },
+    seed: 7505,
+    ground: seaSouth,
+    build(b) {
+      for (let x = 19; x <= 21; x++) for (let z = 21; z <= 26; z++) b.block('dock', x, 0, z);
+      b.house(16, 17, { w: 3, d: 2, floors: 2, color: 7 });
+      b.path(14, 19, 24, 19);
+    },
+    view: { yaw: 35, pitch: 32 },
+    // Half built: the ribs up and the planking climbing them, the staging round it.
+    life: { settle: SHIPYARD_GUIDE_AT },
+    frame: [17, 18, 23, 27, 3],
+  },
   // Boats and ships ("Boats and ships": whatever fits comes). The picture shows the ship moored: a town opened
   // with a port has its biggest ship in.
   {
@@ -1377,6 +1400,20 @@ const LISTED: readonly GuideEntry[] = [
     // In the middle of a wedding: the couple come out (WEDDING_GUIDE_AT).
     life: { settle: WEDDING_GUIDE_AT, residents: true },
     frame: [16, 16, 24, 21, 2],
+  },
+  {
+    id: 'ship-launch',
+    group: 'big-days',
+    when: 'By day, when a ship is finished',
+    name: 'A ship is launched',
+    how: 'Build a shipyard with houses round about. When its ship is finished, bunting goes up along the slip, the town lines the decks and the shore, a bottle breaks on the bow, and the ship slides down into the sea with a great splash and sails away.',
+    proof: { socket: { rule: 'L75.shipyard' } },
+    ...town(yardScn),
+    view: { yaw: 40, pitch: 34 },
+    pad: 0.2,
+    // The splash: the stern in the sea, the crowd cheering (LAUNCH_GUIDE_AT).
+    life: { settle: LAUNCH_GUIDE_AT, residents: true },
+    frame: [17, 20, 28, 37, 3],
   },
   {
     id: 'beach-day',

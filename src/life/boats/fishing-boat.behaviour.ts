@@ -21,7 +21,7 @@ import { defineBehaviour, type LifeStage, type TimeSignal } from '../api';
 import { angleDelta, easeInOut, glide } from '../motion/ease';
 import { fly } from '../motion/pose';
 import { onTwos } from '../motion/twos';
-import { swellAt, wakeRing, type Swell } from './afloat';
+import { rockBy, swellAt, wakeRing, type Swell } from './afloat';
 import { entryRoute, notePose, townLive } from '../ships/ferry.system';
 import { standAside } from '../ships/news';
 import { floatingAt, poseFloating, refloat, type Floating } from './floating';
@@ -226,6 +226,7 @@ export default defineBehaviour({
     if (now !== state.drawn) {
       state.drawn = now;
       swellAt(now, state.phase, BOATS.fishLength, signals.wind(state.x, state.z).strength, state.swell);
+      rockBy(ctx.stage, state.x, state.z, signals.time.seconds, state.swell);
     }
     fly(aside.x, SEA_Y + state.swell.heave, aside.z, state.yaw, state.swell.pitch, state.swell.roll + state.bank, 1, state.m);
     // Mischief: a blast may have swamped or capsized it (src/life/mischief/boatwreck.ts).

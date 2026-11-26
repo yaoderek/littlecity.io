@@ -106,6 +106,8 @@ const FOOTPRINTS: Readonly<Record<string, Footprint>> = {
   sward: FLAT, paving: FLAT, 'bleaching-sheet': FLAT, 'hedge/wild': RUN, 'field-gate': WAY,
   'wall-booth': BULK, 'store-door': BULK, 'niche-bench': BULK, stable: BULK, hay: BULK, compost: BULK, 'drying-line': BULK, pergola: BULK,
   'market-cross': BULK, 'stepping-stones': BULK,
+  // The kerb along a shipyard's slip (D29): nobody walks under the ship.
+  'slip-rail': RUN,
 };
 function footprintOf(type: string, variant: string | undefined): Footprint {
   return (variant !== undefined ? FOOTPRINTS[`${type}/${variant}`] : undefined) ?? FOOTPRINTS[type] ?? POST;

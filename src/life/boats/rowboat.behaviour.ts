@@ -30,7 +30,7 @@ import { SHIPS } from '@/style/ships';
 import { alongRoute, routeLength, waterMask, type Pt } from '@/rules/life/waterway';
 import { entryRoute, notePose, townLive } from '../ships/ferry.system';
 import { berthZoneAt, standAside } from '../ships/news';
-import { hullRing, swellAt, type Swell } from './afloat';
+import { hullRing, rockBy, swellAt, type Swell } from './afloat';
 import { floatingAt, poseFloating, refloat, type Floating } from './floating';
 
 const LINE: SpawnSpec = { actor: 'mooring-line' };
@@ -231,7 +231,7 @@ function pose(state: RowboatState, ctx: LifeContext<ActorOf<'rowboat'>>, signals
   const hx = state.outX * Math.cos(state.heading) + state.alongX * Math.sin(state.heading);
   const hz = state.outZ * Math.cos(state.heading) + state.alongZ * Math.sin(state.heading);
   const yaw = Math.atan2(hx, hz);
-  const sw = swellAt(now, state.phase, BOATS.rowLength, wind.strength, state.swell);
+  const sw = rockBy(ctx.stage, x, z, signals.time.seconds, swellAt(now, state.phase, BOATS.rowLength, wind.strength, state.swell));
   // A tight line holds the bow down a touch.
   fly(x, SEA_Y + sw.heave, z, yaw, sw.pitch - 0.035 * state.taut, sw.roll, 1, state.m);
   // Mischief: a blast may have swamped or capsized it (src/life/mischief/boatwreck.ts).

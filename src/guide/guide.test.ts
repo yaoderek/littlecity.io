@@ -47,7 +47,7 @@ describe('the list', () => {
       'lighthouse', 'windmill',
       'temple', 'gatehouse', 'keep', 'grand-steps', 'quay-wall', 'plinth', 'terrace',
       'stone-bridge', 'sky-bridge', 'flying-buttress', 'gateway', 'loggia', 'viaduct',
-      'quay', 'pier', 'boardwalk', 'jetty',
+      'quay', 'pier', 'boardwalk', 'jetty', 'shipyard',
       'palm', 'willow', 'pine', 'planter-tree', 'fruit-tree', 'grove-tree', 'round-tree', 'cypress', 'bush',
       'tiered-fountain', 'well', 'birdbath', 'basin', 'fish-stall', 'flower-stall', 'market-stall',
       'wheat-field', 'herb-garden', 'reed-bed', 'park-lawn', 'kitchen-garden', 'flower-garden',
