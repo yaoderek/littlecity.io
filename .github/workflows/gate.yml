@@ -1,0 +1,53 @@
+# The merge gate on GitHub's machines instead of Derek's Mac: typecheck, lint, the unit tests and the
+# browser tests (the same things `npm run check` runs, split in two jobs so a browser failure does
+# not hide the unit result). Runs on every push to the working branch and to preview, swarm and fix
+# branches, and by hand from the Actions tab. It publishes nothing: the site is only ever published
+# by tools/deploy-pages.sh, by hand, after Derek's sign-off.
+name: gate
+
+on:
+  push:
+    branches:
+      - 'yaoderek/bloom-s-monkey-city-builder'
+      - 'preview/**'
+      - 'swarm/**'
+      - 'fix/**'
+  workflow_dispatch:
+
+concurrency:
+  group: gate-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: typecheck, lint, unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npx vitest run --project unit
+
+  e2e:
+    name: browser tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # No graphics card here: Chromium draws WebGL in software (tools/lib/browser.mjs).
+      - run: npx playwright install --with-deps chromium
+      - run: npx vitest run --project e2e
