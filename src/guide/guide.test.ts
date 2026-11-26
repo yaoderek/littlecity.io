@@ -56,6 +56,8 @@ describe('the list', () => {
       'podium', 'theatre', 'barn', 'watermill', 'warehouse', 'churchyard', 'smithy', 'forge-chimney', 'obelisk', 'folly-tower', 'bridge-shop', 'bandstand', 'stoa', 'schoolhouse',
       // the playing field
       'basketball-court', 'tennis-court', 'football-pitch', 'bowling-green', 'croquet-lawn', 'boules-court', 'running-track', 'kickabout-green',
+      // the container port
+      'port',
     ] as const satisfies readonly Role[];
     type Unlisted = Exclude<Role, (typeof ALL)[number]>;
     const allListed: Unlisted extends never ? true : Unlisted = true;

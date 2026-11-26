@@ -18,7 +18,7 @@ const parts = allParts();
 const draw = (type: string, variant: string | undefined, params: Record<string, number>) =>
   parts.actor({ id: `${type}@test:${variant ?? ''}:${JSON.stringify(params)}`, type, variant, params, at: null, rule: 'test', hash: 1 } as Actor, { plan }).mesh;
 
-const BUDGET: Record<string, number> = { galleon: 4500, cog: 2800, galley: 3000, barge: 2400 };
+const BUDGET: Record<string, number> = { galleon: 4500, cog: 2800, galley: 3000, barge: 2400, freighter: 4000 };
 
 describe('big ship drawings', () => {
   test.each(SHIP_KINDS.map((k) => [k]))('%s: sound, no doubled faces, in budget, for several looks', (kind) => {

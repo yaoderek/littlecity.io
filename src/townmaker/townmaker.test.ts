@@ -35,6 +35,8 @@ const ROLES = [
   'podium', 'theatre', 'barn', 'watermill', 'warehouse', 'churchyard', 'smithy', 'forge-chimney', 'obelisk', 'folly-tower', 'bridge-shop', 'bandstand', 'stoa', 'schoolhouse',
   // the playing field (src/vocab/field.vocab.ts)
   'basketball-court', 'tennis-court', 'football-pitch', 'bowling-green', 'croquet-lawn', 'boules-court', 'running-track', 'kickabout-green',
+  // the container port (src/vocab/port.vocab.ts)
+  'port',
 ] as const satisfies readonly Role[];
 type Unlisted = Exclude<Role, (typeof ROLES)[number]>;
 const allListed: Unlisted extends never ? true : Unlisted = true;
@@ -233,6 +235,8 @@ function survey(): Surveyed[] {
 const NOT_PLACED: Record<string, string> = {
   // R-D05: a dock three wide out from the shore is the player's to lay; Grow a town builds piers and quays.
   shipyard: 'built by the player, never grown',
+  // The container port is the player's to make (R-D00: a big block of sea filled in), never grown.
+  port: 'player-made',
 };
 
 describe('grow a town: the survey (seeds 1 to 30, both generators)', () => {
@@ -312,6 +316,8 @@ describe('grow a town: the survey (seeds 1 to 30, both generators)', () => {
     console.log(`guide entries never grown: ${missing.join(', ') || 'none'}`);
     // Entries that need the player's hand (digging a river, painting a croquet lawn) may stay missing.
     const allowed = new Set(['dug-river', 'croquet-lawn', 'boules-court', 'running-track', 'kickabout-green', 'wedding', 'market-day', 'garrison', 'rider', 'cog', 'ships', 'shipyard', 'ship-launch']);
+    // The container port and what comes with it: the player fills in a big block of sea (R-D00).
+    for (const id of ['port', 'container-cranes', 'cargo-ship', 'unloading-containers']) allowed.add(id);
     expect(missing.filter((m) => !allowed.has(m))).toEqual([]);
   });
 

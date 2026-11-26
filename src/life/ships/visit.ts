@@ -51,6 +51,7 @@ import type { ActorOf, DressingPlan, ShapePlan } from '@/resolve/plan';
 import { findBerths, hullSize, planningField, SEA_MARGIN, type Berth } from '@/rules/life/berths.fact';
 import { hullClear, mapEdge, mooringAt, pathAt, pathClear, pivot, planArrival, planDeparture, type HullSize, type Mooring, type Pose, type SeaField, type Voyage } from '@/rules/life/ship-routes';
 import { RAMPS } from '@/style/palette';
+import { PORT } from '@/style/port';
 import { SHIPS } from '@/style/ships';
 import type { InstanceHandle, LifeStage, Signals } from '../api';
 import { hullRing, swellAt, wakeRing, type Swell } from '../boats/afloat';
@@ -63,6 +64,7 @@ import { Crew, type Gangway, type Pile, type Spot } from './crew';
 import { Escort } from './escort';
 import { clearAhead, floatPoints, newsOf } from './news';
 import { removalPuff } from './puff';
+import { steamerSmoke, Tug } from './tug';
 import { critterPose } from '../mischief/critters';
 
 export interface CallInfo {
@@ -139,6 +141,10 @@ export interface Ship {
   m: Mat4;
   /** Mischief: how badly it was hit (0 not at all), and which way it lists going down. */
   hurt?: 0 | 1 | 2 | 3;
+  /** L38-F: a cargo ship's tug; the port's cranes holding it alongside until they are done; seconds to its next puff of smoke. */
+  tug?: Tug | null;
+  held?: boolean;
+  smoke?: number;
   list?: number;
   /** Mischief, the Hand (src/life/mischief/critters.ts): it is up in the air, out of traffic; or set down on the land (seconds since). */
   lifted?: boolean;
@@ -173,6 +179,8 @@ export interface Harbour {
   readonly barges: readonly Barge[];
   /** Goods lying on each quay, by berth key. */
   readonly piles: ReadonlyMap<string, Pile>;
+  /** Goods set down by somebody else (the port's dock workers: key 'port:<id>'), for the carters (L58); null removes it. */
+  setPile(key: string, pile: Pile | null): void;
   /**
    * Mischief: a blast at (x, z) reaching `r3` (it breaks a ship and sinks it), `r2` (dismasts it) and `r1`
    * (scorches it). Each ship worse off than it was is marked so and answers (gives up its visit and
@@ -192,16 +200,17 @@ const NEAR = 0.1;
 /** Radians a second a ship swings at the quay. */
 const SWING_RATE = 0.085;
 /** How often each kind is chosen when it fits (the biggest most often). */
-const WEIGHT: Record<ShipKind, number> = { galleon: 5, galley: 3, cog: 2, barge: 0 };
-const STAY: Record<ShipKind, () => number> = { galleon: () => SHIPS.galleonStay, cog: () => SHIPS.cogStay, galley: () => SHIPS.galleyStay, barge: () => 30 };
+const WEIGHT: Record<ShipKind, () => number> = { galleon: () => 5, galley: () => 3, cog: () => 2, barge: () => 0, freighter: () => PORT.freighterWeight };
+const STAY: Record<ShipKind, () => number> = { galleon: () => SHIPS.galleonStay, cog: () => SHIPS.cogStay, galley: () => SHIPS.galleyStay, barge: () => 30, freighter: () => PORT.freighterStay };
 const GAP: Record<ShipKind, () => [number, number]> = {
   galleon: () => [SHIPS.galleonGapMin, SHIPS.galleonGapMax],
   cog: () => [SHIPS.cogGapMin, SHIPS.cogGapMax],
   galley: () => [SHIPS.galleyGapMin, SHIPS.galleyGapMax],
   barge: () => [30, 60],
+  freighter: () => [SHIPS.galleonGapMin, SHIPS.galleonGapMax],
 };
-const CREW: Record<ShipKind, number> = { galleon: 3, cog: 2, galley: 2, barge: 1 };
-const SIZE: Record<ShipKind, number> = { galleon: 0, galley: 1, cog: 2, barge: 3 };
+const CREW: Record<ShipKind, number> = { galleon: 3, cog: 2, galley: 2, barge: 1, freighter: 2 };
+const SIZE: Record<ShipKind, number> = { galleon: 0, galley: 1, cog: 2, barge: 3, freighter: -1 };
 
 /** The berth a call names (the same numbers berths.fact.ts gives it). */
 export function berthOfCall(call: ActorOf<'ship-call'>, berths: readonly Berth[]): Berth | null {
@@ -538,6 +547,9 @@ export function createHarbour(stage: LifeStage, seed: number): Harbour {
     ship.lines = [];
     ship.escort?.release();
     ship.escort = null;
+    ship.tug?.release();
+    ship.tug = null;
+    ship.held = false;
     ship.voyage = null;
     ship.visits++;
     // A new visit is a sound ship.
@@ -588,13 +600,24 @@ export function createHarbour(stage: LifeStage, seed: number): Harbour {
   const aboard = (ship: Ship): void => {
     const rig = rigOf(ship.kind, ship.look);
     const { way } = gangwayOf(ship);
-    const goods = Math.round(SHIPS.goodsMax * (ship.kind === 'galleon' ? 1 : 0.67));
+    // A cargo ship's cargo is its containers: the cranes work it, not the crew.
+    const goods = ship.kind === 'freighter' ? 0 : Math.round(SHIPS.goodsMax * (ship.kind === 'galleon' ? 1 : 0.67));
     ship.crew = new Crew(stage, (rand(seed, 'crew', ship.id, ship.visits) * 1e9) >>> 0, ship.kind, rig.crew.slice(0, CREW[ship.kind]), way.hatch, goods, goods);
     const m = ship.mooring;
     const top = transform(fly(m.x, SEA_Y, m.z, m.yaw, 0, 0, 1), way.top);
     ship.plankLen = Math.round(Math.max(0.3, Math.hypot(way.foot[0] - top[0], way.foot[1] - top[1], way.foot[2] - top[2])) * 20) / 20;
     ship.plank = stage.spawn({ actor: 'gangplank', params: { length: ship.plankLen } }, HIDDEN);
     ship.plankK = 0;
+  };
+
+  /** L38-F: a cargo ship comes loaded with containers (seeded for this visit), and with its tug. */
+  const steamer = (ship: Ship): void => {
+    if (ship.kind !== 'freighter' || !ship.body) return;
+    ship.body.stow((rand(seed, 'cargo', ship.id, ship.visits) * 4294967296) >>> 0);
+    ship.tug?.release();
+    ship.tug = new Tug(stage, seed, `${ship.id}#${ship.visits}`);
+    ship.smoke = 0;
+    ship.held = false;
   };
 
   const begin = (ship: Ship): boolean => {
@@ -610,6 +633,7 @@ export function createHarbour(stage: LifeStage, seed: number): Harbour {
     ship.pose = { x: p.x, z: p.z, yaw: p.yaw };
     ship.body = new ShipBody(stage, ship.kind, ship.look, HIDDEN, 1);
     ship.escort = new Escort(stage, seed, ship.id);
+    steamer(ship);
     aboard(ship);
     setPhase(ship, 'arriving');
     return true;
@@ -620,6 +644,7 @@ export function createHarbour(stage: LifeStage, seed: number): Harbour {
     ship.pose = { x: ship.mooring.x, z: ship.mooring.z, yaw: ship.mooring.yaw };
     ship.body = new ShipBody(stage, ship.kind, ship.look, HIDDEN, 0);
     ship.escort = new Escort(stage, seed, ship.id);
+    steamer(ship);
     aboard(ship);
     ship.cameFrom = -1;
     setPhase(ship, 'moored');
@@ -715,7 +740,9 @@ export function createHarbour(stage: LifeStage, seed: number): Harbour {
     const wind = signals.wind(ship.pose.x, ship.pose.z);
     const sin = Math.sin(ship.pose.yaw), cos = Math.cos(ship.pose.yaw);
     const w: ShipWind = { lee: wind.dirX * cos - wind.dirZ * sin, along: wind.dirX * sin + wind.dirZ * cos, strength: wind.strength };
-    const full = ship.kind === 'galley' ? SHIPS.rowSpeed : SHIPS.sailSpeed * (0.85 + 0.15 * w.along);
+    // A cargo ship goes under its engine, whatever the wind.
+    const motor = ship.kind === 'freighter';
+    const full = ship.kind === 'galley' ? SHIPS.rowSpeed : motor ? SHIPS.sailSpeed * 0.9 : SHIPS.sailSpeed * (0.85 + 0.15 * w.along);
     const len = ship.hull.bow - ship.hull.stern;
     const before = { ...ship.pose };
     const rowing = ship.kind === 'galley';
@@ -784,7 +811,8 @@ export function createHarbour(stage: LifeStage, seed: number): Harbour {
         // The plank comes down once it is fast, and up again when the stay is over and the crew are aboard.
         // After a night alongside they do not all go at first light: each waits its own while into the morning.
         // Hit by mischief, it gives up the visit and limps off as soon as its crew are aboard.
-        const done = (ship.t >= stay && !night && daylight >= r(ship, 'dawn') * 75) || ship.orphan || (ship.hurt ?? 0) > 0;
+        // The port's cranes may hold a cargo ship alongside until they have done (L38-F).
+        const done = (ship.t >= stay && !night && daylight >= r(ship, 'dawn') * 75 && !ship.held) || ship.orphan || (ship.hurt ?? 0) > 0;
         const want = done && ship.crew!.aboard ? 0 : ship.t > 0.8 ? 1 : 0;
         ship.plankK = Math.max(0, Math.min(1, ship.plankK + (want > ship.plankK ? dt : -dt) / 2.4));
         if (done && ship.crew!.aboard && ship.plankK <= 0) {
@@ -865,7 +893,7 @@ export function createHarbour(stage: LifeStage, seed: number): Harbour {
         const v = ship.voyage!;
         if (!rowing) body.sails.forEach((sp, i) => (sp.want = ship.t + SHIPS.warp > body.rig.sails[i]!.order * SHIPS.sailEvery * 0.6 ? 1 : 0));
         else body.rowing = Math.min(1, body.rowing + dt);
-        const want = full * Math.min(1, 0.18 + ship.s / (len * 1.2)) * (rowing ? 1 : 0.35 + 0.65 * body.canvas) * yieldFor(ship);
+        const want = full * Math.min(1, 0.18 + ship.s / (len * 1.2)) * (rowing || motor ? 1 : 0.35 + 0.65 * body.canvas) * yieldFor(ship);
         ship.speed += (want - ship.speed) * glide(0.6, dt);
         ship.s = Math.min(v.path.length, ship.s + ship.speed * dt);
         const p = pathAt(v.path, ship.s);
@@ -904,7 +932,7 @@ export function createHarbour(stage: LifeStage, seed: number): Harbour {
     // ── the crew, the gangplank and the lines, while it lies alongside ──
     const alongside = ship.phase === 'moored' || ship.phase === 'warp-out' || ship.phase === 'warp-in';
     const { way, side } = gangwayOf(ship);
-    if (ship.crew) ship.crew.update(dt, ship.m, ship.phase === 'moored' ? way : null, ship.phase === 'moored' && ship.t < STAY[ship.kind]() - 6 && !ship.orphan);
+    if (ship.crew) ship.crew.update(dt, ship.m, ship.phase === 'moored' ? way : null, ship.phase === 'moored' && ship.t < STAY[ship.kind]() - 6 && !ship.orphan && ship.kind !== 'freighter');
     if (ship.plank) {
       // The gangplank: stowed on deck along the ship (0); swung up on end at the rail (½); down on the quay (1).
       if (ship.phase !== 'moored') ship.plankK = Math.max(0, ship.plankK - dt / 1.2);
@@ -968,6 +996,17 @@ export function createHarbour(stage: LifeStage, seed: number): Harbour {
     const reach = Math.max(mapEdge(ship.pose.x + sin * (ship.hull.bow + 1.5), ship.pose.z + cos * (ship.hull.bow + 1.5)), mapEdge(ship.pose.x + sin * ship.hull.stern, ship.pose.z + cos * ship.hull.stern));
     body.setCut(reach > -2.5);
     body.pose(ship.m, Math.atan2(wind.dirX, wind.dirZ));
+    // L38-F: its tug, and smoke from its funnel.
+    if (ship.tug) ship.tug.update(dt, ship, signals);
+    const funnel = body.rig.funnel;
+    if (funnel && ship.smoke !== undefined) {
+      ship.smoke -= dt * (ship.phase === 'moored' ? 0.5 : 1);
+      if (ship.smoke <= 0 && mapEdge(ship.pose.x, ship.pose.z) < -2) {
+        ship.smoke = PORT.smokeEvery;
+        const [fx, fy, fz] = transform(ship.m, funnel);
+        steamerSmoke(stage, fx, fy, fz, 0.22, wind, ship.visits + ship.t);
+      }
+    }
 
     // ── the water: a wake astern and a bow wave under way, rings alongside ──
     const moved = Math.hypot(ship.pose.x - before.x, ship.pose.z - before.z);
@@ -1070,6 +1109,10 @@ export function createHarbour(stage: LifeStage, seed: number): Harbour {
     passers,
     barges,
     piles,
+    setPile(k, pile) {
+      if (pile) piles.set(k, pile);
+      else piles.delete(k);
+    },
     strike,
     clearWrecks() {
       for (const ship of ships) if (ship.phase === 'sinking') finish(ship);
@@ -1244,15 +1287,17 @@ export function createHarbour(stage: LifeStage, seed: number): Harbour {
         turn.due -= dt;
         const i = order.indexOf(k);
         if (i < 0 || i >= served || turn.due > 0 || started > 0 || berthBusy(k) || !shape) continue;
-        const fits = ships.filter((s) => s.berth.key === k && !s.orphan && s.phase === 'idle');
+        // L38-F: at most so many cargo ships in town at once (one on a phone).
+        const freighters = ships.filter((s) => s.kind === 'freighter' && s.phase !== 'idle').length;
+        const fits = ships.filter((s) => s.berth.key === k && !s.orphan && s.phase === 'idle' && (s.kind !== 'freighter' || freighters < Math.round(phone() ? PORT.freightersPhone : PORT.freightersMax)));
         if (!fits.length) continue;
         // A smooth weighted rotation over the whole harbour: each time, every ship that fits gains its weight,
         // the one with the most comes and pays the total back. The biggest comes most often; the others take
         // their turns, so a long quay shows galleons, galleys and cogs together.
         let total = 0;
         for (const s of fits) {
-          total += WEIGHT[s.kind];
-          credit.set(s.kind, (credit.get(s.kind) ?? 0) + WEIGHT[s.kind]);
+          total += WEIGHT[s.kind]();
+          credit.set(s.kind, (credit.get(s.kind) ?? 0) + WEIGHT[s.kind]());
         }
         const chosen = [...fits].sort((a, b) => (credit.get(b.kind) ?? 0) - (credit.get(a.kind) ?? 0) || SIZE[a.kind] - SIZE[b.kind])[0]!;
         if (begin(chosen)) {
@@ -1260,7 +1305,7 @@ export function createHarbour(stage: LifeStage, seed: number): Harbour {
           turn.visits++;
           started++;
         } else {
-          for (const s of fits) credit.set(s.kind, (credit.get(s.kind) ?? 0) - WEIGHT[s.kind]);
+          for (const s of fits) credit.set(s.kind, (credit.get(s.kind) ?? 0) - WEIGHT[s.kind]());
           turn.due = 2 + 3 * rand(seed, 'wait', k, turn.visits, Math.floor(turn.due * 10));
         }
       }
@@ -1309,6 +1354,7 @@ export function createHarbour(stage: LifeStage, seed: number): Harbour {
         s.plank?.release();
         for (const l of s.lines) l.release();
         s.escort?.release();
+        s.tug?.release();
       }
       ships.length = 0;
       for (const p of passers) p.body?.release();

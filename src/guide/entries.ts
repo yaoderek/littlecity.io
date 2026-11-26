@@ -20,6 +20,7 @@ import supperScn from '../../scenarios/life/L65.supper.scenario';
 import carolScn from '../../scenarios/life/L67.carols.scenario';
 import harvestScn from '../../scenarios/life/L59.harvest.scenario';
 import tradeScn from '../../scenarios/life/L58.trade.scenario';
+import portScn from '../../scenarios/port/R-D00.port.scenario';
 import fishScn from '../../scenarios/life/L53.fish.scenario';
 import breadScn from '../../scenarios/life/L51.bread.scenario';
 import applesScn from '../../scenarios/life/L68.apples.scenario';
@@ -906,6 +907,34 @@ const LISTED: readonly GuideEntry[] = [
     view: FRONT,
   },
   {
+    id: 'port',
+    group: 'waterfront',
+    name: 'Container port',
+    how: 'Fill a big block of sea with docks along the shore, at least three deep and six long, with open water beyond it. It becomes a container port, with cranes, stacks of containers, an office and floodlights.',
+    proof: { role: 'port' },
+    seed: 7521,
+    ground: seaSouth,
+    build(b) {
+      for (let x = 17; x <= 24; x++) for (let z = 21; z <= 23; z++) b.block('dock', x, 0, z);
+      b.path(16, 20, 25, 20);
+    },
+    view: FRONT,
+  },
+  {
+    id: 'container-cranes',
+    group: 'waterfront',
+    name: 'Container cranes',
+    how: 'A port up to nine docks long gets a medium crane; from ten long, a big gantry crane as well, and from fourteen, more of both. With no ship in, the big crane holds its boom up high.',
+    proof: { actor: { rule: 'D15-P.port-yard', type: 'port-crane' } },
+    seed: 7522,
+    ground: seaSouth,
+    build(b) {
+      for (let x = 15; x <= 26; x++) for (let z = 21; z <= 24; z++) b.block('dock', x, 0, z);
+      b.path(14, 20, 27, 20);
+    },
+    view: { yaw: 35, pitch: 28 },
+  },
+  {
     id: 'boardwalk',
     group: 'waterfront',
     name: 'Boardwalk',
@@ -1561,6 +1590,36 @@ const LISTED: readonly GuideEntry[] = [
     pad: 0.2,
     life: { settle: 80, residents: true },
     frame: [19, 22, 27, 28, 2],
+  },
+  {
+    id: 'cargo-ship',
+    group: 'by-water',
+    name: 'Cargo ship',
+    when: 'Whenever its berth is free',
+    how: 'Build a port ten or more docks long with open sea off it. A steel cargo ship stacked with containers comes in behind a little tug; the cranes lower their booms, unload some containers and load others, and it sails out again with the tug.',
+    proof: { actor: { rule: 'L38-F.freighter', type: 'ship-call' } },
+    seed: 7531,
+    ground: seaSouth,
+    build(b) {
+      for (let x = 15; x <= 26; x++) for (let z = 21; z <= 24; z++) b.block('dock', x, 0, z);
+      b.path(14, 20, 27, 20);
+    },
+    view: { yaw: 30, pitch: 30 },
+    pad: 0.2,
+    life: { settle: 14 },
+  },
+  {
+    id: 'unloading-containers',
+    group: 'by-water',
+    name: 'Unloading the containers',
+    when: 'After a cargo ship has been in',
+    how: 'Build a port with shops, an inn or stalls within 24 steps of it. A container from the ship is set down by the harbour office; dock workers in yellow jackets swing its doors open and carry out crates, barrels and sacks, and carters wheel them up to the shops.',
+    proof: { socket: { rule: 'L58.trade' } },
+    ...town(portScn),
+    view: { yaw: 120, pitch: 36 },
+    pad: 0.2,
+    life: { settle: 22, residents: true },
+    frame: [13, 20, 19, 25, 2],
   },
   {
     id: 'waving-ships-in',
