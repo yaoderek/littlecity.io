@@ -348,7 +348,8 @@ describe('reactions (L26)', () => {
     const centre = [...out].sort((a, b) => around(b.x, b.z).length - around(a.x, a.z).length)[0]!;
     const cx = Math.floor(centre.x) + 0.5, cz = Math.floor(centre.z) + 0.5;
     const at = key(Math.floor(centre.x), 1, Math.floor(centre.z));
-    const near = around(cx, cz).filter((p) => p.mode !== 'walk' || p.walk![p.at]!.kind === 'move');
+    // (Somebody riding a bike rides on: bikes.ts.)
+    const near = around(cx, cz).filter((p) => (p.mode !== 'walk' || p.walk![p.at]!.kind === 'move') && !crowd.bikes.mounted(p));
     const far = crowd.people.filter((p) => p.visible && p.mode === 'walk' && Math.abs(p.x - cx) + Math.abs(p.z - cz) > PEOPLE.lookReach + 1);
     expect(near.length).toBeGreaterThan(4);
     expect(far.length).toBeGreaterThan(3);

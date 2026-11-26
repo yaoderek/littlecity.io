@@ -1144,14 +1144,15 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
       const piece = walk[p.at]!;
       let rate: number; // share of the piece per second
       let limit = 1;
-      if (piece.kind === 'move' && !riding) {
-        // Turn first, then walk: nobody sets off backwards.
+      if (piece.kind === 'move') {
+        // Turn first, then walk: nobody sets off backwards. (A rider turns as they ride, never on the spot:
+        // only if something has turned them right round while stopped do they turn before going on.)
         pieceAt(piece, p.t, scratch);
         if (scratch.dx * scratch.dx + scratch.dz * scratch.dz > 1e-8) {
           const want = Math.atan2(scratch.dx, scratch.dz);
           let d = want - p.heading;
           d -= Math.round(d / (Math.PI * 2)) * Math.PI * 2;
-          if (d > FACE_FIRST || d < -FACE_FIRST) {
+          if ((d > FACE_FIRST || d < -FACE_FIRST) && (!riding || d > 1.5 || d < -1.5)) {
             turnTo(p, want, left);
             turning = true;
             break;
@@ -1213,7 +1214,19 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
     p.z = scratch.z;
     p.visible = piece.kind !== 'hide';
     const fx = scratch.dx, fz = scratch.dz;
+    const lineX = p.x, lineZ = p.z;
     stepAside(p, piece, dt, moved, turning);
+    {
+      // Never a shuffle backwards: held up nearly still, a step aside and a turn of the way can add up to a
+      // few millimetres behind them. Then they stay where they were this frame (the step aside waits).
+      const mx = p.x - px0, mz = p.z - pz0, md = Math.hypot(mx, mz);
+      if (md > 1e-5 && md < 0.02 && piece.kind === 'move' && (Math.sin(p.heading) * mx + Math.cos(p.heading) * mz) / md < -0.3) {
+        p.x = px0;
+        p.z = pz0;
+        p.offX = px0 - lineX;
+        p.offZ = pz0 - lineZ;
+      }
+    }
     if (!turning && fx * fx + fz * fz > 1e-8 && piece.kind !== 'hide') {
       // The body turns with the way it really goes, a step aside included (nobody strafes), but never
       // more than a little off the way of the walk.
@@ -2105,7 +2118,8 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
         } else p.flying = false;
         if (p.startled > 0) {
           p.startled -= dt;
-          if (p.seat < 0) {
+          // (A rider looks without turning the bike.)
+          if (p.seat < 0 && !bikes.mounted(p)) {
             turnTo(p, p.startledFace, dt);
             p.react = p.admire ?? 'stand';
           }

@@ -181,7 +181,7 @@ export function createBikes(host: BikeHost, opts: BikeOptions = {}): Bikes {
     b.owner = p;
     if (p) ownerOf.set(p, b);
   };
-  const take = (b: Bike, p: Person): void => {
+  const take = (b: Bike): void => {
     b.at = 'ridden';
     b.rest = null;
     b.node = -1;
@@ -458,7 +458,7 @@ export function createBikes(host: BikeHost, opts: BikeOptions = {}): Bikes {
       if (!nav || b.node < 0 || p.node < 0 || nav.part[b.node] !== nav.part[p.node]) return null;
       // Beside it now (out of the shop they leaned it by, back at the bench): they take it.
       if (p.mode !== 'home' && (p.node === b.node || (Math.hypot(p.x - b.x, p.z - b.z) < 0.9 && Math.abs(p.y - b.y) < 0.3))) {
-        take(b, p);
+        take(b);
         return 'home';
       }
       if (stayIn) return null;
@@ -475,7 +475,7 @@ export function createBikes(host: BikeHost, opts: BikeOptions = {}): Bikes {
         const own = ownerOf.get(p);
         if (!own || own.at !== 'home' || own.prop === null || p.mode !== 'home' || !own.door || own.door.node !== route.nodes[0]) return;
         if (!mayRide(p, route, goal, time, own)) return;
-        take(own, p);
+        take(own);
         own.ride = true;
         return;
       }

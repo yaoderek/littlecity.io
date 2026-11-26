@@ -411,7 +411,7 @@ function draw(p: Person, d: Drawn, stage: LifeStage, gust: boolean): void {
   const name = p.react ?? p.pose;
   const walking = !tumble?.pose && (name === 'walk' || name === 'run' || name === 'panic');
   // On a bike (bike-art.ts): seated and pedalling, or wheeling it with a hand on the grip; a small load in its basket.
-  const onBike = !tumble && bikesNow ? bikePose(p, bikesNow, d.look, d.rig, walking, d.look.scale) : null;
+  const onBike = !tumble && bikesNow ? bikePose(p, bikesNow, d.rig, walking, d.look.scale) : null;
   const basket = onBike !== null && inBasket(p.load);
   const pose = onBike?.pose ?? (tumble?.pose ? { ...tumble.pose } : poseOf(name, walking ? p.stride : p.poseTime, p.rank));
   // L26: a strong gust, and a hand goes to the hat.

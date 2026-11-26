@@ -17,7 +17,7 @@ import type { Mat4Like } from '@/core/mat4';
 import type { InstanceHandle, LifeStage } from '@/life/api';
 import { BIKE_AT, LEAN, riddenBike, wholeBike } from '@/parts/people/bike';
 import { aimArm, figureToBody } from '@/parts/people/hands';
-import type { Look, Rig } from '@/parts/people/person';
+import type { Rig } from '@/parts/people/person';
 import { poseOf, type Pose } from '@/parts/people/pose';
 import { doorBikeSpot } from '@/parts/props/bike.part';
 import { BIKE } from '@/style/people';
@@ -325,7 +325,7 @@ function stepsOf(b: Bike): number {
  * `roll`, the lean into a turn, to turn the whole figure by), walking or standing with a hand on the grip
  * when wheeling it. `scale` is the figure's size (world units per figure unit).
  */
-export function bikePose(p: Person, bikes: Bikes, look: Look, rig: Rig, walking: boolean, scale: number): { pose: Pose; roll: number } | null {
+export function bikePose(p: Person, bikes: Bikes, rig: Rig, walking: boolean, scale: number): { pose: Pose; roll: number } | null {
   const b = bikes.inHand(p);
   if (!b || !p.visible) return null;
   const k = 1 / scale;
@@ -353,7 +353,6 @@ export function bikePose(p: Person, bikes: Bikes, look: Look, rig: Rig, walking:
   const pose = poseOf(walking ? 'walk' : 'stand', walking ? p.stride : p.poseTime, p.rank);
   const grip = figureToBody([(-BESIDE + BIKE_AT.grip * g) * k, BIKE_AT.barY * k, ((AHEAD + BIKE_AT.barZ) * g - 0.02) * k], pose, rig);
   aimArm(pose, rig, -1, grip);
-  void look;
   return { pose, roll: 0 };
 }
 
