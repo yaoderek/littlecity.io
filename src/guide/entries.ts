@@ -1337,7 +1337,7 @@ const LISTED: readonly GuideEntry[] = [
     group: 'big-days',
     when: 'Market days, from dawn to early afternoon',
     name: 'Market day',
-    how: 'Lay a plaza at least three by three with two stalls on it, and houses round it. On market mornings traders set up stalls there, a busker juggles and the town comes to buy: each buyer shows what they want in a picture bubble and pays with a coin. With a fisher in town one trader sells the catch, and an orchard sends its apples to the fruit stall.',
+    how: 'Lay a plaza at least three by three with two stalls on it, and houses round it. On market mornings traders set up stalls there, a busker juggles and the town comes to buy, showing what they want in a picture bubble and paying with a coin, and a fisher\'s catch and an orchard\'s apples come to the stalls too.',
     proof: { socket: { rule: 'L56.market-day' } },
     seed: 7801,
     build(b) {
@@ -1541,7 +1541,7 @@ const LISTED: readonly GuideEntry[] = [
     group: 'by-water',
     name: 'The catch comes in',
     when: 'Dawn and by day',
-    how: 'Put a pier with a fish stall or a fish shop within 20 steps of it. The fisher fishes off its end and carries a basket of the catch up to the stall, and people come down to buy a fish, asking with a fish in their speech bubble and paying with a coin. On market days the catch goes to a stall on the market.',
+    how: 'Put a pier with a fish stall or a fish shop within 20 steps of it. The fisher carries baskets of the catch up to the stall (on market days, to the market), and people come down to buy a fish, asking with a fish in their speech bubble and paying with a coin.',
     proof: { socket: { rule: 'L53.fish' } },
     ...town(fishScn),
     view: { yaw: 30, pitch: 34 },
