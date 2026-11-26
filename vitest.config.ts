@@ -14,6 +14,11 @@ import viteConfig from './vite.config.ts';
 // Timeouts are honest ones for a busy shared machine: a fast-tier test that needs more than its
 // project's timeout is a bug in the test (too big for the gate), not a reason to raise the timeout.
 const FULL = process.env.LC_FULL === '1';
+// The gate on GitHub (.github/workflows/gate.yml): its Mac has three slow cores, and a few browser tests
+// that depend on timing (the first visit, touch drags, a town's growth) miss by a frame there, a
+// different one or two each run. Two browsers at a time and two more tries; a test that needed one is
+// reported as retried.
+const CI = process.env.CI === 'true';
 
 export default mergeConfig(
   viteConfig,
@@ -42,7 +47,8 @@ export default mergeConfig(
             exclude: ['**/node_modules/**'],
             globalSetup: ['tests/helpers/e2e-server.ts'],
             // Each worker drives its own Chromium with WebGL: a few at a time, not one per core.
-            maxWorkers: 3,
+            maxWorkers: CI ? 2 : 3,
+            retry: CI ? 2 : 0,
             testTimeout: 120_000,
             hookTimeout: 120_000,
           },
