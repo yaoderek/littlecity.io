@@ -142,7 +142,19 @@ export default defineSystem<State>({
         ship.held = true;
       }
       const coming = ship ?? shipFor(state.stage, port.id, false);
-      const cranes = [...state.cranes.entries()].filter(([id]) => state.craneAt.get(id) === port.id).map(([, c]) => c).sort((a, b) => Number(b.large) - Number(a.large));
+      // Those that reach the ship in work first (large before medium); the rest stand idle under the cap.
+      const reach = (c: Crane): number => {
+        const cargo = coming?.body?.rig.cargo;
+        if (!coming || !cargo) return 0;
+        // Where its containers will be when it lies at its mooring (+Z its bow, +X its starboard side).
+        const { x: mx, z: mz, yaw } = coming.mooring;
+        const sn = Math.sin(yaw), cs = Math.cos(yaw);
+        return cargo.slots.some(([x, , z]) => c.reaches({ x: mx + cs * x + sn * z, y: 0, z: mz - sn * x + cs * z, yaw: 0 })) ? 1 : 0;
+      };
+      const cranes = [...state.cranes.entries()]
+        .filter(([id]) => state.craneAt.get(id) === port.id)
+        .map(([, c]) => c)
+        .sort((a, b) => reach(b) - reach(a) || Number(b.large) - Number(a.large));
       const v = port.visit;
       const overtime = v !== null && v.ship.t > PORT.freighterStay + PORT.freighterHold;
       cranes.forEach((c, k) => {

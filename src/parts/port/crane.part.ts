@@ -128,7 +128,7 @@ function drawGantry(b: MeshBuilder, paint: CranePaint): Vec3 {
     for (const sx of [1, -1]) member(b, [sx * (GIRDER_X + 0.05), B + 0.26, hz1 + 0.05], [sx * (GIRDER_X + 0.05), B + 0.26, HINGE_Z - 0.05], 0.035);
   });
   // Lights: red on top, floods under the hinge and under the back reach.
-  lamp(b, [0, APEX_Y + 0.15, APEX_Z], 0.06, PALETTE.red, 'top-light');
+  lamp(b, [0, APEX_Y + 0.16, APEX_Z], 0.085, PALETTE.red, 'top-light');
   b.at(translation(0, B - 0.2, HINGE_Z - 0.1), () => floodlight(b, [0, 0, 0], 0.18, 'flood-front'));
   b.at(compose(translation(0, B - 0.2, back + 0.35), rotationY(Math.PI)), () => floodlight(b, [0, 0, 0], 0.18, 'flood-back'));
   return [0, APEX_Y + 0.25, APEX_Z];
@@ -181,7 +181,7 @@ function drawMediumTop(b: MeshBuilder, paint: CranePaint): void {
     }
     member(b, [-0.14, ay, az], [0.14, ay, az], 0.09);
   });
-  lamp(b, [0, ay + 0.1, az], 0.05, PALETTE.red, 'top-light');
+  lamp(b, [0, ay + 0.11, az], 0.075, PALETTE.red, 'top-light');
   for (const sx of [1, -1]) b.at(translation(sx * 0.2, 0.62, 0.14), () => floodlight(b, [0, 0, 0], 0.12, `flood${sx}`));
 }
 

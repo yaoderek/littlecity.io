@@ -20,7 +20,7 @@ import { fly, place } from '../motion/pose';
 import { onTwos } from '../motion/twos';
 
 const HIDDEN: Mat4 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
-const SMOKE = { actor: 'puff', variant: 'smoke' } as const;
+const SMOKE = { actor: 'puff', variant: 'mist' } as const;
 
 /** What the tug needs to know of its ship. */
 export interface Towed {
@@ -38,7 +38,7 @@ export interface Towed {
 export function steamerSmoke(stage: LifeStage, x: number, y: number, z: number, size: number, wind: { dirX: number; dirZ: number; strength: number }, k: number): void {
   const drift = 0.6 + wind.strength;
   fxOf(stage).play(SMOKE, 2.6, (t, m) => {
-    const s = size * (0.45 + 1.3 * t);
+    const s = size * (0.7 + 1.8 * t);
     place(x + wind.dirX * drift * t * 1.4, y + t * 0.9, z + wind.dirZ * drift * t * 1.4, k, s, s, s, m);
   });
 }

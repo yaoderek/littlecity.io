@@ -10,7 +10,7 @@ import { compose, rotationY, translation } from '@/core/mat4';
 import { definePart } from '@/gen/api';
 import { PATTERN } from '@/gen/mesh';
 import { PALETTE } from '@/style/palette';
-import { floodlight, member } from './kit';
+import { lamp, member } from './kit';
 
 export const MAST_H = 3.4;
 
@@ -32,7 +32,8 @@ export default definePart({
       b.at(translation(x, 0, z), () => b.lathe([[0.03, top - 0.02], [0.2, top], [0.2, top + 0.04], [0, top + 0.04]], { segments: 10 }));
       b.at(translation(x, 0, z), () => b.lathe([[0.19, top + 0.04], [0.19, top + 0.12], [0.17, top + 0.12], [0.17, top + 0.05]], { segments: 10 }));
     });
-    for (let k = 0; k < 4; k++) b.at(compose(translation(x, top + 0.16, z), rotationY((k * Math.PI) / 2 + Math.PI / 4)), () => floodlight(b, [0, 0, 0.12], 0.13, `lamp${k}`));
+    // Four lamps round the gallery: globes of glow under dark hoods, seen from any side and from above.
+    for (let k = 0; k < 4; k++) b.at(compose(translation(x, top + 0.17, z), rotationY((k * Math.PI) / 2 + Math.PI / 4)), () => lamp(b, [0, 0, 0.13], 0.075, PALETTE.yellow, `lamp${k}`));
     return { mesh: b.build(), anchors: { perch: translation(x + 0.18, top + 0.12, z) } };
   },
 });
