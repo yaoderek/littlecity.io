@@ -506,7 +506,7 @@ function frame(now: number): void {
     view.setDressing(ready.dressing);
     life.sync(ready);
     view.drawSeen?.();
-    ui?.dressed(ready.dressing);
+    ui?.dressed(ready.dressing, ready.shape);
     const t = performance.now();
     pace.done(t, t - dressFrom);
     townWork += t - dressFrom;
