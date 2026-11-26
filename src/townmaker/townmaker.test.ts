@@ -230,7 +230,10 @@ function survey(): Surveyed[] {
  * Roles the generator does not try to place, and why (asserted absent from
  * the expectation, listed so a new stamp can take them off).
  */
-const NOT_PLACED: Record<string, string> = {};
+const NOT_PLACED: Record<string, string> = {
+  // R-D05: a dock three wide out from the shore is the player's to lay; Grow a town builds piers and quays.
+  shipyard: 'built by the player, never grown',
+};
 
 describe('grow a town: the survey (seeds 1 to 30, both generators)', () => {
   test('every character is rolled somewhere', () => {
@@ -308,7 +311,7 @@ describe('grow a town: the survey (seeds 1 to 30, both generators)', () => {
     }
     console.log(`guide entries never grown: ${missing.join(', ') || 'none'}`);
     // Entries that need the player's hand (digging a river, painting a croquet lawn) may stay missing.
-    const allowed = new Set(['dug-river', 'croquet-lawn', 'boules-court', 'running-track', 'kickabout-green', 'wedding', 'market-day', 'garrison', 'rider', 'cog', 'ships']);
+    const allowed = new Set(['dug-river', 'croquet-lawn', 'boules-court', 'running-track', 'kickabout-green', 'wedding', 'market-day', 'garrison', 'rider', 'cog', 'ships', 'shipyard', 'ship-launch']);
     expect(missing.filter((m) => !allowed.has(m))).toEqual([]);
   });
 

@@ -14,6 +14,7 @@ import type { DressingPlan } from '@/resolve/plan';
 import { SHIPYARD } from '@/style/shipyard';
 import { scenario } from '@/scenario';
 import { recordingStage } from '../testing/stage';
+import { mischiefOf } from '../mischief/director';
 import yardTown from '../../../scenarios/life/L75.shipyard.scenario';
 import { clock, scenarioTown, watch, type TestTown } from '../people/testing';
 import { BUILD_PHASES, phaseSeconds, type ShipyardChain, type YardPhase } from './chains/shipyard';
@@ -176,5 +177,41 @@ describe('R-D05: the shipyard', () => {
     expect(mine.size).toBeGreaterThan(5);
     const left = [...mine].map((i) => rec.spawned[i]!).filter((x) => !x.released && x.visible);
     expect(left.map((x) => x.id)).toEqual([]);
+  });
+
+  test('a nuke mid-build: the hull comes down in smoke in a few seconds, and the yard starts again from the keel', () => {
+    fast();
+    const rec = recordingStage(town);
+    let hitAt = -1;
+    let downAt = -1;
+    let smoke = 0;
+    let keelAgain = -1;
+    run(
+      town,
+      120,
+      (_t, yard, s) => {
+        const y = yard.yards[0];
+        if (!y) return;
+        if (hitAt < 0 && y.phase === 'planks' && y.step > 15) {
+          hitAt = s;
+          const d = mischiefOf(rec.stage);
+          const b = d.dropNuke([22.5, 1, 27.5]);
+          b.age = b.fall + 0.1;
+        }
+        if (hitAt > 0 && downAt < 0 && y.step < 0) {
+          downAt = s;
+          // The blast is over.
+          mischiefOf(rec.stage).bombs.length = 0;
+        }
+        if (downAt > 0 && keelAgain < 0 && y.phase === 'keel') keelAgain = s;
+      },
+      { stage: rec },
+    );
+    smoke = rec.spawned.filter((x) => x.spec && 'actor' in x.spec && x.spec.actor === 'puff' && x.spec.variant === 'smoke').length;
+    expect(hitAt).toBeGreaterThan(0);
+    expect(downAt - hitAt).toBeGreaterThan(0.5);
+    expect(downAt - hitAt).toBeLessThan(6);
+    expect(smoke).toBeGreaterThan(0);
+    expect(keelAgain).toBeGreaterThan(downAt);
   });
 });

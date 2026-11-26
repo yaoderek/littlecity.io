@@ -96,8 +96,8 @@ function full(kind: YardKind, look: number): Full {
   const rigNames = ['mast', 'mast-top', 'rigging', 'bowsprit'];
   for (let i = 0; i < 3; i++) rigNames.push(`mast${i}`, `mast${i}-top`, `lantern${i}-iron`, `lantern${i}-glow`);
   f = { mesh: b.build(), skin, rig: new Set(rigNames.map((n) => b.inkOf(n))) };
-  // Only the last kind and look asked for is kept: a yard builds one ship at a time.
-  fulls.clear();
+  // Only the last two kinds and looks asked for are kept: a yard builds one ship at a time (two on a desktop).
+  if (fulls.size >= 2) fulls.delete(fulls.keys().next().value!);
   fulls.set(key, f);
   return f;
 }

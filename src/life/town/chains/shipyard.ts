@@ -55,7 +55,7 @@ import { PERSON } from '@/style/people';
 import { SHIPS } from '@/style/ships';
 import { SHIPYARD } from '@/style/shipyard';
 import type { InstanceHandle, TimeSignal } from '../../api';
-import { hullRing, swellAt, wakeRing, type Swell } from '../../boats/afloat';
+import { hullRing, pushWave, swellAt, wakeRing, type Swell } from '../../boats/afloat';
 import { fxOf } from '../../fx/fx';
 import { spoutMesh } from '../../mischief/meshes';
 import { mischiefOf } from '../../mischief/director';
@@ -817,6 +817,8 @@ export function shipyardChain(): ShipyardChain {
           if (stage) {
             wakeRing(stage, st.x, st.z, 1.1, 3.4, 3.2);
             hullRing(stage, st.x, st.z, l.geo.yaw, 2.2, 2.6, 2.6, 3.4);
+            // The wave it sends out rocks the boats nearby.
+            pushWave(stage, st.x, st.z, time.seconds, l.kind === 'galleon' ? 1 : 0.7);
           }
         }
       }
@@ -1394,15 +1396,15 @@ export function shipyardChain(): ShipyardChain {
       for (const y of yards) {
         if (y.dead) continue;
         if (phase === 'keel' && y.phase === 'idle') y.t = 1e6;
-        else if (phase === 'ready') {
+        else if ((phase === 'ready' || phase === 'gather') && (y.phase === 'ready' || building(y))) {
           y.beam?.h?.release();
+          for (const p of y.beam?.carriers ?? []) if (p.load === 'beam') p.load = null;
           y.beam = null;
+          letGo(board, y.hands, true);
+          y.hands = [];
           show(board, y, buildSteps(y.kind).length - 1);
           setPhase(board, y, 'ready');
-        } else if (phase === 'gather' && (y.phase === 'ready' || building(y))) {
-          show(board, y, buildSteps(y.kind).length - 1);
-          setPhase(board, y, 'ready');
-          y.waited = 1e6;
+          if (phase === 'gather') y.waited = 1e6;
         }
       }
     },
