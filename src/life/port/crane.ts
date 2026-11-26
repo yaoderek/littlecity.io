@@ -21,7 +21,8 @@ import { compose, invertAffine, multiply, rotationX, rotationY, translation, tra
 import { APEX_Y, APEX_Z, GIRDER_X, HINGE_Z, JIB_HINGE, MEDIUM_APEX, ringTop } from '@/parts/port/crane.part';
 import { PORT } from '@/style/port';
 import type { InstanceHandle, LifeStage } from '../api';
-import { angleDelta, clamp01, easeInOut } from '../motion/ease';
+import { angleDelta, clamp01, easeIn, easeInOut, pop } from '../motion/ease';
+import { removalPuff } from '../ships/puff';
 
 const HIDDEN: Mat4 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
 
@@ -106,8 +107,9 @@ export class Crane {
     private base: Mat4Like,
     private off: number,
     /** How far along the rails it may travel from home (C frame X). */
-    readonly lo: number,
-    readonly hi: number,
+    public lo: number,
+    public hi: number,
+    private seed = 0,
   ) {
     this.large = kind === 'large';
     this.home = multiply(base, translation(off, 0, 0.5));
@@ -292,6 +294,7 @@ export class Crane {
 
   /** Moves on `dt` seconds; returns true when a job has just finished. */
   update(dt: number): boolean {
+    if (this.comeAndGo(dt)) return false;
     let finished = false;
     if (this.phase !== 'idle') {
       this.t += dt;
@@ -407,9 +410,13 @@ export class Crane {
   /** The world matrices of every piece, from the pose. */
   private draw(): void {
     const p = this.pose;
+    // Arriving or leaving, everything is drawn grown out of (or shrunk into) the crane's own foot.
+    const g = this.grow;
+    const G: Mat4 | null = g === 1 ? null : compose(this.home, [g, 0, 0, 0, 0, g, 0, 0, 0, 0, g, 0, 0, 0, 0, 1], this.inv);
+    const fin = (m: Mat4Like): Mat4Like => (G ? multiply(G, m) : m);
     const C = this.large ? multiply(this.home, translation(p.travel, 0, 0)) : this.home;
-    if (this.large) this.body?.setMatrix(multiply(this.base, translation(p.travel, 0, 0)));
-    const at = (m: Mat4Like, h: InstanceHandle | null): void => h?.setMatrix(m);
+    if (this.large || G) this.frame?.setMatrix(fin(multiply(this.base, translation(this.large ? p.travel : 0, 0, 0))));
+    const at = (m: Mat4Like, h: InstanceHandle | null): void => h?.setMatrix(fin(m));
     let loadAt: Mat4;
     if (this.large) {
       const B = PORT.largeBoomY;
@@ -434,7 +441,7 @@ export class Crane {
         const s = i === 0 ? 1 : -1;
         const a = transformPoint(C, [s * 0.24, APEX_Y - 0.05, APEX_Z]);
         const b = transformPoint(boom, [s * GIRDER_X, 0.16, L * 0.68]);
-        h.setMatrix(ropeMatrix(a, b));
+        h.setMatrix(fin(ropeMatrix(a, b)));
       });
     } else {
       const top = compose(C, translation(0, ringTop(), 0), rotationY(p.slew));
@@ -452,10 +459,10 @@ export class Crane {
       loadAt = compose(hook, translation(0, -(PORT.boxH + 0.39), 0));
       const a = transformPoint(top, MEDIUM_APEX);
       const b = transformPoint(jib, [0, 0.1, PORT.mediumJib - 0.1]);
-      this.stays[0]?.setMatrix(ropeMatrix(a, b));
+      this.stays[0]?.setMatrix(fin(ropeMatrix(a, b)));
     }
     if (this.load) {
-      this.load.setMatrix(loadAt);
+      this.load.setMatrix(fin(loadAt));
       this.loadPlace.x = loadAt[12]!;
       this.loadPlace.y = loadAt[13]!;
       this.loadPlace.z = loadAt[14]!;
@@ -465,7 +472,88 @@ export class Crane {
   release(): void {
     for (const h of this.pieces) h.release();
     this.pieces = [];
-    if (this.large) this.body?.setMatrix(this.base);
+    this.stand?.release();
+    this.stand = null;
+    if (this.body) this.body.setMatrix(this.base);
+  }
+
+  // ── arriving and leaving ──
+
+  /** How big it is drawn about its foot (1 standing; less while it rises or goes). */
+  private grow = 1;
+  private arrival: number | null = null;
+  private leaving: number | null = null;
+  /** A drawing of its frame of its own, once the plan's has gone (it shrinks away in its puffs). */
+  private stand: InstanceHandle | null = null;
+  private get frame(): InstanceHandle | null {
+    return this.stand ?? this.body;
+  }
+
+  /**
+   * Raised where it stands (a port just made, or grown): after `delay` seconds its frame grows up out of the
+   * deck with the game's pop, then its boom (or jib) swings up into its idle place. About a second and a half.
+   */
+  arrive(delay: number): void {
+    this.arrival = -delay;
+    this.grow = 0;
+    if (this.large) this.pose.raise = 0;
+    else this.pose.luff = 0.15;
+    this.phase = 'idle';
+    this.draw();
+  }
+
+  /** Arriving or leaving: not to be given work. */
+  get coming(): boolean {
+    return this.arrival !== null || this.leaving !== null;
+  }
+
+  /**
+   * Its port has gone (or it moves along): whatever it carries is given back to its job, and it shrinks into
+   * its foot in a burst of puffs, as anything removed does. `spec`: its frame's drawing, now gone from the plan.
+   */
+  leave(spec: { variant: string; look: number; off: number }): void {
+    this.stop();
+    this.body = null;
+    this.stand = this.stage.spawn({ actor: 'port-crane', variant: spec.variant, params: { look: spec.look, off: spec.off } }, this.base);
+    this.leaving = 0;
+    const [x, y, z] = transformPoint(this.home, [0, 0, 0]);
+    const h = this.large ? APEX_Y : ringTop() + 1;
+    for (let k = 0; k < 3; k++) removalPuff(this.stage, this.seed, x, y + (h * (k + 0.5)) / 3, z, 1.6, k + (this.large ? 10 : 20));
+  }
+
+  /** True once it has finished leaving (release it). */
+  get gone(): boolean {
+    return this.leaving !== null && this.leaving >= LEAVE_TIME;
+  }
+
+  /** Steps an arrival or a leaving; true while one is under way (and it then takes the frame's step). */
+  private comeAndGo(dt: number): boolean {
+    if (this.leaving !== null) {
+      this.leaving += dt;
+      this.grow = Math.max(0.001, 1 - easeIn(clamp01(this.leaving / LEAVE_TIME)));
+      this.draw();
+      return true;
+    }
+    if (this.arrival === null) return false;
+    this.arrival += dt;
+    if (this.arrival < 0) {
+      this.grow = 0.001;
+      this.draw();
+      return true;
+    }
+    const k = this.arrival / GROW_TIME;
+    this.grow = Math.max(0.001, pop(Math.min(1, k)));
+    if (k >= 1) {
+      this.grow = 1;
+      this.arrival = null;
+      // The boom swings up into its idle place, quickly.
+      this.go('boom-up');
+      this.dur = 0.9;
+      this.draw();
+      return false;
+    }
+    this.draw();
+    return true;
   }
 }
 
@@ -474,6 +562,10 @@ function mediumIdleY(): number {
   const head = ringTop() + JIB_HINGE[1] + PORT.mediumJib * Math.sin(LUFF_IDLE) - 0.08;
   return head - 0.7 - PORT.boxH - 0.39;
 }
+
+/** Seconds a crane takes to grow out of the deck, and to shrink away. */
+const GROW_TIME = 0.5;
+const LEAVE_TIME = 0.35;
 
 function scaleY(s: number): Mat4 {
   return [1, 0, 0, 0, 0, s, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];

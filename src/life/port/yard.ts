@@ -17,6 +17,13 @@ import type { InstanceHandle, LifeStage } from '../api';
 import { place } from '../motion/pose';
 import { removalPuff } from '../ships/puff';
 import type { Place } from './crane';
+import { fxOf } from '../fx/fx';
+import { easeOut, pop } from '../motion/ease';
+
+const HIDDEN = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+const DUST = { actor: 'puff', variant: 'dust', params: { look: 1 } } as const;
+/** Seconds a container takes to be set down. */
+const SET_TIME = 0.28;
 
 /** One container: its drawing, its colour, and whether it still holds goods (it is unpacked once). */
 export interface Box {
@@ -39,14 +46,25 @@ export interface Stack {
 /** The deck's top under the containers: the port's concrete apron (src/parts/port/port-deck.part.ts). */
 export const APRON = CELL_H + 0.02;
 
+/** A container being set down in a new bay: it drops in and pops out of its foot, with a little dust. */
+interface Arrival {
+  box: Box;
+  at: Place;
+  age: number;
+}
+
 export class Yard {
   stacks: Stack[] = [];
-  private fresh = true;
+  private arrivals: Arrival[] = [];
 
   constructor(private stage: LifeStage, private seed: number, readonly key: string) {}
 
-  /** The port's shape now: bays that stay keep their stacks; bays that went puff theirs away. */
-  layout(pp: PortPlan): void {
+  /**
+   * The port's shape now: bays that stay (where they stand on the deck) keep their stacks; bays that went
+   * puff theirs away; new bays get a seeded stack, set down one container after another when `arrive`
+   * (an edit made the port or grew it), at once when the town is just opened.
+   */
+  layout(pp: PortPlan, arrive = false): void {
     const old = new Map(this.stacks.map((s) => [s.key, s]));
     const next: Stack[] = [];
     for (const spot of pp.yard.stacks) {
@@ -54,7 +72,7 @@ export class Yard {
       // Doors toward the aisle the unpacking bay opens on; elsewhere either way, by the bay.
       const doorsAlong = spot.unpack ? true : rand(this.seed, 'yard-doors', this.key, spot.i, spot.r) < 0.5;
       const yaw = yawOfDir(doorsAlong ? ((pp.port.along + 2) % 4 as 0 | 1 | 2 | 3) : pp.port.along);
-      const key = `${spot.i},${spot.r},${spot.max}`;
+      const key = `${Math.round(x * 2)},${Math.round(z * 2)},${spot.max}`;
       const had = old.get(key);
       if (had && Math.abs(had.x - x) < 1e-6 && Math.abs(had.z - z) < 1e-6) {
         old.delete(key);
@@ -64,27 +82,56 @@ export class Yard {
       next.push({ key, spot, x, z, y: APRON, yaw, boxes: [] });
     }
     for (const s of old.values()) this.clear(s);
+    const fresh = next.filter((s) => !this.stacks.includes(s));
     this.stacks = next;
-    if (this.fresh) {
-      this.fresh = false;
-      this.fill();
-    }
+    this.fill(fresh, arrive);
   }
 
-  /** A new port's yard: seeded heights, the unpacking bay with one container in it. */
-  private fill(): void {
-    for (const s of this.stacks) {
+  /** New bays' stacks: seeded heights, the unpacking bay with one container in it. */
+  private fill(stacks: readonly Stack[], arrive: boolean): void {
+    const heights = stacks.map((s) => {
       const r = (what: string): number => rand(this.seed, 'yard', this.key, s.key, what);
-      const n = s.spot.unpack ? 1 : Math.min(s.spot.max, Math.floor(r('h') * (s.spot.max + 1) * PORT.yardFill * 1.6));
-      for (let k = 0; k < n; k++) this.push(s, Math.floor(r(`look${k}`) * 6), true);
-    }
+      return s.spot.unpack ? 1 : Math.min(s.spot.max, Math.floor(r('h') * (s.spot.max + 1) * PORT.yardFill * 1.6));
+    });
+    // One after another, within about a second however many.
+    const total = heights.reduce((x, y) => x + y, 0);
+    const gap = Math.min(0.09, 1.1 / Math.max(1, total));
+    let n = 0;
+    stacks.forEach((s, i) => {
+      for (let k = 0; k < heights[i]!; k++) {
+        const look = Math.floor(rand(this.seed, 'yard', this.key, s.key, `look${k}`) * 6);
+        this.push(s, look, true, arrive ? 0.35 + gap * n++ : -1);
+      }
+    });
   }
 
-  /** A new container on top of a stack (only when a port is new: everything later is carried). */
-  private push(s: Stack, look: number, full: boolean): void {
+  /** A new container on top of a stack (a port new or grown: everything later is carried); set down after `delay` s, or at once (< 0). */
+  private push(s: Stack, look: number, full: boolean, delay: number): void {
     const at = this.placeOf(s, s.boxes.length);
-    const h = this.stage.spawn({ actor: 'container', params: { look } }, place(at.x, at.y, at.z, at.yaw));
-    s.boxes.push({ h, look, full });
+    const h = this.stage.spawn({ actor: 'container', params: { look } }, delay < 0 ? place(at.x, at.y, at.z, at.yaw) : HIDDEN);
+    const box = { h, look, full };
+    s.boxes.push(box);
+    if (delay >= 0) this.arrivals.push({ box, at, age: -delay });
+  }
+
+  /** Containers being set down: each drops the last bit onto its stack and settles with a puff of dust. */
+  update(dt: number): void {
+    if (!this.arrivals.length) return;
+    this.arrivals = this.arrivals.filter((a) => {
+      a.age += dt;
+      if (!this.stacks.some((s) => s.boxes.includes(a.box))) return false;
+      if (a.age < 0) return true;
+      const k = Math.min(1, a.age / SET_TIME);
+      const s = Math.max(0.001, pop(k));
+      const drop = 0.45 * (1 - easeOut(k));
+      a.box.h.setMatrix(place(a.at.x, a.at.y + drop, a.at.z, a.at.yaw, s, s, s));
+      if (k < 1) return true;
+      fxOf(this.stage).play(DUST, 0.5, (t, m) => {
+        const r = 0.35 + 0.5 * easeOut(t), sc = 0.28 * (1 - t);
+        place(a.at.x + Math.sin(a.at.yaw) * r, a.at.y + 0.05, a.at.z + Math.cos(a.at.yaw) * r, a.at.yaw, sc, sc, sc, m);
+      });
+      return false;
+    });
   }
 
   /** Where tier `k` of a stack is. */

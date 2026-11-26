@@ -159,3 +159,58 @@ describe('into town', () => {
     expect(emptied).toBe(true);
   });
 });
+
+describe('arriving and leaving', () => {
+  test('a port made by an edit: cranes rise one after another, containers are set down, all within about two seconds; unmade, cranes shrink away', () => {
+    const full = resolveScenario(scn);
+    // Start as a quay: the big port's two seaward rows not built yet.
+    let world = full.world;
+    for (let x = 14; x <= 25; x++) for (const z of [25, 26]) world = applyEdit(world, full.terrain, { type: 'eraseBlock', cell: key(x, 0, z) });
+    const resolve = (w: typeof world) => {
+      const shape = resolveShape(w, full.terrain);
+      return { world: w, terrain: full.terrain, shape, dressing: resolveDressing(shape) };
+    };
+    const quay = resolve(world);
+    const rec = recordingStage(quay);
+    const signals = createSignals(scn.seed);
+    const life = createLife(rec.stage, signals, { behaviours: [], systems: [portSystem] });
+    life.sync(quay);
+    life.update(signals.advance(0.05));
+    const scale = (m: readonly number[]): number => Math.hypot(m[0]!, m[1]!, m[2]!);
+    // The rows go back down: a port.
+    const port = resolve(full.world);
+    rec.setTown(port.shape, port.dressing);
+    life.sync(port);
+    const frames = port.dressing.actors.filter((a) => a.type === 'port-crane' && a.at && 'cell' in a.at && (a.at as { cell: number }).cell % 64 < 30);
+    expect(frames.length).toBe(2);
+    const sizes = (): number[] => frames.map((f) => scale(rec.of(f.id).matrix));
+    const boxes = (): number => rec.spawned.filter((r) => r.spec && 'actor' in r.spec && r.spec.actor === 'container' && !r.released && scale(r.matrix) > 0.9).length;
+    life.update(signals.advance(0.05));
+    expect(Math.max(...sizes())).toBeLessThan(0.2); // not there in one frame
+    const early = boxes();
+    let t = 0.05;
+    const firstUp: number[] = [];
+    while (t < 2.4) {
+      life.update(signals.advance(0.05));
+      t += 0.05;
+      sizes().forEach((s, i) => {
+        if (s > 0.98 && firstUp[i] === undefined) firstUp[i] = t;
+      });
+    }
+    expect(sizes().every((s) => Math.abs(s - 1) < 0.02)).toBe(true);
+    // Staggered: the second crane is up a little after the first.
+    expect(Math.abs(firstUp[0]! - firstUp[1]!)).toBeGreaterThan(0.1);
+    expect(boxes()).toBeGreaterThan(early + 3);
+    // Unmade again: the cranes' frames go from the plan, and drawings of their own shrink into their feet.
+    const before = rec.spawned.length;
+    rec.setTown(quay.shape, quay.dressing);
+    life.sync(quay);
+    const stands = rec.spawned.slice(before).filter((r) => r.spec && 'actor' in r.spec && r.spec.actor === 'port-crane');
+    expect(stands.length).toBe(2);
+    life.update(signals.advance(0.1));
+    expect(stands.every((r) => !r.released && scale(r.matrix) > 0.1 && scale(r.matrix) < 1)).toBe(true);
+    for (let k = 0; k < 10; k++) life.update(signals.advance(0.05));
+    expect(stands.every((r) => r.released)).toBe(true);
+    life.dispose();
+  });
+});

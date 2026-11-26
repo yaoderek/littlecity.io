@@ -2,12 +2,14 @@
 // container port, and where everything on it goes. Not a rule file; shared
 // by the rules, the parts and src/life/port. Pure.
 //
-// A PORT is a dock whose cells fill a rectangle at least PORT.minDepth deep
+// A PORT is a dock that contains a rectangle at least PORT.minDepth deep
 // (out from the shore) and PORT.minLength long (along it), at sea level.
 // One long side meets the shore (land, a cliff or a quay wall) along at
 // least half its length; the other faces open water for SHIPS.berthWater
 // columns all the way along. Gaps are allowed only on the inner row, and
-// only where the shore itself juts out into it (that cell is land).
+// only where the shore itself juts out into it (that cell is land). The
+// largest such rectangle is the port proper; the dock's other cells are the
+// port's too (they get its deck).
 //
 // Port coordinates: `i` along the shore (0 to length − 1), `r` rows out from
 // it (0 against the land, depth − 1 on the water). The two seaward rows are
@@ -75,60 +77,139 @@ export function portCoords(p: Port, x: number, z: number): [number, number] {
 export const yawOfDir = (d: Dir4): number => Math.atan2(DIR4[d]![0], DIR4[d]![1]);
 
 /**
- * R-D00: is this dock a port, and which way does it lie? `quayWall` says whether a solid block in the
+ * R-D00: is this dock a port, and where is its port? A dock is a port when it CONTAINS a rectangle that
+ * qualifies (PortRules, and the shore and open-water tests); the largest such rectangle is the port proper
+ * (its cranes, its berth, its yard). Cells outside it (an extension, an L, a strip along the shore, a pier)
+ * belong to the port too and get its deck. So adding a cell never turns a port back into a quay, and erasing
+ * one keeps it a port while a qualifying rectangle remains. `quayWall` says whether a solid block in the
  * water beside it is a quay wall (R-M05), which counts as shore.
  */
 export function portOf(f: DockBase, cells: readonly CellKey[], rules: PortRules, quayWall: (cell: CellKey) => boolean = () => false): Port | null {
   if (cells.length < rules.minLength * (rules.minDepth - 1)) return null;
-  let x0 = 99, x1 = -1, z0 = 99, z1 = -1;
-  for (const c of cells) {
-    if (keyY(c) !== 0) return null;
-    x0 = Math.min(x0, keyX(c));
-    x1 = Math.max(x1, keyX(c));
-    z0 = Math.min(z0, keyZ(c));
-    z1 = Math.max(z1, keyZ(c));
-  }
-  const mine = new Set(cells);
+  const mine = new Set<CellKey>();
+  for (const c of cells) if (keyY(c) === 0) mine.add(c);
+  if (mine.size < rules.minLength * (rules.minDepth - 1)) return null;
   let best: Port | null = null;
+  let bestArea = 0;
   for (const landward of DIRS) {
-    const seaward = opposite(landward);
-    const alongX = landward === 0 || landward === 2;
-    const along: Dir4 = alongX ? 1 : 2;
-    const length = alongX ? x1 - x0 + 1 : z1 - z0 + 1;
-    const depth = alongX ? z1 - z0 + 1 : x1 - x0 + 1;
-    if (length < rules.minLength || depth < rules.minDepth) continue;
-    // (i = 0, r = 0): the west- or north-most cell of the landward row.
-    const ox = alongX ? x0 : landward === 3 ? x0 : x1;
-    const oz = alongX ? (landward === 0 ? z0 : z1) : z0;
-    const p: Port = { landward, seaward, along, x0: ox, z0: oz, length, depth };
-    if (fits(f, p, mine, rules, quayWall) && (!best || length > best.length)) best = p;
+    const found = bestFacing(f, mine, landward, rules, quayWall);
+    if (found && found.length * found.depth > bestArea) {
+      best = found;
+      bestArea = found.length * found.depth;
+    }
   }
   return best;
 }
 
-function fits(f: DockBase, p: Port, mine: ReadonlySet<CellKey>, rules: PortRules, quayWall: (cell: CellKey) => boolean): boolean {
-  let shore = 0;
-  for (let i = 0; i < p.length; i++) {
-    for (let r = 0; r < p.depth; r++) {
-      const c = portCell(p, i, r);
-      if (mine.has(c)) continue;
-      // Only the inner row may have gaps, and only where the land itself comes out into it.
-      if (r > 0) return false;
-      const [x, z] = portColumn(p, i, r);
-      if (!inColumnBounds(x, z) || f.terrain.height[columnIndex(x, z)]! < 1) return false;
-    }
-    // The landward edge of this column: the inner cell's land side, or (a gap) the land in the gap.
-    const inner = portCell(p, i, 0);
-    if (mine.has(inner)) {
-      const side = dockSide(f, inner, p.landward);
-      if (isShore(side) || (side === 'solid' && quayWall(neighborCell(inner, p.landward)))) shore++;
-    } else shore++;
-    // Open water off the seaward face.
-    const [ox, oz] = portColumn(p, i, p.depth - 1);
-    const [sx, sz] = DIR4[p.seaward]!;
-    for (let k = 1; k <= rules.water; k++) if (!freeWater(f, ox + sx * k, oz + sz * k)) return false;
+/** The column of (u along, v out to sea) for a port whose shore is on side `landward`. */
+function columnUV(landward: Dir4, u: number, v: number): [number, number] {
+  switch (landward) {
+    case 0:
+      return [u, v];
+    case 2:
+      return [u, -v];
+    case 3:
+      return [v, u];
+    default:
+      return [-v, u];
   }
-  return shore * 2 >= p.length;
+}
+
+/** The largest qualifying rectangle with its shore on side `landward`, or null. */
+function bestFacing(f: DockBase, mine: ReadonlySet<CellKey>, landward: Dir4, rules: PortRules, quayWall: (cell: CellKey) => boolean): Port | null {
+  const seaward = opposite(landward);
+  const along: Dir4 = landward === 0 || landward === 2 ? 1 : 2;
+  const uvOf = (c: CellKey): [number, number] => {
+    const x = keyX(c), z = keyZ(c);
+    return landward === 0 ? [x, z] : landward === 2 ? [x, -z] : landward === 3 ? [z, x] : [z, -x];
+  };
+  let u0 = 99, u1 = -99, v0 = 99, v1 = -99;
+  for (const c of mine) {
+    const [u, v] = uvOf(c);
+    u0 = Math.min(u0, u);
+    u1 = Math.max(u1, u);
+    v0 = Math.min(v0, v);
+    v1 = Math.max(v1, v);
+  }
+  const has = (u: number, v: number): boolean => {
+    const [x, z] = columnUV(landward, u, v);
+    return inColumnBounds(x, z) && mine.has(key(x, 0, z));
+  };
+  const land = (u: number, v: number): boolean => {
+    const [x, z] = columnUV(landward, u, v);
+    return inColumnBounds(x, z) && f.terrain.height[columnIndex(x, z)]! >= 1;
+  };
+  // How many cells in a row out to sea from (u, v), all of this dock.
+  const runs = new Map<number, number>();
+  const runAt = (u: number, v: number): number => {
+    const k = (u + 64) * 256 + (v + 64);
+    let n = runs.get(k);
+    if (n === undefined) {
+      n = 0;
+      while (has(u, v + n)) n++;
+      runs.set(k, n);
+    }
+    return n;
+  };
+  const [sx, sz] = DIR4[seaward]!;
+  let best: Port | null = null;
+  let bestArea = 0;
+  for (let r0 = v0 - 1; r0 <= v1; r0++) {
+    for (let depth = rules.minDepth; r0 + depth - 1 <= v1; depth++) {
+      const ok: boolean[] = [];
+      const shore: boolean[] = [];
+      const inner: boolean[] = [];
+      let any = false;
+      for (let u = u0; u <= u1; u++) {
+        const i = u - u0;
+        const row0 = has(u, r0);
+        const deep = runAt(u, r0 + 1) >= depth - 1;
+        any ||= deep;
+        let good = deep && (row0 || land(u, r0));
+        if (good) {
+          const [ox, oz] = columnUV(landward, u, r0 + depth - 1);
+          for (let k = 1; k <= rules.water && good; k++) if (!freeWater(f, ox + sx * k, oz + sz * k)) good = false;
+        }
+        ok[i] = good;
+        inner[i] = row0;
+        if (row0) {
+          const [x, z] = columnUV(landward, u, r0);
+          const c = key(x, 0, z);
+          const side = dockSide(f, c, landward);
+          shore[i] = isShore(side) || (side === 'solid' && quayWall(neighborCell(c, landward)));
+        } else shore[i] = true;
+      }
+      if (!any) break;
+      // Each run of good columns: its longest stretch with the shore along half of it, dock along a third of its inner row.
+      for (let a = 0; a < ok.length; ) {
+        if (!ok[a]) {
+          a++;
+          continue;
+        }
+        let b = a;
+        while (b + 1 < ok.length && ok[b + 1]) b++;
+        for (let len = b - a + 1; len >= rules.minLength && len * depth > bestArea; len--) {
+          let hit = false;
+          for (let s = a; s + len - 1 <= b; s++) {
+            let sh = 0, dk = 0;
+            for (let i = s; i < s + len; i++) {
+              if (shore[i]) sh++;
+              if (inner[i]) dk++;
+            }
+            if (sh * 2 < len || dk * 3 < len) continue;
+            const [x0, z0] = columnUV(landward, u0 + s, r0);
+            best = { landward, seaward, along, x0, z0, length: len, depth };
+            bestArea = len * depth;
+            hit = true;
+            break;
+          }
+          if (hit) break;
+        }
+        a = b + 1;
+      }
+    }
+  }
+  return best;
 }
 
 function neighborCell(c: CellKey, d: Dir4): CellKey {
@@ -170,7 +251,10 @@ export function craneKinds(length: number): CraneKind[] {
 export function cranesOf(length: number): CraneSpot[] {
   const kinds = craneKinds(length);
   const n = kinds.length;
-  const at = kinds.map((_, k) => (n === 1 ? length / 2 : n === 2 ? length * (k === 0 ? 0.3 : 0.75) : (k + 0.5) * (length / n)));
+  // Measured from the port's i = 0 end in whole steps, so a port that grows at its far end keeps its cranes
+  // where they stand (they move only when the step changes, every few cells).
+  const step = n <= 3 ? 5 : Math.max(4, Math.floor((length - 5) / 3));
+  const at = kinds.map((_, k) => Math.min(3.5 + k * step, length - (k === 0 ? 2.5 : 1.5)));
   return kinds.map((kind, k) => {
     if (kind === 'medium') return { kind, at: at[k]!, lo: at[k]!, hi: at[k]! };
     // Clear of its neighbours: a medium crane's jib swings round its pivot.
