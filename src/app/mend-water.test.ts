@@ -35,11 +35,18 @@ test('a house on stilts over the water, bombed, goes over away from the blast in
   const d = new Director(7);
   const game = createGame({ world, terrain }, { show: (shape) => d.sync(shape) });
   d.connect({ begin: () => game.begin(), apply: (e) => void game.editAll(e), end: () => game.end(), abort: () => void game.abort(), edit: (e) => void game.editAll(e), amend: (e) => void game.amend(e) });
-  // The little house on the pier at (39, 12), standing on a dock.
-  const cell = key(39, 1, 12);
-  expect(game.world.blocks.get(cell)?.kind).toBe('house');
-  expect(game.world.blocks.get(key(39, 0, 12))?.kind).toBe('dock');
-  d.dropBomb([39.3, 1.6, 12.5]);
+  // A little one-storey house out on the water, standing on a dock (a stilt house: where the town grew one).
+  const lone = (x: number, z: number): boolean =>
+    terrain.height[columnIndex(x, z)] === 0 &&
+    game.world.blocks.get(key(x, 1, z))?.kind === 'house' &&
+    game.world.blocks.get(key(x, 0, z))?.kind === 'dock' &&
+    !game.world.blocks.has(key(x, 2, z)) &&
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].every(([dx, dz]) => game.world.blocks.get(key(x + dx!, 1, z + dz!))?.kind !== 'house');
+  const at = [...game.world.blocks.keys()].map((c) => [keyX(c), keyZ(c)] as const).filter(([x, z]) => lone(x, z)).sort((a, b) => a[0] - b[0] || a[1] - b[1])[0];
+  expect(at).toBeDefined();
+  const [hx, hz] = at!;
+  const cell = key(hx, 1, hz);
+  d.dropBomb([hx + 0.3, 1.6, hz + 0.5]);
   const run = (s: number): void => {
     for (let t = 0; t < s; t += 0.1) {
       d.update(0.1, { wind: () => ({ dirX: 1, dirZ: 0, strength: 0 }) });
