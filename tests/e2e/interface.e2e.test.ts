@@ -693,8 +693,9 @@ describe('phone: touch', () => {
     await touch(cdp, 'touchStart', [{ x, y, id: 1 }]);
     for (let i = 1; i <= 6; i++) await touch(cdp, 'touchMove', [{ x: x + i * 12, y: y + i * 4, id: 1 }]);
     await touch(cdp, 'touchEnd', []);
+    // The camera turns on the next frame, which a slow machine (the gate on GitHub) may not have drawn yet.
+    await expect.poll(async () => (await camera()).yaw, { timeout: 10_000 }).not.toBe(start.yaw);
     const orbited = await camera();
-    expect(orbited.yaw).not.toBe(start.yaw);
     expect(orbited.zoom).toBe(start.zoom);
     expect(await count(page)).toBe(5);
 
