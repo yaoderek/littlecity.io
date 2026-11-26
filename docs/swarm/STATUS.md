@@ -2204,3 +2204,17 @@ workflow now runs on `main` (and preview, swarm, fix branches), not
 for docs-only pushes. **Note: `main` is ahead of what is live** (live
 is the build from `67313b0`, before the port update), so a publish
 from `main` ships the port update too.
+
+**2026-11-26: the whole gate green on GitHub** (`main` `e4fe779`,
+yaoderek/littlecity.io): unit job 9 min (192 files, 2,515 passed),
+browser job 12 min on `macos-latest` (26 files, 146 passed, one
+needing a retry). What it took: the browser job on a Mac (software
+WebGL on Linux timed out nearly everything); the touch-orbit test
+waits for the camera's next frame; on CI only, two browsers at a time
+and `retry: 2` (`vitest.config.ts`), because one to three timing-bound
+browser tests missed on each run there, a different set each time, on
+`main` and on `preview/next` alike. `preview/next` (`e9e24c7`, old
+repo) passed the unit job with all four changes; its browser job had
+only those rotating misses. It does not yet carry the three gate
+commits (`295a390`'s workflow, `d769582`, `e4fe779`): cherry-pick them
+when it is next pushed, to `site`, not `origin`.
