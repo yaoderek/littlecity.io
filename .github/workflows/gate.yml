@@ -1,17 +1,20 @@
 # The merge gate on GitHub's machines instead of Derek's Mac: typecheck, lint, the unit tests and the
 # browser tests (the same things `npm run check` runs, split in two jobs so a browser failure does
-# not hide the unit result). Runs on every push to the working branch and to preview, swarm and fix
-# branches, and by hand from the Actions tab. It publishes nothing: the site is only ever published
-# by tools/deploy-pages.sh, by hand, after Derek's sign-off.
+# not hide the unit result). Runs on every push to main and to preview, swarm and fix branches (not
+# for changes to the docs alone), and by hand from the Actions tab. It publishes nothing: the site is
+# only ever published by tools/deploy-pages.sh, by hand, after Derek's sign-off.
 name: gate
 
 on:
   push:
     branches:
-      - 'yaoderek/bloom-s-monkey-city-builder'
+      - 'main'
       - 'preview/**'
       - 'swarm/**'
       - 'fix/**'
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
   workflow_dispatch:
 
 concurrency:

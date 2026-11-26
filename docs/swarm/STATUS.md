@@ -2191,3 +2191,16 @@ fight. Merged into `preview/next` (`e9e24c7`, with the working
 branch's Raiders-in-the-menu text; eight locale files resolved by
 hand, three dead keys dropped), typecheck and lint clean, pushed to
 GitHub for the gate there. Not built, not served, not live.
+
+**2026-11-26: the code moves to yaoderek/littlecity.io, branch
+`main`** (Derek, relayed by the strategy chat). Remote `site`; base on
+`site/main`, `git push site HEAD:main`, fast-forward only, never
+force; no more pushes to yaoderek/littlecity (not archived, not
+deleted). The site is still published only by `tools/deploy-pages.sh`
+to `gh-pages` of the same repo, after his sign-off. The orchestrator
+merged `site/main` (`6d3afbe`, which carries the port update, 34
+commits) into its branch and pushed; README corrected; the gate
+workflow now runs on `main` (and preview, swarm, fix branches), not
+for docs-only pushes. **Note: `main` is ahead of what is live** (live
+is the build from `67313b0`, before the port update), so a publish
+from `main` ships the port update too.
