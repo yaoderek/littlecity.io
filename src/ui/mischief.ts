@@ -61,7 +61,8 @@ export function mischiefGuideSection(): HTMLElement {
   ]);
 }
 
-const HINTS_KEY = 'little-city.mischief-hints';
+/** The Mischief tools whose hint was shown (a tool was used): { [tool]: true }. */
+export const HINTS_KEY = 'little-city.mischief-hints';
 
 const CSS = `
 .lc-tab[data-drawer='mischief'] {

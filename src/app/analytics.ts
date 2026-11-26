@@ -22,6 +22,9 @@
 //   tutorial_shown    {step: place | undo, touch}: the tutorial hand came up (src/ui/tutorial.ts), once per step a visit
 //   tutorial_step     {step: placed | undone | moved-on | timed-out | rested, from, seconds, touch}: what the player
 //                     did about it (moved-on: built on instead of undoing; rested: left alone, put away for the visit)
+//   dot_cleared       {what: almanac | fly | mischief | grow, after_unlock, on_screen}: the player first used a thing that
+//                     carried a red dot (src/ui/dots.ts), or the Almanac after an unlock brought its dot back
+//                     (after_unlock); on_screen: the dot was drawn at that moment (not hidden by a growing town)
 //   town_grew         {blocks, grown}: this browser's biggest town passed 10, 25, 50, 100, 250, 500 or 1000 blocks
 //   town_shared       {via: link | link_box | file}
 //   postcard_saved, town_downloaded, town_file_opened, shared_town_kept, shared_town_left,

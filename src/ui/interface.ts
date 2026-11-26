@@ -46,10 +46,11 @@ import { COFFEE_URL, createMenu } from './menu';
 import { createTownsSheet, type TownsHost } from './towns';
 import { faceZone, pickCell, type Pick } from './pick';
 import { allPieceIds, DRAWER_IDS, drawerItems, isLandTool, isMischiefTool, isToolId, paintsRuns, trayItem, type DrawerId, type ItemId } from './pieces';
-import { createMischiefTools } from './mischief';
+import { createMischiefTools, HINTS_KEY as MISCHIEF_HINTS_KEY } from './mischief';
 import { createHand } from './hand';
 import { createCollector, createUnlockNotes, topOf, type Unlocked } from './unlock';
 import { createTutorial } from './tutorial';
+import { createDots } from './dots';
 import { mischiefOf } from '@/life/mischief/director';
 import { raidsOf } from '@/life/raid/raids';
 import { attachPointer } from './pointer';
@@ -150,6 +151,8 @@ export interface Interface {
     unlocks: string[];
     /** The tutorial hand (src/ui/tutorial.ts). */
     tutorial: { step: string; showing: boolean; say: string };
+    /** The red dots on things to try (src/ui/dots.ts). */
+    dots: { ready: boolean; showing: string[]; menu: boolean };
   };
   dispose(): void;
 }
@@ -498,6 +501,9 @@ export function createInterface(host: InterfaceHost): Interface {
     },
     guide: () => guide.toggle(),
     showGuide: isPhone,
+    // The red dots (./dots.ts): Grow a town until first chosen, and the Almanac's row on a phone.
+    dot: (row) => (row === 'grow' ? dots.showing('grow') : row === 'guide' ? dots.showing('almanac') : false),
+    tried: (row) => void (row === 'grow' && dots.used('grow')),
     ...(host.stats ? { stats: () => host.stats!.on, setStats: (on: boolean) => host.stats!.set(on) } : {}),
     rebuild: () => mischiefOf(view.stage).rebuild,
     setRebuild(on) {
@@ -555,6 +561,8 @@ export function createInterface(host: InterfaceHost): Interface {
       track('building_unlocked', { entry: m.entry.id, role: 'role' in m.entry.proof ? m.entry.proof.role : m.entry.id, group: m.entry.group, built: collector.built.size });
     }
     guide.collectionChanged();
+    // Something new in the Almanac: its red dot is back until it is next opened.
+    if (made.length > 0 && !guide.isOpen) dots.unlocked();
   };
   const collector = createCollector({ storage: store, shape: game.shape, enabled: !scenarioPage, unlocked });
   // ?almanac=reset: every building can be unlocked again (to see the moment afresh).
@@ -1185,7 +1193,10 @@ export function createInterface(host: InterfaceHost): Interface {
       tally('uses');
       tally(`use_${item}`);
       if (!isToolId(item)) builtByHand(item);
-      if (!isToolId(item) && !isLandTool(item)) tutorial.placed(pieceTop(seen.pick.target));
+      if (!isToolId(item) && !isLandTool(item)) {
+        tutorial.placed(pieceTop(seen.pick.target));
+        dots.placed();
+      }
       if (item === 'erase') tutorial.undone();
     },
     erase(x, y) {
@@ -1242,7 +1253,10 @@ export function createInterface(host: InterfaceHost): Interface {
       game.begin();
       handAt = [seen.pick.point[0], seen.pick.point[1], seen.pick.point[2]];
       const placed = collector.hand(() => perform(plan, x, y));
-      if (placed && !isToolId(tray.state.item)) tutorial.placed(pieceTop(seen.pick.target));
+      if (placed && !isToolId(tray.state.item)) {
+        tutorial.placed(pieceTop(seen.pick.target));
+        dots.placed();
+      }
       const cell = 'cell' in first ? first.cell : NO_CELL;
       run = {
         world0: seen.ctx.world,
@@ -1571,6 +1585,38 @@ export function createInterface(host: InterfaceHost): Interface {
     touch: isCoarsePointer,
   });
   root.append(unlockNotes.el, tutorial.el);
+
+  // ── red dots on things to try (./dots.ts) ──────────────────────────────
+  const dotsParam = page.get('dots');
+  const dots = createDots({
+    storage: store,
+    // Not in a scenario or a browser test unless the address asks for them (?dots=on, ?dots=reset).
+    enabled: dotsParam !== 'off' && (dotsParam === 'on' || dotsParam === 'reset' || (!scenarioPage && !automatedPage)),
+    reset: dotsParam === 'reset',
+    known: {
+      // The tutorial's place step over, or a building of the almanac built by hand: a piece has been placed.
+      placed: tutorial.step !== 'place' || collector.built.size > 0,
+      // A Mischief tool used before (its hints were shown): the drawer has been opened.
+      mischief: ((): boolean => {
+        try {
+          const hints = JSON.parse(store?.getItem(MISCHIEF_HINTS_KEY) ?? '{}') as unknown;
+          return typeof hints === 'object' && hints !== null && Object.keys(hints).length > 0;
+        } catch {
+          return false;
+        }
+      })(),
+    },
+    buttons: {
+      almanac: guide.button,
+      fly: fly.button,
+      mischief: tray.el.querySelector<HTMLElement>('.lc-tab[data-drawer="mischief"]'),
+      menu: menu.button,
+    },
+    hidden: () => growth.active || welcome.waiting || tutorial.showing || fly.active || root.classList.contains('lc-flying'),
+    almanacInMenu: () => phones.matches,
+    inUse: () => ({ almanac: guide.isOpen, fly: fly.active, mischief: tray.state.drawer === 'mischief' }),
+    placed: () => tutorial.step !== 'place',
+  });
   let lastFrame = performance.now();
 
   // ?mischief: straight to a grown town with the Mischief drawer open, to try it.
@@ -1617,6 +1663,7 @@ export function createInterface(host: InterfaceHost): Interface {
       const now = performance.now();
       tutorial.frame(Math.min(0.25, (now - lastFrame) / 1000));
       lastFrame = now;
+      dots.frame();
       unlockNotes.frame();
     },
     sync() {
@@ -1650,6 +1697,7 @@ export function createInterface(host: InterfaceHost): Interface {
       built: [...collector.built],
       unlocks: unlockNotes.showing(),
       tutorial: tutorial.debug(),
+      dots: dots.debug(),
     }),
     dispose() {
       window.clearTimeout(lengthHintTimer);
