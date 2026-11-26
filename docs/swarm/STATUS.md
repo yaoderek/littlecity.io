@@ -2235,3 +2235,17 @@ clicked, fishing line, garrison sally; `preview/next` `e9e24c7`, built
 on the live code of before the Almanac): the next preview and any
 publish must be rebuilt on `preview/almanac-release`, not on `main`
 (port update) and not on the old base.
+
+**2026-11-26: showcase preview at :5180** (Derek: "open a preview
+that showcases new features"). Branch `preview/showcase` on
+yaoderek/littlecity.io = the live build `6ae3da0` (Almanac) + orchard
+ladders (`b260797`) + fishing line (`66d840c`) + raids landing where
+clicked and the garrison's sally (`d7eb8cd`) + the gate commits;
+eight locale files resolved with the repo's own list of lines (both
+sides kept, dead keys dropped). No port update. Typecheck and lint
+clean locally; the gate runs on GitHub. Built without the analytics
+key. Links that open on each feature: `?scenario=U18.orchard&season=winter`,
+`?scenario=U18.orchard-ruins&season=winter`, `?scenario=L53.fish`,
+`?scenario=grown-harbour` (castle with a garrison, for the Raid
+tool). All four checked to load with no page errors. Not signed off,
+not live.
