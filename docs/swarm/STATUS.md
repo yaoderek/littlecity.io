@@ -2263,3 +2263,10 @@ browser 145 of 146, the touch-orbit test failing three tries there
 and passing three of three locally on the same build; phone-sized
 frame times equal to the live build's (16.7 ms median in `everything`
 and `grown-harbour`, twice each).
+
+**2026-11-26: `preview/showcase` `e55df96` green on GitHub** (the
+live build `63329a6` + orchard ladders + fishing line + raids landing
+where clicked + the garrison's sally): unit job 2,462 passed, browser
+job 149 passed, the touch-orbit test on its second try there (it
+passes first time locally). Served at :5180, waiting for Derek; not
+live.
