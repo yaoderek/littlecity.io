@@ -47,7 +47,14 @@ const L0 = 0, L1 = 0.003, L2 = 0.006;
 
 function shape(b: MeshBuilder, ink: string, colour: string, pts: readonly P2[], z: number): void {
   b.setInk(ink).setColor(colour);
-  b.polygon(pts.map(([x, y]): Vec3 => [x, y, z]));
+  // Wound to face +Z whichever way the outline was written (a clockwise one would face away, unseen).
+  let area = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const [x0, y0] = pts[i]!, [x1, y1] = pts[(i + 1) % pts.length]!;
+    area += x0 * y1 - x1 * y0;
+  }
+  const ccw = area >= 0 ? pts : [...pts].reverse();
+  b.polygon(ccw.map(([x, y]): Vec3 => [x, y, z]));
 }
 function line(b: MeshBuilder, ink: string, colour: string, pts: readonly P2[], w: number, z: number): void {
   b.setInk(ink).setColor(colour);
