@@ -232,12 +232,7 @@ function survey(): Surveyed[] {
  * Roles the generator does not try to place, and why (asserted absent from
  * the expectation, listed so a new stamp can take them off).
  */
-const NOT_PLACED: Record<string, string> = {
-  // R-D05: a dock three wide out from the shore is the player's to lay; Grow a town builds piers and quays.
-  shipyard: 'built by the player, never grown',
-  // The container port is the player's to make (R-D00: a big block of sea filled in), never grown.
-  port: 'player-made',
-};
+const NOT_PLACED: Record<string, string> = {};
 
 describe('grow a town: the survey (seeds 1 to 30, both generators)', () => {
   test('every character is rolled somewhere', () => {
@@ -286,6 +281,23 @@ describe('grow a town: the survey (seeds 1 to 30, both generators)', () => {
     expect(misses.length).toBeLessThanOrEqual(Math.ceil(survey().length * 0.15));
   });
 
+  test('harbour towns grow the working waterfront: a port (a freighter calling) and a shipyard where the coast allows (counts printed)', () => {
+    const harbours = survey().filter((s) => s.character === 'harbour');
+    const line = (s: Surveyed): string => {
+      const why: string[] = [];
+      if (!s.roles.has('port')) why.push('no port (no straight stretch of shore with open sea off it)');
+      else if (!s.props.has('L38-F/ship-call')) why.push('a port, but no freighter can sail to its berth');
+      if (!s.roles.has('shipyard')) why.push('no shipyard (no shore with sea down both sides of a slip and a shed site behind)');
+      return `g${s.gen} s${s.seed}: ${why.join('; ') || 'port, freighter, shipyard'}`;
+    };
+    const ports = harbours.filter((s) => s.roles.has('port')).length, yards = harbours.filter((s) => s.roles.has('shipyard')).length;
+    const freighters = harbours.filter((s) => s.props.has('L38-F/ship-call')).length;
+    console.log(`harbour towns: ${harbours.length}, with a port ${ports} (a freighter calling at ${freighters}), with a shipyard ${yards}\n${harbours.map(line).join('\n')}`);
+    // Every harbour town keeps its old waterfront; most also have the new one.
+    expect(ports).toBeGreaterThanOrEqual(Math.ceil(harbours.length * 0.7));
+    expect(yards).toBeGreaterThanOrEqual(Math.ceil(harbours.length * 0.5));
+  });
+
   test('every role the generator places appears in some towns', () => {
     const count = new Map<string, number>();
     for (const s of survey()) for (const r of s.roles) count.set(r, (count.get(r) ?? 0) + 1);
@@ -315,9 +327,7 @@ describe('grow a town: the survey (seeds 1 to 30, both generators)', () => {
     }
     console.log(`guide entries never grown: ${missing.join(', ') || 'none'}`);
     // Entries that need the player's hand (digging a river, painting a croquet lawn) may stay missing.
-    const allowed = new Set(['dug-river', 'croquet-lawn', 'boules-court', 'running-track', 'kickabout-green', 'wedding', 'market-day', 'garrison', 'rider', 'cog', 'ships', 'shipyard', 'ship-launch']);
-    // The container port and what comes with it: the player fills in a big block of sea (R-D00).
-    for (const id of ['port', 'container-cranes', 'cargo-ship', 'unloading-containers']) allowed.add(id);
+    const allowed = new Set(['dug-river', 'croquet-lawn', 'boules-court', 'running-track', 'kickabout-green', 'wedding', 'market-day', 'garrison', 'rider', 'cog', 'ships']);
     expect(missing.filter((m) => !allowed.has(m))).toEqual([]);
   });
 

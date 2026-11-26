@@ -30,6 +30,7 @@ import { buildBarn, buildFields, buildFollyTower, buildOrchard, buildPark, build
 import { buildFlowerBed, buildGreenhouse, buildManor, buildMill, buildPaddock, buildStairs, buildTrees, buildWalledGarden, buildWalledLawn, buildWillow } from './districts/country';
 import { buildFarmstead, reserveFarmstead } from './districts/farmstead';
 import { buildHarbour, buildWaterfront } from './districts/harbour';
+import { buildPort, buildShipyard } from './districts/port';
 import { buildColonnade, buildFishMarket, buildMarketPlace, buildMonument, buildQuayStretch, buildShrine, buildTownWall, buildTreeLines, buildWallTower, buildWheatFarm, buildWheatField, buildWoods } from './districts/emphasis';
 import { buildWatermill } from './districts/riverside';
 import { buildGreatMarket, buildRiverFront, buildTerraceRow, buildVegPlot, buildVillageCentre } from './districts/character2';
@@ -143,6 +144,13 @@ const STEPS: Record<string, Step> = {
   greatMarket: buildGreatMarket,
   watermill: buildWatermill,
   flowers: (t) => buildFlowerBed(t, t.districts.length),
+  // The working waterfront (port.ts): a container port a freighter can berth at (else a shorter one), a shipyard.
+  port: (t) =>
+    buildPort(t, 'port', { lens: [14, 13, 12, 11, 10], depths: [5, 4], stores: 2, lineUp: 8 }) ||
+    buildPort(t, 'port', { lens: [14, 13, 12, 11, 10], depths: [5, 4], stores: 2 }) ||
+    buildPort(t, 'port', { lens: [9, 8, 7, 6], depths: [5, 4], stores: 1 }),
+  smallPort: (t) => buildPort(t, 'port', { lens: [9, 8, 7, 6], depths: [4], stores: 1, reach: 22 }),
+  shipyard: (t) => buildShipyard(t, 'shipyard'),
 };
 
 /**
@@ -151,11 +159,11 @@ const STEPS: Record<string, Step> = {
  * block about d steps from the square. See README.md for what each town is.
  */
 const PLANS: Record<Character, readonly string[]> = {
-  harbour: ['square', 'greatHarbour', 'quay:1', 'quay:2', 'waterfront:1', 'quay:3', 'lighthouse', 'waterfront:2', 'fishMarket', 'willow', 'housing:0:8', 'chapel', 'courtyard', 'smithy', 'jetty', 'jetty:1', 'boardwalk', 'bridge', 'quay:4', 'riverside', 'housing:1:11', 'orchard', 'walledGarden'],
+  harbour: ['square', 'port', 'shipyard', 'greatHarbour', 'quay:1', 'quay:2', 'waterfront:1', 'quay:3', 'lighthouse', 'waterfront:2', 'fishMarket', 'willow', 'housing:0:8', 'chapel', 'courtyard', 'smithy', 'jetty', 'jetty:1', 'boardwalk', 'bridge', 'quay:4', 'riverside', 'housing:1:11', 'orchard', 'walledGarden'],
   marble: ['forum', 'willow', 'acropolis', 'shrine:1', 'shrine:2', 'shrine:4', 'follyTower', 'housing:0:9', 'courtyard', 'viaduct', 'shrine:3', 'chapel', 'walledGarden', 'walledLawn', 'harbour', 'lighthouse', 'manor', 'courtyard:1', 'housing:1:12', 'viaduct:1', 'bridge', 'boardwalk', 'stairs'],
   castle: ['square', 'castle', 'smithy', 'chapel', 'wallTower', 'wallTower:1', 'hilltop', 'watchtower', 'housing:0:8', 'housing:1:11', 'walledGarden', 'walledLawn', 'wallTower:2', 'watchtower:1', 'cliff', 'harbour', 'lighthouse', 'willow', 'stairs', 'bridge', 'courtyard', 'walledLawn:1', 'fields', 'orchard'],
-  market: ['square', 'greatMarket', 'housing:0:8', 'housing:1:10', 'millCorner', 'orchard', 'courtyard', 'school', 'chapel', 'smithy', 'courtyard:1', 'inhabitedBridge', 'harbour', 'lighthouse', 'housing:2:13', 'fields', 'greenhouse', 'willow', 'bridge', 'stairs'],
-  river: ['square', 'riverside', 'bridge', 'bridge:1', 'bridge:2', 'inhabitedBridge', 'inhabitedBridge:1', 'watermill', 'watermill:1', 'mill', 'orchard', 'riverFront', 'willow', 'bridge:3', 'housing:0:9', 'chapel', 'park', 'orchard:1', 'harbour', 'lighthouse', 'greenhouse', 'boardwalk', 'courtyard', 'housing:1:12', 'walledGarden'],
+  market: ['square', 'greatMarket', 'housing:0:8', 'housing:1:10', 'millCorner', 'orchard', 'courtyard', 'school', 'chapel', 'smithy', 'courtyard:1', 'inhabitedBridge', 'harbour', 'smallPort', 'lighthouse', 'housing:2:13', 'fields', 'greenhouse', 'willow', 'bridge', 'stairs'],
+  river: ['square', 'riverside', 'bridge', 'bridge:1', 'bridge:2', 'inhabitedBridge', 'inhabitedBridge:1', 'watermill', 'watermill:1', 'mill', 'shipyard', 'orchard', 'riverFront', 'willow', 'bridge:3', 'housing:0:9', 'chapel', 'park', 'orchard:1', 'harbour', 'lighthouse', 'greenhouse', 'boardwalk', 'courtyard', 'housing:1:12', 'walledGarden'],
   farming: ['village', 'green', 'chapel', 'wheatFarm', 'wheatField', 'millCorner', 'wheatField:1', 'orchard', 'wheatFarm:1', 'orchard:1', 'paddock', 'wheatField:2', 'wheatField:3', 'vegPlot', 'barn', 'orchard:2', 'wheatField:4', 'vegPlot:1', 'barn:1', 'greenhouse', 'vegPlot:2', 'smithy', 'willow', 'lighthouse', 'harbour'],
   hill: ['square', 'hilltop', 'terraceRow', 'terraceRow:1', 'terraceRow:2', 'terraceRow:3', 'castle', 'terraceRow:4', 'stairs', 'stairs:1', 'stairs:2', 'cliff', 'cliff:1', 'terraceRow:5', 'wallTower', 'chapel', 'viaduct', 'viaduct:1', 'terraceRow:6', 'acropolis', 'millCorner', 'follyTower', 'cliff:2', 'watchtower', 'stairs:3', 'terraceRow:7', 'housing:0:9', 'harbour', 'lighthouse', 'willow', 'bridge'],
   gardens: ['square', 'manor', 'park', 'millCorner', 'park:1', 'walledGarden', 'walledLawn', 'greenhouse', 'orchard', 'fields', 'school', 'walledGarden:1', 'greenhouse:1', 'park:2', 'orchard:1', 'walledLawn:1', 'follyTower', 'housing:0:9', 'chapel', 'harbour', 'lighthouse', 'willow', 'courtyard', 'boardwalk', 'bridge', 'paddock'],
