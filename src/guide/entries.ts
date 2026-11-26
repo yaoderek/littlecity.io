@@ -20,6 +20,7 @@ import supperScn from '../../scenarios/life/L65.supper.scenario';
 import carolScn from '../../scenarios/life/L67.carols.scenario';
 import harvestScn from '../../scenarios/life/L59.harvest.scenario';
 import tradeScn from '../../scenarios/life/L58.trade.scenario';
+import portScn from '../../scenarios/port/R-D00.port.scenario';
 import fishScn from '../../scenarios/life/L53.fish.scenario';
 import breadScn from '../../scenarios/life/L51.bread.scenario';
 import waterScn from '../../scenarios/life/L52.water.scenario';
@@ -1567,6 +1568,19 @@ const LISTED: readonly GuideEntry[] = [
     view: { yaw: 30, pitch: 30 },
     pad: 0.2,
     life: { settle: 14 },
+  },
+  {
+    id: 'unloading-containers',
+    group: 'by-water',
+    name: 'Unloading the containers',
+    when: 'After a cargo ship has been in',
+    how: 'Build a port with shops, an inn or stalls within 24 steps of it. A container from the ship is set down by the harbour office; dock workers in yellow jackets swing its doors open and carry out crates, barrels and sacks, and carters wheel them up to the shops.',
+    proof: { socket: { rule: 'L58.trade' } },
+    ...town(portScn),
+    view: { yaw: 120, pitch: 36 },
+    pad: 0.2,
+    life: { settle: 22, residents: true },
+    frame: [13, 20, 19, 25, 2],
   },
   {
     id: 'waving-ships-in',

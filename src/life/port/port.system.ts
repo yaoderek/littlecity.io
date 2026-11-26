@@ -22,6 +22,7 @@ import { lifeLow, phoneSized } from '../quality';
 import { harbourOf, type Ship } from '../ships/visit';
 import { Crane } from './crane';
 import { newVisit, nextJob, type Visit } from './work';
+import { DockWorkers } from './workers';
 import { Yard } from './yard';
 
 interface Port {
@@ -29,6 +30,7 @@ interface Port {
   plan: PortPlan;
   yard: Yard;
   visit: Visit | null;
+  workers: DockWorkers | null;
 }
 
 interface State {
@@ -88,13 +90,17 @@ export default defineSystem<State>({
       const now = portsOf(next.shape);
       for (const [id, pp] of now) {
         let port = state.ports.get(id);
-        if (!port) state.ports.set(id, (port = { id, plan: pp, yard: new Yard(ctx.stage, ctx.seed, String(id)), visit: null }));
+        if (!port) state.ports.set(id, (port = { id, plan: pp, yard: new Yard(ctx.stage, ctx.seed, String(id)), visit: null, workers: null }));
         port.plan = pp;
         port.yard.layout(pp);
+        // Its dock workers, once it has an office and an unpacking bay (the link into the town: workers.ts).
+        if (!port.workers && pp.yard.office && pp.yard.pile) port.workers = new DockWorkers(ctx.stage, ctx.seed, `port:${id}`, pp, Math.round(phoneSized() ? PORT.workersPhone : PORT.workers));
+        else port.workers?.layout(pp);
       }
       for (const [id, port] of state.ports) {
         if (now.has(id)) continue;
         if (port.visit) port.visit.ship.held = false;
+        port.workers?.release();
         port.yard.remove();
         state.ports.delete(id);
       }
@@ -155,11 +161,15 @@ export default defineSystem<State>({
       }
     }
     for (const c of state.cranes.values()) c.update(dt);
+    for (const port of state.ports.values()) port.workers?.update(dt, port.yard);
   },
   dispose(state) {
     for (const c of state.cranes.values()) c.release();
     state.cranes.clear();
-    for (const p of state.ports.values()) p.yard.release();
+    for (const p of state.ports.values()) {
+      p.workers?.release();
+      p.yard.release();
+    }
     state.ports.clear();
   },
 });

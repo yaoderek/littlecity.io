@@ -134,3 +134,28 @@ describe('a visit', () => {
     expect(sailed).toBe(true);
   });
 });
+
+describe('into town', () => {
+  test('the dock workers open the full container, carry its goods into the aisle, and the carters have somewhere to take them', () => {
+    const town = resolveScenario(scn);
+    const posts = town.dressing.sockets.filter((s) => s.type === 'errand' && (s.name ?? '').startsWith('trade|to|'));
+    expect(posts.length).toBeGreaterThan(0);
+    let piled = 0;
+    let emptied = false;
+    const rec = recordingStage(town);
+    const signals = createSignals(scn.seed);
+    signals.setPhase(partPhases().day.start + 0.02);
+    signals.hold('day');
+    const life = createLife(rec.stage, signals, { behaviours: [], systems: [harbourSystem, portSystem] });
+    life.sync(town);
+    const port = portLifeOf(rec.stage)!;
+    for (let t = 0; t < 60; t += 1 / 20) {
+      life.update(signals.advance(1 / 20));
+      for (const [k, pile] of harbourOf(rec.stage)!.piles) if (k.startsWith('port:')) piled = Math.max(piled, pile.items.filter(Boolean).length);
+      for (const p of port.ports.values()) for (const s of p.yard.stacks) if (s.spot.unpack && s.boxes[0] && !s.boxes[0].full) emptied = true;
+    }
+    life.dispose();
+    expect(piled).toBeGreaterThanOrEqual(2);
+    expect(emptied).toBe(true);
+  });
+});

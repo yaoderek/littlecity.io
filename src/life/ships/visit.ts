@@ -179,6 +179,8 @@ export interface Harbour {
   readonly barges: readonly Barge[];
   /** Goods lying on each quay, by berth key. */
   readonly piles: ReadonlyMap<string, Pile>;
+  /** Goods set down by somebody else (the port's dock workers: key 'port:<id>'), for the carters (L58); null removes it. */
+  setPile(key: string, pile: Pile | null): void;
   /**
    * Mischief: a blast at (x, z) reaching `r3` (it breaks a ship and sinks it), `r2` (dismasts it) and `r1`
    * (scorches it). Each ship worse off than it was is marked so and answers (gives up its visit and
@@ -1107,6 +1109,10 @@ export function createHarbour(stage: LifeStage, seed: number): Harbour {
     passers,
     barges,
     piles,
+    setPile(k, pile) {
+      if (pile) piles.set(k, pile);
+      else piles.delete(k);
+    },
     strike,
     clearWrecks() {
       for (const ship of ships) if (ship.phase === 'sinking') finish(ship);
