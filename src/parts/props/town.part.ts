@@ -152,8 +152,8 @@ export const creeper = definePart({
 
 /**
  * Doorstep: what stands at a front door. A mat where D11 found a flat place
- * for one; by the rule's choice a pair of potted plants, a barrel, a bicycle
- * leaning on the wall, a lantern on the wall beside the door (glowing;
+ * for one; by the rule's choice a pair of potted plants, a barrel, the place
+ * for a bicycle leaning on the wall (the bike itself is the door-bike prop), a lantern on the wall beside the door (glowing;
  * socket 'lamp-head').
  * Frame: the 'door' socket (the ground line just outside the door, +Z out).
  * The wall is 0.37 behind it, plus 0.1 for every stoop step.
@@ -207,27 +207,9 @@ export const doorstep = definePart({
     // Which side the big things take; the pots take whatever side is left.
     const barrelSide = r('bs') < 0.5 ? -1 : 1;
     const taken = new Set<number>();
-    if (p.bicycle) {
-      taken.add(1);
-      const z = zw + 0.045, cy = 0.085, rad = 0.082;
-      const paint = r('bike') < 0.5 ? PALETTE.red : PALETTE.glass;
-      b.at(compose(translation(0.32, 0, z), rotationX(-0.12)), () => {
-        b.with({ color: PALETTE.metal, pattern: PATTERN.none, ink: 'bike' }, () => {
-          for (const x of [-0.11, 0.11]) {
-            b.at(compose(translation(x, cy, 0), rotationX(Math.PI / 2)), () =>
-              b.lathe([[rad - 0.014, -0.006], [rad, -0.006], [rad, 0.006], [rad - 0.014, 0.006], [rad - 0.014, -0.006]], { segments: 8 }),
-            );
-          }
-        });
-        b.with({ color: paint, pattern: PATTERN.none, ink: 'bike' }, () => {
-          tube(b, [[-0.11, cy, 0], [-0.03, cy + 0.1, 0], [0.08, cy + 0.11, 0], [0.11, cy, 0]], 0.009, { seg: 3 });
-          tube(b, [[-0.03, cy + 0.1, 0], [0.01, cy - 0.005, 0], [-0.11, cy, 0]], 0.009, { seg: 3 });
-          tube(b, [[0.08, cy + 0.11, 0], [0.07, cy + 0.16, 0], [0.11, cy + 0.165, 0]], 0.008, { seg: 3 });
-          tube(b, [[-0.03, cy + 0.1, 0], [-0.04, cy + 0.14, 0]], 0.008, { seg: 3 });
-        });
-        b.with({ color: PALETTE.trunk, pattern: PATTERN.none, ink: 'bike' }, () => b.box([-0.07, cy + 0.14, -0.012], [-0.01, cy + 0.155, 0.012]));
-      });
-    }
+    // The bike leaning on the wall to the right of the door is its own prop (door-bike, bike.part.ts), so
+    // that its owner can ride it away: the doorstep only keeps its place.
+    if (p.bicycle) taken.add(1);
     // A shop door stands at the left end of its shopfront: nothing on that side but the wall's corner.
     if (door.leaf === 'shop') taken.add(-1);
     // Pots and barrel stand clear of the stoop's sides.

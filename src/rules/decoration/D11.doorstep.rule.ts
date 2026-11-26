@@ -3,7 +3,8 @@
 // What stands at a house door that opens at ground level: a doormat,
 // always; a pair of potted plants (DRESSING.doorPots); a barrel
 // (doorBarrel); a bicycle leaning on the wall (doorBicycle, only where the
-// door faces a street); and where the door faces a street or a square, a
+// door faces a street: its own prop, 'door-bike', which its owner rides off
+// on; the doorstep keeps its place); and where the door faces a street or a square, a
 // small lantern on the wall beside it, which glows at night and owns a
 // 'lamp-head' socket.
 //
@@ -131,6 +132,7 @@ export default defineRule<Step>({
     const roll = (name: string, p: number): 0 | 1 => (lucky(ctx.seed, RULE, c.anchor, `${k}:${name}`, p) ? 1 : 0);
     const house = c.structure === undefined ? undefined : ctx.plan.structures.get(c.structure);
     const { busy, lit } = d;
+    const bicycle = d.street && !busy ? roll('bicycle', DRESSING.doorBicycle) : 0;
     const step = out.prop({
       type: 'doorstep',
       at: { socket: d.socket },
@@ -141,12 +143,14 @@ export default defineRule<Step>({
         door: d.door,
         pots: busy ? 0 : roll('pots', DRESSING.doorPots),
         barrel: busy ? 0 : roll('barrel', DRESSING.doorBarrel),
-        bicycle: d.street && !busy ? roll('bicycle', DRESSING.doorBicycle) : 0,
+        bicycle,
         lantern: lit ? 1 : 0,
         flowers: hash(house?.seed ?? 1, 'flowers') % 5,
         look: hash(ctx.seed, RULE, c.anchor, k) % 1000,
       },
     });
     if (lit) out.socket({ type: 'lamp-head', owner: step, cell: c.anchor, structure: c.structure });
+    // The bike is its own prop beside the doorstep, so its owner can ride it away (src/life/people/bikes.ts).
+    if (bicycle) out.prop({ type: 'door-bike', at: { socket: d.socket }, params: { steps: d.steps, paint: hash(ctx.seed, RULE, 'paint', c.anchor, k) % 2 } });
   },
 });
