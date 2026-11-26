@@ -18,7 +18,7 @@
 // ship, or under the crane).
 
 import { compose, invertAffine, multiply, rotationX, rotationY, translation, transformPoint, type Mat4, type Mat4Like, type Vec3 } from '@/core/mat4';
-import { APEX_Y, APEX_Z, GIRDER_X, HINGE_Z, JIB_HINGE, MEDIUM_APEX, ringTop } from '@/parts/port/crane.part';
+import { APEX_Y, APEX_Z, GIRDER_X, HINGE_Z, JIB_HINGE, MEDIUM_APEX, RAIL, ringTop } from '@/parts/port/crane.part';
 import { PORT } from '@/style/port';
 import type { InstanceHandle, LifeStage } from '../api';
 import { angleDelta, clamp01, easeIn, easeInOut, pop } from '../motion/ease';
@@ -295,6 +295,7 @@ export class Crane {
   /** Moves on `dt` seconds; returns true when a job has just finished. */
   update(dt: number): boolean {
     if (this.comeAndGo(dt)) return false;
+    if (this.hurt(dt)) return false;
     let finished = false;
     if (this.phase !== 'idle') {
       this.t += dt;
@@ -409,13 +410,18 @@ export class Crane {
 
   /** The world matrices of every piece, from the pose. */
   private draw(): void {
-    const p = this.pose;
-    // Arriving or leaving, everything is drawn grown out of (or shrunk into) the crane's own foot.
+    const p = this.harmed ? this.harmPose() : this.pose;
+    // Arriving or leaving, everything is drawn grown out of (or shrunk into) the crane's own foot; knocked
+    // over, turned about the foot of its seaward legs.
     const g = this.grow;
-    const G: Mat4 | null = g === 1 ? null : compose(this.home, [g, 0, 0, 0, 0, g, 0, 0, 0, 0, g, 0, 0, 0, 0, 1], this.inv);
-    const fin = (m: Mat4Like): Mat4Like => (G ? multiply(G, m) : m);
     const C = this.large ? multiply(this.home, translation(p.travel, 0, 0)) : this.home;
-    if (this.large || G) this.frame?.setMatrix(fin(multiply(this.base, translation(this.large ? p.travel : 0, 0, 0))));
+    let G: Mat4 | null = g === 1 ? null : compose(this.home, [g, 0, 0, 0, 0, g, 0, 0, 0, 0, g, 0, 0, 0, 0, 1], this.inv);
+    if (this.tilt > 1e-4) {
+      const T = compose(C, translation(0, 0, RAIL), rotationX(this.tilt), translation(0, 0, -RAIL), invertAffine(C));
+      G = G ? multiply(G, T) : T;
+    }
+    const fin = (m: Mat4Like): Mat4Like => (G ? multiply(G, m) : m);
+    if (this.large || G || this.wasTilted) this.frame?.setMatrix(fin(multiply(this.base, translation(this.large ? p.travel : 0, 0, 0))));
     const at = (m: Mat4Like, h: InstanceHandle | null): void => h?.setMatrix(fin(m));
     let loadAt: Mat4;
     if (this.large) {
@@ -475,6 +481,110 @@ export class Crane {
     this.stand?.release();
     this.stand = null;
     if (this.body) this.body.setMatrix(this.base);
+  }
+
+  // ── hurt by mischief ──
+
+  /** The damage under it (stage 0–3, the cause, mending and how far), as the deck cells it stands on have it. */
+  private harmStage = 0;
+  private harmFire = false;
+  private mending = false;
+  private mended = 0;
+  /** How far it is over (radians about its seaward feet), and how bent its boom (0–1). */
+  private tilt = 0;
+  private bend = 0;
+  private wasTilted = false;
+  /** Falling: seconds into the fall (null when not falling); it crashes down at the end. */
+  private falling: number | null = null;
+  /** Told when it crashes down: where its top came down. */
+  onCrash: ((points: Vec3[]) => void) | null = null;
+
+  /** Hurt, or being mended, or not yet straight again: it does no work. */
+  get harmed(): boolean {
+    return this.harmStage > 0 || this.mending || this.tilt > 1e-3 || this.bend > 1e-3;
+  }
+
+  /** The damage of the deck it stands on: near a blast its boom bends, closer it goes over; mended, it is raised again. */
+  setHarm(stage: number, fire: boolean, mending: boolean, progress: number): void {
+    const was = this.harmStage;
+    this.harmStage = stage;
+    this.harmFire = fire;
+    this.mending = mending;
+    this.mended = progress;
+    if (stage > 0 && !mending && this.job) this.stop();
+    if (stage >= 2 && !mending && was < 2 && this.tilt < 0.1 && this.falling === null) this.falling = 0;
+    if (stage > 0 || mending) this.phase = 'idle';
+  }
+
+  /** Over at its fullest: the large one lies out across the water, the medium one down on the deck's edge. */
+  private get overAngle(): number {
+    return this.large ? 1.42 : 1.28;
+  }
+
+  /** Steps the damage: the fall, the bend, being raised again. True while it is hurt. */
+  private hurt(dt: number): boolean {
+    if (!this.harmed && this.falling === null) {
+      if (this.wasTilted) {
+        this.wasTilted = false;
+        // Straight again: back to standing idle, boom up, its frame where it stands.
+        this.tilt = this.bend = 0;
+        this.pose = this.idlePose();
+        this.phase = 'idle';
+        this.frame?.setMatrix(this.large ? multiply(this.base, translation(this.pose.travel, 0, 0)) : this.base);
+        this.draw();
+      }
+      return false;
+    }
+    this.wasTilted = true;
+    const over = this.harmStage >= 2 ? this.overAngle * (this.mending ? 1 - this.mended : 1) : 0;
+    if (this.falling !== null) {
+      // Going over: slowly at first, then fast, and a crash.
+      this.falling += dt;
+      const k = Math.min(1, this.falling / 1.1);
+      this.tilt = this.overAngle * k * k;
+      if (k >= 1) {
+        this.falling = null;
+        this.crash();
+      }
+    } else this.tilt += (over - this.tilt) * Math.min(1, dt * 1.5);
+    const bent = this.harmStage >= 2 || (this.harmStage === 1 && !this.harmFire) ? (this.mending ? 1 - this.mended : 1) : 0;
+    this.bend += (bent - this.bend) * Math.min(1, dt * 2.5);
+    // Mended (or nearly): the last of it straightens quickly, and then it simply stands.
+    const sound = this.harmStage === 0 && !this.mending;
+    if (sound) {
+      this.tilt += (0 - this.tilt) * Math.min(1, dt * 3);
+      if (this.tilt < 0.01 && this.bend < 0.01) this.tilt = this.bend = 0;
+    }
+    if (this.mending && this.mended > 0.98) this.bend = this.tilt = 0;
+    this.draw();
+    return true;
+  }
+
+  /** The pose drawn while hurt: idle, with the boom bent down (a snapped jib, a dropped boom). */
+  private harmPose(): Pose {
+    const p = { ...this.pose };
+    if (this.large) p.raise = p.raise * (1 - this.bend) - 0.3 * this.bend;
+    else p.luff = p.luff * (1 - this.bend) - 0.5 * this.bend;
+    return p;
+  }
+
+  /** It hits the deck and the water: where its frame's top and its boom's tip came down. */
+  private crash(): void {
+    const C = this.large ? multiply(this.home, translation(this.pose.travel, 0, 0)) : this.home;
+    const T = compose(C, translation(0, 0, RAIL), rotationX(this.tilt), translation(0, 0, -RAIL));
+    const h = this.large ? APEX_Y : ringTop() + 1;
+    const pts: Vec3[] = [0.35, 0.65, 1].map((f) => transformPoint(T, [0, h * f, 0]) as Vec3);
+    if (this.large) pts.push(transformPoint(T, [0, PORT.largeBoomY, HINGE_Z + PORT.largeOut]) as Vec3);
+    this.onCrash?.(pts);
+  }
+
+  /** Where it burns: its machinery house and its cab (as it stands or lies now). */
+  firePoints(): Vec3[] {
+    const C = this.large ? multiply(this.home, translation(this.pose.travel, 0, 0)) : this.home;
+    const T = compose(C, translation(0, 0, RAIL), rotationX(this.tilt), translation(0, 0, -RAIL));
+    return this.large
+      ? [transformPoint(T, [0, PORT.largeBoomY + 0.6, -PORT.largeBack + 0.8]) as Vec3, transformPoint(T, [0, PORT.largeBoomY - 0.5, 0.4]) as Vec3]
+      : [transformPoint(T, [0, ringTop() + 0.65, -0.3]) as Vec3];
   }
 
   // ── arriving and leaving ──

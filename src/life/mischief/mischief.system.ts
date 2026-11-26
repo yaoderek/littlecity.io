@@ -9,6 +9,7 @@
 // tumbling, and landing where its rubble heap is baked (so they become it).
 // A spout in the water. Nothing here is saved; the damage is, by the engine.
 
+import { lifeLow, phoneSized } from '../quality';
 import { CELL_H, columnIndex, DIR4, inColumnBounds, key, keyX, keyY, keyZ, SEA_Y, type CellKey } from '@/core/grid';
 import { compose, multiply, rotationX, rotationY, rotationZ, scaling, translation, type Mat4 } from '@/core/mat4';
 import { hash, rand } from '@/core/rand';
@@ -260,13 +261,26 @@ function centreOf(ch: Chunk): [number, number, number] {
   return n ? [x / n, y / n, z / n] : ch.from;
 }
 
+/** Chunks of one structure in the air at once, at most (desktop; a phone or the roughest levels). */
+const FLY_MAX = 48;
+const FLY_PHONE = 18;
+
+/** Every k-th chunk, so a big break throws a few pieces from all over it. */
+export function capChunks<T>(chunks: readonly T[], max: number): T[] {
+  if (chunks.length <= max) return [...chunks];
+  const step = chunks.length / max;
+  return Array.from({ length: max }, (_, i) => chunks[Math.floor(i * step)]!);
+}
+
 function startFlight(st: State, stage: LifeStage, id: StructureId): void {
   const shape = st.shape;
   const s = shape?.structures.get(id);
   if (!shape || !s) return;
   const reg = allGenerators() as ReturnType<typeof allGenerators> & { intact?: ReturnType<typeof allGenerators> };
   const intact = (reg.intact ?? reg).build(s, shape, allParts());
-  const chunks = blastChunks(intact.mesh, s, shape);
+  // A big structure broken in many places (a quay, a port) throws only a share of its pieces; the rest are
+  // simply gone from the hole they leave (cheap on phones).
+  const chunks = capChunks(blastChunks(intact.mesh, s, shape), phoneSized() || lifeLow() ? FLY_PHONE : FLY_MAX);
   if (chunks.length === 0) return;
   const old = st.flights.get(id);
   if (old) for (const h of old.handles) h.release();

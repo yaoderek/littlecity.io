@@ -293,8 +293,8 @@ function isOpen(col: Column, field: Field): boolean {
 export function blastChunks(intact: MeshData, s: Structure, plan: ShapePlan): Chunk[] {
   const prof = profileOf(s, plan);
   if (!prof.damaged) return [];
-  // Over the water on stilts: it goes over in one piece.
-  if (afloat(prof)) {
+  // Over the water on stilts: it goes over in one piece (a big dock breaks where it was hit, below).
+  if (topplesWhole(prof)) {
     const a = afloatPose(prof);
     return a.toppled && !a.mending ? [toppleOf(intact, prof)] : [];
   }
@@ -792,6 +792,18 @@ export function afloat(prof: Profile): boolean {
   return base.length > 0 && base.every((c) => plan.kinds.get(c - 4096) === 'dock');
 }
 
+/**
+ * A dock this many cells or fewer (a jetty, a short pier) goes over in one piece; a bigger one (a quay, a
+ * port) breaks where it was hit, cell by cell, its planks and slabs dropping into the water, and the rest of
+ * it stays where it stands: nothing bigger than a few cells' worth ever leaves the ground.
+ */
+export const DOCK_WHOLE = 3;
+
+/** Goes over in one piece when a blast is heavy enough: anything on stilts, and a dock only if it is small. */
+export function topplesWhole(prof: Profile): boolean {
+  return afloat(prof) && (prof.s.kind !== 'dock' || prof.s.cells.length <= DOCK_WHOLE);
+}
+
 /** How a structure over the water stands: knocked over (a stage-3 blast), leaning (a stage-2 one), or neither. */
 function afloatPose(prof: Profile): { toppled: boolean; lean: number; mending: boolean; progress: number; clear: number; settling: boolean } {
   let stage = 0, mending = false, progress = 1, clear = 1, settling = false, blast = false;
@@ -805,9 +817,10 @@ function afloatPose(prof: Profile): { toppled: boolean; lean: number; mending: b
     }
     settling ||= col.settling;
   }
-  const toppled = blast && stage === 3;
+  const whole = topplesWhole(prof);
+  const toppled = whole && blast && stage === 3;
   // A heavy hit short of knocking it over: a leg snapped, and it leans; straightened as it is mended.
-  const lean = blast && stage === 2 ? (prof.s.kind === 'dock' ? 0.07 : 0.16) * (mending ? 1 - progress : 1) : 0;
+  const lean = whole && blast && stage === 2 ? (prof.s.kind === 'dock' ? 0.07 : 0.16) * (mending ? 1 - progress : 1) : 0;
   return { toppled, lean, mending, progress, clear, settling };
 }
 
