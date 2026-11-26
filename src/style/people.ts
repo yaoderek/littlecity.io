@@ -216,8 +216,9 @@ export const BIKE = defineStyle(
     leanMax: 0.16,
     /** Pedal turns per cell ridden (the wheels roll without slipping). */
     pedal: 1.1,
-    /** A bike in hand is drawn up to this much longer (not taller) from the whole-island view, so it reads there. */
-    far: 1.5,
+    /** A bike in hand is drawn up to this much longer (not taller) from the whole-island view, so it reads there (1.15: a
+     * life-size bike is already as long as its rider is tall). */
+    far: 1.15,
   },
   {
     minWalk: [4, 40, 1], speed: [1, 4, 0.05], cap: [0, 30, 1], capPhone: [0, 20, 1], capLow: [0, 10, 1], rain: [0, 1, 0.05], snow: [0, 1, 0.05], cover: [0, 1, 0.05],

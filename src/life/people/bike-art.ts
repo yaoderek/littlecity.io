@@ -31,7 +31,7 @@ import { inBasket } from './bikes';
 /** Seconds a bike takes to slide to a new place. */
 const BLEND = 0.4;
 /** Wheeled: the bike this far to the walker's right, and this far ahead of them (world units). */
-const BESIDE = 0.14;
+const BESIDE = 0.15;
 const AHEAD = 0.06;
 /** A load in the basket, at this share of its size set down. */
 const BASKET_SCALE = 0.55;
@@ -295,7 +295,7 @@ export function createBikeArt(stage: LifeStage): BikeArt {
         if (load) {
           d.load ??= { kind: load, handle: stage.spawnMesh(restingMesh(load), HIDE) };
           // m · T(basket) · S(BASKET_SCALE)
-          const bx = 0, by = BIKE_AT.barY - 0.055, bz = BIKE_AT.barZ + 0.062, k = BASKET_SCALE;
+          const bx = 0, by = BIKE_AT.barY - 0.018, bz = BIKE_AT.barZ + 0.051, k = BASKET_SCALE;
           for (let i = 0; i < 12; i++) w[i] = m[i]! * (i % 4 === 3 ? 0 : k);
           w[3] = w[7] = w[11] = 0;
           for (let r = 0; r < 3; r++) w[12 + r] = m[r]! * bx + m[4 + r]! * by + m[8 + r]! * bz + m[12 + r]!;
@@ -332,7 +332,7 @@ export function bikePose(p: Person, bikes: Bikes, rig: Rig, walking: boolean, sc
   const r = riding.get(p) ?? { crank: 0, roll: 0, grow: 1 };
   const g = r.grow;
   if (b.mounted) {
-    const pose: Pose = { legL: 0, legR: 0, armL: 0, armR: 0, outL: 0.1, outR: 0.1, lean: 0.38, lift: BIKE_AT.saddleY * k - rig.hipY, twist: 0 };
+    const pose: Pose = { legL: 0, legR: 0, armL: 0, armR: 0, outL: 0.1, outR: 0.1, lean: 0.45, lift: BIKE_AT.saddleY * k - rig.hipY, twist: 0 };
     // Feet on the pedals, half a turn apart: each leg points from its hip to its pedal.
     const hipY = rig.hipY + pose.lift;
     for (const [side, a] of [[1, r.crank], [-1, r.crank + Math.PI]] as const) {
