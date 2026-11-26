@@ -2144,3 +2144,15 @@ alive (24 on a phone), one shared undo step; phone-sized page p95
 added German and Turkish for the raid's reworded lines (`6c8dfcd`).
 `preview/next` = working branch `3f21dc3` (live `c1d6604`) + orchard +
 raids; gate running. Garrison sally: raid agent resumed for it.
+
+**2026-11-25, night: `preview/next` at `010cd38`, all three on :5180
+(not live, waiting for Derek).** The fishing fix repaired
+(`fix/fishing-line` `66d840c`): the crowd's fishing positions are back
+to the base exactly (the three failures were the crowd reshuffled by
+the moved spot, no fisher in any of them); only the drawn figure
+steps to the edge (`PEOPLE.fishStep`); no line over a moored rowboat
+or the fishing boat's berth. Gate on `010cd38`: 209 files, 2,568 passed, 12 skipped, none failed.
+Phone-sized page, idle, `everything`: 16.7 ms median on the base and
+on the preview alike. Two rare faults found on the base and left: a
+person walking backwards to a shop haunt, a one-storey drop in one
+frame on a fire errand.
