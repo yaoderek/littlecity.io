@@ -1573,7 +1573,7 @@ const LISTED: readonly GuideEntry[] = [
     view: { yaw: 35, pitch: 36 },
     pad: 0.2,
     life: { settle: 120, residents: true },
-    frame: [10, 11, 26, 20, 2],
+    frame: [10, 11, 25, 17, 2],
   },
   {
     id: 'fetching-water',
