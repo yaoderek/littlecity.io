@@ -368,6 +368,16 @@ const DRAWINGS: Record<string, string> = {
     `<path d="M5.6 39.4 Q22 45.2 38.6 39.2" stroke-width="2.4"/>`,
   // A small tick in a ring: an entry of the guide the town already holds.
   tick: `<circle cx="24" cy="24" r="17.5" fill="${C.leaf}"/><path stroke-width="3.6" d="M15.2 24.6 L21.6 31 L33.4 17.4" stroke="${C.ink}"/>`,
+  // The Almanac's stamp on a building the player has built: a rubber stamp's ring in red ink with a tick in it.
+  stamp:
+    `<circle cx="24" cy="24" r="18.6" stroke="${C.redDark}" stroke-width="2.6" fill="${C.white}"/>` +
+    `<circle cx="24" cy="24" r="14.4" stroke="${C.redDark}" stroke-width="1.2" stroke-dasharray="2.6 2.2"/>` +
+    `<path stroke-width="3.8" d="M15.6 24.4 L21.4 30.4 L32.8 17.2" stroke="${C.redDark}"/>`,
+  // The tutorial's hand (src/ui/tutorial.ts): a white glove pointing down with its first finger, a blue cuff.
+  point:
+    `<path d="M15.4 4.2 L33.6 4.4 L33.2 10.6 L15.6 10.4 Z" fill="${C.roofBlue}"/>` +
+    `<path d="M16 10.6 L33 10.8 Q37.6 17.4 35.6 24.8 Q33.6 30.4 27.8 30.6 L26.2 30.4 L26.2 41.8 Q26 45.6 22.8 45.6 Q19.6 45.6 19.6 41.8 L19.6 29.6 Q14.2 28.6 13.4 23.2 Q9.6 21.4 11.4 17.4 Q13.4 14.8 16.4 16.8 Z" fill="${C.white}"/>` +
+    `<path ${thin} d="M26.4 24.6 Q30.6 25.8 35 23.6 M26.8 19.4 Q31 20.8 35.8 18.6 M16.4 16.8 Q16.8 20.6 19.6 22.6 M19.6 29.6 L19.6 25.6"/>`,
   'time-run':
     sun(17.5, 17.5, 6.6) +
     `<path d="M33.6 21.6 A10.4 10.4 0 1 0 41 37.4 A8.4 8.4 0 0 1 33.6 21.6 Z" fill="${C.moon}"/>`,

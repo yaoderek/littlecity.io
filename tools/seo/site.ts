@@ -185,13 +185,13 @@ ${s.data.map((d) => `<script type="application/ld+json">${ld(d)}</script>`).join
 <body>
 <header>
 <a class="brand" href="${home}"><img src="/favicon.svg" alt="" width="32" height="32">${NAME}</a>
-<nav><a class="hide-sm" href="${here('/about/')}">${esc(t('About'))}</a><a class="hide-sm" href="${here('/guide/')}">${esc(t('Guide'))}</a><a class="play" href="${home}">${esc(t('Play free'))}</a></nav>
+<nav><a class="hide-sm" href="${here('/about/')}">${esc(t('About'))}</a><a class="hide-sm" href="${here('/guide/')}">${esc(t('Almanac'))}</a><a class="play" href="${home}">${esc(t('Play free'))}</a></nav>
 </header>
 <main>
 ${s.body.trim()}
 </main>
 <footer>
-<p>${t('<strong>Little City</strong> is a hand-drawn town diorama builder by Derek Yao. Free, in your browser, on a computer or a phone.')} <a href="${home}">${esc(t('Play now'))}</a> · <a href="${here('/about/')}">${esc(t('About the game'))}</a> · <a href="${here('/guide/')}">${esc(t('The building guide'))}</a></p>
+<p>${t('<strong>Little City</strong> is a hand-drawn town diorama builder by Derek Yao. Free, in your browser, on a computer or a phone.')} <a href="${home}">${esc(t('Play now'))}</a> · <a href="${here('/about/')}">${esc(t('About the game'))}</a> · <a href="${here('/guide/')}">${esc(t('The almanac'))}</a></p>
 </footer>
 </body>
 </html>
@@ -303,7 +303,7 @@ export function aboutPage(): SitePage {
 <p>${esc(t('Then people move in. The miller carries flour down to the bakery, and the baker takes the bread to the stall on the square. Boats go out in the morning and come back with fish. Washing goes up on the lines. Some days there\'s a market. Sometimes there\'s a wedding.'))}</p>
 <p>${esc(t('The seasons turn. It snows. The lamps come on at dusk.'))}</p>
 <p>${esc(t('You can also skip the building: grow a whole town on a new island (a harbour town, a castle town, a farming village) and just watch it.'))}</p>
-<p>${t('There are over 80 things to find. <a href="{guide}">The guide</a> has all of them.', { guide: here('/guide/') })}</p>
+<p>${t('There are over 80 things to find. <a href="{guide}">The almanac</a> has all of them.', { guide: here('/guide/') })}</p>
 <ul class="grid">${examples.map(tile).join('')}</ul>
 
 <h2>${esc(t('A few questions'))}</h2>
@@ -344,8 +344,8 @@ export function guideIndexPage(): SitePage {
   }).join('\n');
   const n = ENTRIES.length;
   const body = `
-<p class="crumbs"><a href="${here('/')}">${NAME}</a> › ${esc(t('Guide'))}</p>
-<h1>${esc(t('The Little City guide'))}</h1>
+<p class="crumbs"><a href="${here('/')}">${NAME}</a> › ${esc(t('Almanac'))}</p>
+<h1>${esc(t('The Little City almanac'))}</h1>
 <p class="lede">${esc(t('You never pick a building from a menu in Little City. You put blocks down and the town decides what they become. Here are all {n} special buildings and events, and how to get each one.', { n }))}</p>
 <a class="play big" href="${here('/')}">${esc(t('Play Little City free'))}</a>
 ${sections}
@@ -353,7 +353,7 @@ ${sections}
   const list = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    name: t('Little City building guide'),
+    name: t('Little City almanac'),
     itemListElement: ENTRIES.map((e, i) => ({ '@type': 'ListItem', position: i + 1, name: nameOf(e), url: pageOf(e) })),
   };
   return {
@@ -364,11 +364,11 @@ ${sections}
     priority: 0.8,
     images: ENTRIES.map((e) => ({ url: pictureOf(e), title: t('{name} in Little City', { name: nameOf(e) }) })),
     html: page({
-      title: t('Little City guide: all {n} special buildings and how to get them', { n }),
+      title: t('Little City almanac: all {n} special buildings and how to get them', { n }),
       description: clip(t('How to get every special building in Little City: the chapel, the lighthouse, the keep, the watermill, market day, a wedding and the rest.'), 160),
       key: '/guide/',
       body,
-      data: [list, crumbs([[NAME, url('/')], [t('Guide'), url('/guide/')]]), gameData()],
+      data: [list, crumbs([[NAME, url('/')], [t('Almanac'), url('/guide/')]]), gameData()],
     }),
   };
 }
@@ -386,7 +386,7 @@ export function entryPage(e: GuideEntry): SitePage {
     : t('In Little City you never choose a building from a menu. Put the blocks down like this and the town does the rest.');
   const key = `/guide/${e.id}/`;
   const body = `
-<p class="crumbs"><a href="${here('/')}">${NAME}</a> › <a href="${here('/guide/')}">${esc(t('Guide'))}</a> › <a href="${here('/guide/')}#${e.group}">${esc(group)}</a></p>
+<p class="crumbs"><a href="${here('/')}">${NAME}</a> › <a href="${here('/guide/')}">${esc(t('Almanac'))}</a> › <a href="${here('/guide/')}#${e.group}">${esc(group)}</a></p>
 <h1>${esc(heading)}</h1>
 <img class="shot" src="/guide/${e.id}.webp" alt="${esc(t('{name} in Little City, drawn in ink and pencil', { name }))}" width="360" height="270">
 <p class="how"><strong>${esc(t('How to get it:'))}</strong> ${esc(how)}</p>
@@ -414,14 +414,14 @@ ${others.length ? `<h2>${esc(t('More in {group}', { group }))}</h2><ul class="gr
     priority: 0.6,
     images: [{ url: pictureOf(e), title: heading }],
     html: page({
-      title: event ? t('{name}: how to make it happen | Little City guide', { name }) : t('{name}: how to build it | Little City guide', { name }),
+      title: event ? t('{name}: how to make it happen | Little City almanac', { name }) : t('{name}: how to build it | Little City almanac', { name }),
       description: clip(t('{how} Little City is a hand-drawn town diorama builder, free in your browser.', { how }), 160),
       key,
       image: `${ORIGIN}/og.jpg`,
       imageAlt: heading,
       type: 'article',
       body,
-      data: [article, crumbs([[NAME, url('/')], [t('Guide'), url('/guide/')], [name, pageOf(e)]])],
+      data: [article, crumbs([[NAME, url('/')], [t('Almanac'), url('/guide/')], [name, pageOf(e)]])],
     }),
   };
 }
@@ -432,7 +432,7 @@ export function notFoundPage(): SitePage {
 <h1>This street isn't built yet</h1>
 <p class="lede">There's nothing at this address. The town is this way.</p>
 <a class="play big" href="/">Go to ${NAME}</a>
-<p><a href="/guide/">The building guide</a> · <a href="/about/">About the game</a></p>
+<p><a href="/guide/">The almanac</a> · <a href="/about/">About the game</a></p>
 `;
   const html = page({ title: `Not found | ${NAME}`, description: pitch(), key: '/404.html', body, data: [], single: true }).replace(
     '<link rel="canonical" href="https://littlecity.io/404.html">',
@@ -451,7 +451,7 @@ export function homeAbout(): string {
       <p>${esc(t('A house beside a tall tower becomes a chapel. Four blocks stacked by the sea become a lighthouse. Then people move in: the miller carries flour to the bakery, boats go out for fish, and some days there\'s a market or a wedding on the square. The seasons turn and the lamps come on at dusk.'))}</p>
       <p>${esc(t('Or grow a whole town on a new island, a harbour town, a castle town or a farming village, and just watch it.'))}</p>
       <p>${esc(t('Works on computers, iPhone, iPad and Android. Made by Derek Yao.'))}</p>
-      <nav><a href="${here('/about/')}" tabindex="-1">${esc(t('About Little City'))}</a> · <a href="${here('/guide/')}" tabindex="-1">${esc(t('The guide: every special building and how to get it'))}</a></nav>
+      <nav><a href="${here('/about/')}" tabindex="-1">${esc(t('About Little City'))}</a> · <a href="${here('/guide/')}" tabindex="-1">${esc(t('The almanac: every special building and how to get it'))}</a></nav>
     </main>`;
 }
 
