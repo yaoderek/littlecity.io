@@ -16,10 +16,16 @@
 //   piece_refused     {reason, item}: a click that could not be done and why (the first 20 of a visit)
 //   building_earned   {role, grown}: a kind of building this browser had never seen, appearing after an
 //                     edit (grown: a "grow a town" made it, not the player's hand)
+//   building_unlocked {entry, role, group, built}: the player built one of the almanac's buildings by hand for the
+//                     first time ever (src/ui/unlock.ts; role is the entry's role, or its id when the dressing proves it;
+//                     built: how many they have built now)
+//   tutorial_shown    {step: place | undo, touch}: the tutorial hand came up (src/ui/tutorial.ts), once per step a visit
+//   tutorial_step     {step: placed | undone | moved-on | timed-out | rested, from, seconds, touch}: what the player
+//                     did about it (moved-on: built on instead of undoing; rested: left alone, put away for the visit)
 //   town_grew         {blocks, grown}: this browser's biggest town passed 10, 25, 50, 100, 250, 500 or 1000 blocks
 //   town_shared       {via: link | link_box | file}
 //   postcard_saved, town_downloaded, town_file_opened, shared_town_kept, shared_town_left,
-//   town_grown {new_island}, new_island, guide_opened, fly_started
+//   town_grown {new_island}, new_island, guide_opened (the Almanac), fly_started
 // Every event carries build, lang (the language the game is shown in, src/i18n), touch, and (for telling slow devices apart) gpu, cores and memory.
 // PostHog adds its own: $pageview, $pageleave, $web_vitals, clicks on the interface (autocapture), and session
 // replays (desktops only, and not slow ones, with the town in them).

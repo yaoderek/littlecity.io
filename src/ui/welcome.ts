@@ -47,6 +47,8 @@ export interface WelcomeHost {
 }
 
 export interface Welcome {
+  /** The town is still to start growing (the island is being looked at first). */
+  readonly waiting: boolean;
   /** Call when the town changes. */
   townChanged(): void;
   /** The town has finished growing. */
@@ -55,7 +57,7 @@ export interface Welcome {
   dispose(): void;
 }
 
-const NONE: Welcome = { townChanged() {}, grown() {}, dispose() {} };
+const NONE: Welcome = { waiting: false, townChanged() {}, grown() {}, dispose() {} };
 /** The island is looked at this long before the town starts to grow, ms. */
 export const WELCOME_DELAY = 900;
 
@@ -136,6 +138,9 @@ export function maybeWelcome(root: HTMLElement, host: WelcomeHost): Welcome {
     show();
   }, WELCOME_DELAY);
   return {
+    get waiting() {
+      return timer !== null;
+    },
     townChanged() {
       // Built on before the town began to grow: no town, no note.
       if (timer !== null && host.hasTown()) {

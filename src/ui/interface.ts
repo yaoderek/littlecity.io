@@ -13,9 +13,11 @@
 
 import { MUSIC_VOLUME_DEFAULT, MUSIC_VOLUME_EVENT, MUSIC_VOLUME_KEY, SOUND_KEY, SOUND_VOLUME_DEFAULT, SOUND_VOLUME_EVENT, SOUND_VOLUME_KEY, readVolume, soundOn, writeVolume } from '@/life/sound/volume';
 import { maybeWelcome } from './welcome';
-import { columnIndex, edgeOf, key, keyX, keyY, keyZ, NO_CELL, type CellKey } from '@/core/grid';
+import { CELL_H, columnIndex, edgeOf, inColumnBounds, key, keyX, keyY, keyZ, NO_CELL, type CellKey } from '@/core/grid';
+import type { Vec3 } from '@/core/mat4';
 import type { Edit, Terrain, World } from '@/core/world';
-import type { DressingPlan } from '@/resolve/plan';
+import type { DressingPlan, ShapePlan } from '@/resolve/plan';
+import { celebrate } from '@/life/feedback/celebrate';
 import type { TimeHold } from '@/life/api';
 import { holdYear, type SeasonHold, type WeatherHold } from '@/life/season';
 import { partPhases } from '@/life/signals';
@@ -46,12 +48,15 @@ import { faceZone, pickCell, type Pick } from './pick';
 import { allPieceIds, DRAWER_IDS, drawerItems, isLandTool, isMischiefTool, isToolId, paintsRuns, trayItem, type DrawerId, type ItemId } from './pieces';
 import { createMischiefTools } from './mischief';
 import { createHand } from './hand';
+import { createCollector, createUnlockNotes, topOf, type Unlocked } from './unlock';
+import { createTutorial } from './tutorial';
 import { mischiefOf } from '@/life/mischief/director';
 import { raidsOf } from '@/life/raid/raids';
 import { attachPointer } from './pointer';
 import { createStepper } from './stepper';
 import { createTray, type Tray } from './tray';
 import { INPUT } from '@/style/input';
+import { FEEDBACK } from '@/style/animation';
 import { setKindNames, t, type Lang } from '@/i18n';
 
 export interface InterfaceHost {
@@ -105,8 +110,8 @@ export interface Interface {
   readonly guide: Guide;
   /** Fly mode (design section 7, "Fly mode"). main.ts calls fly.frame before each frame is drawn. */
   readonly fly: FlyMode;
-  /** The dressing for the newest world arrived (the guide's ticks for lamps, laundry and parks). */
-  dressed(dressing: DressingPlan): void;
+  /** The dressing for the newest world arrived (the guide's ticks for lamps, laundry and parks), and the town it is for. */
+  dressed(dressing: DressingPlan, shape?: ShapePlan): void;
   /** L57: glides the camera to look at a place (as Escape glides back to the whole island). */
   glideTo(target: readonly [number, number, number], zoom?: number): void;
   /** Call once per frame, just before the town is drawn (after dressed(), so the ghost can yield to a dressing). */
@@ -140,6 +145,11 @@ export interface Interface {
     /** Added by Fly: where fly mode is, and whether Escape's glide to the whole island is under way. */
     fly: FlyPhase;
     recentring: boolean;
+    /** The almanac's buildings built by hand, ever (src/ui/unlock.ts), and the unlock words on screen. */
+    built: string[];
+    unlocks: string[];
+    /** The tutorial hand (src/ui/tutorial.ts). */
+    tutorial: { step: string; showing: boolean; say: string };
   };
   dispose(): void;
 }
@@ -251,6 +261,8 @@ function inSlices<T>(search: Generator<void, T>, signal: AbortSignal, sliceMs = 
     work();
   });
 }
+/** How big the unlock moment's stars look on screen at the least, CSS pixels. */
+const STAR_PX = 24;
 const REBUILD_KEY = 'little-city.rebuild';
 const RAIDERS_KEY = 'little-city.raiders';
 const LAND_HINT_KEY = 'little-city.land-hint';
@@ -313,7 +325,7 @@ export function createInterface(host: InterfaceHost): Interface {
   const handHeld = (): boolean => !tray.state.idle && tray.state.item === 'hand' && !growth.active;
   const undoNow = (): void => {
     tally('undo');
-    if (!mischief.undo()) game.undo();
+    if (!mischief.undo() && game.undo()) tutorial.undone();
   };
 
   // ── grow a town (design section 15a) ───────────────────────────────────
@@ -509,7 +521,44 @@ export function createInterface(host: InterfaceHost): Interface {
     // Default: on.
   }
 
-  const guide = createGuide({ shape: () => game.shape });
+  const guide = createGuide({ shape: () => game.shape, built: () => collector.built });
+
+  // ── the collection and the unlock moment (./unlock.ts) ─────────────────
+  const page = new URLSearchParams(location.search);
+  const scenarioPage = page.has('scenario');
+  const store = ((): Storage | null => {
+    try {
+      return window.localStorage;
+    } catch {
+      return null;
+    }
+  })();
+  /** Where the player's last edit was, in the town: the words for a building the dressing holds float there. */
+  let handAt: Vec3 | null = null;
+  const unlockNotes = createUnlockNotes(view, (id) => {
+    closeAll();
+    guide.openAt(id);
+  });
+  const unlocked = (made: readonly Unlocked[]): void => {
+    for (const m of made) {
+      const top = m.structure === null ? null : topOf(game.shape, m.structure);
+      const at = top?.at ?? handAt;
+      if (!at) continue;
+      // The stars are drawn about STAR_PX across whatever the zoom (never smaller than their own size).
+      const [ax, ay] = view.worldToScreen(at);
+      const [bx, by] = view.worldToScreen([at[0] + 1, at[1], at[2]]);
+      const [cx, cy] = view.worldToScreen([at[0], at[1], at[2] + 1]);
+      const perUnit = Math.max(1, (Math.hypot(bx - ax, by - ay) + Math.hypot(cx - ax, cy - ay)) / 2);
+      const scale = STAR_PX / (perUnit * FEEDBACK.unlockStarSize);
+      celebrate(view.stage, { ...(top && m.structure !== null ? { structure: m.structure } : {}), at, size: top?.size ?? 1, scale });
+      unlockNotes.show(m.entry, at);
+      track('building_unlocked', { entry: m.entry.id, role: 'role' in m.entry.proof ? m.entry.proof.role : m.entry.id, group: m.entry.group, built: collector.built.size });
+    }
+    guide.collectionChanged();
+  };
+  const collector = createCollector({ storage: store, shape: game.shape, enabled: !scenarioPage, unlocked });
+  // ?almanac=reset: every building can be unlocked again (to see the moment afresh).
+  if (page.get('almanac') === 'reset') collector.reset();
   const fly = createFly({
     view,
     shape: () => game.shape,
@@ -1011,8 +1060,9 @@ export function createInterface(host: InterfaceHost): Interface {
     }
   };
 
-  /** Applies the columns gathered since the last frame, as one edit. Refusals are noted and told once, at the end. */
-  const flushStroke = (): void => {
+  /** Applies the columns gathered since the last frame, as one edit (the player's own). Refusals are noted and told once, at the end. */
+  const flushStroke = (): void => collector.hand(flushStrokeNow);
+  const flushStrokeNow = (): void => {
     if (!stroke || stroke.pending.length === 0) return;
     const cols = stroke.pending;
     stroke.pending = [];
@@ -1123,20 +1173,30 @@ export function createInterface(host: InterfaceHost): Interface {
       const seen = look(x, y);
       if (!seen) return;
       const length = heldLength();
-      if (length !== null && length > 1 && !isLandTool(item)) placeRun(x, y, seen, length);
-      else if (!perform(planUse(tool(), seen.pick, seen.ctx), x, y)) return;
+      handAt = [seen.pick.point[0], seen.pick.point[1], seen.pick.point[2]];
+      const done = collector.hand(() => {
+        if (length !== null && length > 1 && !isLandTool(item)) {
+          placeRun(x, y, seen, length);
+          return true;
+        }
+        return perform(planUse(tool(), seen.pick, seen.ctx), x, y);
+      });
+      if (!done) return;
       tally('uses');
       tally(`use_${item}`);
       if (!isToolId(item)) builtByHand(item);
+      if (!isToolId(item) && !isLandTool(item)) tutorial.placed(pieceTop(seen.pick.target));
+      if (item === 'erase') tutorial.undone();
     },
     erase(x, y) {
       if (dismissing) return;
       if (growth.active) return growth.skip();
       if (tray.state.idle) return; // just looking: no erasing by a stray right click or long press
       const seen = look(x, y);
-      if (seen && perform(planErase(seen.pick, seen.ctx), x, y)) {
+      if (seen && collector.hand(() => perform(planErase(seen.pick, seen.ctx), x, y))) {
         navigator.vibrate?.(12);
         tally('erased');
+        tutorial.undone();
       }
     },
     orbit(dx, dy) {
@@ -1180,7 +1240,9 @@ export function createInterface(host: InterfaceHost): Interface {
       const first = plan.tries[0];
       if (!first) return false;
       game.begin();
-      const placed = perform(plan, x, y);
+      handAt = [seen.pick.point[0], seen.pick.point[1], seen.pick.point[2]];
+      const placed = collector.hand(() => perform(plan, x, y));
+      if (placed && !isToolId(tray.state.item)) tutorial.placed(pieceTop(seen.pick.target));
       const cell = 'cell' in first ? first.cell : NO_CELL;
       run = {
         world0: seen.ctx.world,
@@ -1203,7 +1265,7 @@ export function createInterface(host: InterfaceHost): Interface {
     runMove(x, y) {
       if (handRun) return hand.move(x, y);
       if (stroke) strokeMove(x, y);
-      else runStep(x, y);
+      else collector.hand(() => runStep(x, y));
     },
     runEnd() {
       if (handRun) {
@@ -1412,7 +1474,104 @@ export function createInterface(host: InterfaceHost): Interface {
           game.undo();
         },
       })
-    : { townChanged() {}, grown() {}, dispose() {} };
+    : { waiting: false, townChanged() {}, grown() {}, dispose() {} };
+
+  // ── the tutorial hand (./tutorial.ts) ──────────────────────────────────
+  /** Where a piece just placed in a cell stands, its top (a block) or its face (a floor). */
+  const pieceTop = (cell: CellKey): Vec3 =>
+    cell === NO_CELL ? (handAt ?? [24, 1, 24]) : [keyX(cell) + 0.5, (keyY(cell) + (game.world.blocks.has(cell) ? 0.85 : 0)) * CELL_H, keyZ(cell) + 0.5];
+  /** The screen area the hand may point into: clear of the corners, the tray and the words over it. */
+  const roomy = (x: number, y: number): boolean => {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    const trayTop = tray.el.getBoundingClientRect().top || h;
+    if (x < 40 || x > w - 40 || y < 150 || y > Math.min(h - 40, trayTop - 30)) return false;
+    // The spot, and the room above it for the hand and its words, are the town (no card, no button).
+    return [0, 50, 100].every((up) => document.elementFromPoint(x, y - up) === canvas);
+  };
+  /** A column by the town that is empty all round, on screen, in view, where a click would place. */
+  const goodSpot = (x: number, z: number): Vec3 | null => {
+    const world = game.world, terrain = game.terrain;
+    if (!inColumnBounds(x, z)) return null;
+    const h = terrain.height[columnIndex(x, z)] ?? 0;
+    if (h <= 0) return null;
+    for (let dz = -1; dz <= 1; dz++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (!inColumnBounds(x + dx, z + dz)) return null;
+        const nh = terrain.height[columnIndex(x + dx, z + dz)] ?? 0;
+        if (nh <= 0) return null;
+        const c = key(x + dx, nh, z + dz);
+        if (world.blocks.has(c) || world.floors.has(c)) return null;
+      }
+    }
+    const at: Vec3 = [x + 0.5, h * CELL_H, z + 0.5];
+    const [sx, sy] = view.worldToScreen(at);
+    if (!roomy(sx, sy)) return null;
+    const seen = look(sx, sy);
+    if (!seen || seen.pick.hit !== 'terrain' || seen.pick.target !== key(x, h, z)) return null;
+    return planUse(tool(), seen.pick, seen.ctx).tries.some((e) => game.can(e).ok) ? at : null;
+  };
+  /** The nearest good spot to the middle of what is built (or of the view, on an empty island). */
+  const findSpot = (): Vec3 | null => {
+    let cx = 0, cz = 0, n = 0;
+    for (const [cell, b] of game.world.blocks) {
+      if (b.kind === 'tree') continue;
+      cx += keyX(cell);
+      cz += keyZ(cell);
+      n++;
+    }
+    if (n > 0) {
+      cx = Math.round(cx / n);
+      cz = Math.round(cz / n);
+    } else {
+      const mid = look(canvas.clientWidth / 2, canvas.clientHeight / 2);
+      if (!mid) return null;
+      cx = keyX(mid.pick.cell);
+      cz = keyZ(mid.pick.cell);
+    }
+    for (let r = 1; r <= 14; r++) {
+      const ring: [number, number, number][] = [];
+      for (let dz = -r; dz <= r; dz++) {
+        for (let dx = -r; dx <= r; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
+          // Nearer the viewer first (lower on the screen): the spot is in front of the town, not behind it.
+          ring.push([cx + dx, cz + dz, view.worldToScreen([cx + dx + 0.5, 0, cz + dz + 0.5])[1]]);
+        }
+      }
+      ring.sort((a, b) => b[2] - a[2]);
+      for (const [x, z] of ring) {
+        const at = goodSpot(x, z);
+        if (at) return at;
+      }
+    }
+    return null;
+  };
+  const tutorialParam = page.get('tutorial');
+  const automatedPage = (navigator as { webdriver?: boolean }).webdriver === true;
+  const tutorial = createTutorial({
+    view,
+    storage: store,
+    enabled: !scenarioPage && (!automatedPage || tutorialParam === 'on') && tutorialParam !== 'off',
+    forced: tutorialParam === 'on',
+    free: () =>
+      !growth.active &&
+      !welcome.waiting &&
+      !fly.active &&
+      !menu.isOpen &&
+      !guide.isOpen &&
+      !(towns?.isOpen ?? false) &&
+      !sliders.some((s) => s.isOpen) &&
+      !tray.popupOpen &&
+      !hand.holding &&
+      !root.classList.contains('lc-flying'),
+    canPlace: () => !tray.state.idle && !isToolId(tray.state.item) && !isLandTool(tray.state.item),
+    canRemove: () => !tray.state.idle,
+    spot: findSpot,
+    stillGood: (at) => goodSpot(Math.floor(at[0]), Math.floor(at[2])) !== null,
+    undoButton: () => (undoButton.disabled || undoButton.offsetParent === null ? null : undoButton),
+    touch: isCoarsePointer,
+  });
+  root.append(unlockNotes.el, tutorial.el);
+  let lastFrame = performance.now();
 
   // ?mischief: straight to a grown town with the Mischief drawer open, to try it.
   const openMischief = (): void => {
@@ -1432,7 +1591,8 @@ export function createInterface(host: InterfaceHost): Interface {
     growth,
     guide,
     fly,
-    dressed(dressing) {
+    dressed(dressing, shape) {
+      collector.dressed(shape ?? game.shape, dressing);
       guide.dressed(dressing);
       fly.dressed(dressing);
       ghostPace.heavy();
@@ -1454,6 +1614,10 @@ export function createInterface(host: InterfaceHost): Interface {
       if (!dressedThisFrame) growth.tick(performance.now());
       dressedThisFrame = false;
       markers.update(tray.state.item === 'change' && !tray.state.idle, game.world, game.terrain);
+      const now = performance.now();
+      tutorial.frame(Math.min(0.25, (now - lastFrame) / 1000));
+      lastFrame = now;
+      unlockNotes.frame();
     },
     sync() {
       worldVersion++;
@@ -1461,6 +1625,7 @@ export function createInterface(host: InterfaceHost): Interface {
       redoButton.disabled = !game.canRedo;
       showTime();
       showSeasons();
+      collector.changed(game.shape);
       guide.townChanged();
       welcome.townChanged();
       if (hoverAt) ghostPace.want();
@@ -1482,6 +1647,9 @@ export function createInterface(host: InterfaceHost): Interface {
       guide: guide.isOpen,
       fly: fly.phase,
       recentring: recentre !== null,
+      built: [...collector.built],
+      unlocks: unlockNotes.showing(),
+      tutorial: tutorial.debug(),
     }),
     dispose() {
       window.clearTimeout(lengthHintTimer);

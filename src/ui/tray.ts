@@ -49,6 +49,8 @@ export interface Tray {
   shake(): void;
   /** Closes the colour pop-up; true if it was open. */
   closePopups(): boolean;
+  /** The colour pop-up or the house-style flyout is open. */
+  readonly popupOpen: boolean;
   onChange(fn: (state: Readonly<TrayState>) => void): void;
 }
 
@@ -271,6 +273,9 @@ export function createTray(start: Partial<TrayState> = {}): Tray {
       target.classList.remove('lc-shake');
       void target.offsetWidth; // restart the animation
       target.classList.add('lc-shake');
+    },
+    get popupOpen() {
+      return !swatches.hasAttribute('hidden') || styles.isOpen;
     },
     closePopups() {
       const wasOpen = !swatches.hasAttribute('hidden');
