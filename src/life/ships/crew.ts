@@ -56,6 +56,11 @@ export function goodsKindOf(h: InstanceHandle): string | undefined {
   return GOODS_KIND.get(h);
 }
 
+/** Marks a piece of goods spawned elsewhere (the port's dock workers, src/life/port) so the carters know what it is. */
+export function markGoods(h: InstanceHandle, kind: string): void {
+  GOODS_KIND.set(h, kind);
+}
+
 /** Goods lying on a quay: what lies in each of its spots (null: free). */
 export interface Pile {
   spots: Spot[];

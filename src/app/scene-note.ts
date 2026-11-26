@@ -13,7 +13,7 @@ import { SCENES } from '@/style/scenes';
 import type { Interface } from '@/ui/interface';
 
 /** The kinds of scene that raise a note with Watch. Add to it sparingly: only what a player would be sorry to miss. */
-export const NOTED: ReadonlySet<string> = new Set(['raid', 'wedding']);
+export const NOTED: ReadonlySet<string> = new Set(['raid', 'wedding', 'launch']);
 
 export interface SceneNote {
   /** Once a frame. */
@@ -46,7 +46,7 @@ export function sceneNote(ui: Interface, now: () => number = () => performance.n
       }
       if (showing || !scenes) return;
       for (const s of urgent ? [urgent] : on) {
-        // Only the really big events get a note: a raid and a wedding (NOTED). A beach day, a picnic, a
+        // Only the really big events get a note: a raid, a wedding, a ship launched (NOTED). A beach day, a picnic, a
         // snowball fight are there to be come upon, not announced (Derek, 2026-11-21).
         if (!NOTED.has(s.kind)) continue;
         if (seen.has(s.n) || !s.title || !s.noteworthy()) continue;

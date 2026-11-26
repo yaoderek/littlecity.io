@@ -82,6 +82,7 @@ const CASES: [string, string | undefined, object | undefined, number, number][] 
   ['creeper', undefined, { storeys: 2, look: 3, face: 1 }, 420, 1],
   ['doorstep', undefined, { steps: 0, pots: 1, flowers: 2, look: 4 }, 260, 4],
   ['doorstep', undefined, { steps: 2, barrel: 1, bicycle: 1, lantern: 1, look: 5 }, 420, 6],
+  ['door-bike', undefined, { steps: 1, paint: 1 }, 420, 2],
   ['rope-coil', undefined, undefined, 100, 1],
   ['lobster-pot', undefined, { look: 6 }, 140, 3],
   ['net-rack', undefined, { look: 7 }, 120, 2],

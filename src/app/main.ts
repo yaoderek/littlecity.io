@@ -47,6 +47,7 @@ import { isPhone } from '@/ui/dom';
 import { createInterface, type Interface } from '@/ui/interface';
 import { loadTown } from '@/world/save';
 import { frameDrawn, slowDevice, startAnalytics, track, townShown } from './analytics';
+import { setLifeLow } from '@/life/quality';
 import { createAutosave } from './autosave';
 import { createGame, type GameStart } from './game';
 import { createMusic } from './music';
@@ -467,6 +468,7 @@ const firstLevel = governed
   : 0;
 if (firstLevel > 0) view.setQuality?.(firstLevel);
 if (qualities[firstLevel]?.rough) slowDevice();
+setLifeLow(qualities[firstLevel]?.rough === true);
 const governor = governed ? createGovernor(levelCount, firstLevel, (i) => qualities[i]?.rough === true) : null;
 let lastPose = '';
 
@@ -485,6 +487,7 @@ function frame(now: number): void {
     if (next !== null) {
       view.setQuality?.(next);
       if (qualities[next]?.rough) slowDevice();
+      setLifeLow(qualities[next]?.rough === true);
       try {
         storage()?.setItem(QUALITY_KEY, `${qualityScreen}:${next}`);
       } catch {

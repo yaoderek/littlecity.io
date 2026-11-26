@@ -1,4 +1,4 @@
-// L58 · tier 2 · Trade from the quay. A town with a quay (R-D01) has places
+// L58 · tier 2 · Trade from the quay. A town with a quay (R-D01) or a port (R-D00) has places
 // that take what the ships land: up to TRADE_DESTS shops, inns and market
 // stalls within TRADE_REACH steps of a quay that can be walked to from it,
 // nearest first. Posts `trade|to|door` outside a shop's or inn's door, and
@@ -28,7 +28,7 @@ export default defineRule<Place & { ref: string }>({
     const { facts, plan } = ctx;
     const all = [...facts.structures.values()].sort((a, b) => a.id - b.id);
     // Where people stand on the quays: the cells above their blocks.
-    const from = all.filter((s) => plan.roles.get(s.id)?.role === 'quay').flatMap((s) => s.cells.map((c) => above(c)).filter((c) => c !== NO_CELL && nav.nodeAt.has(c)));
+    const from = all.filter((s) => plan.roles.get(s.id)?.role === 'quay' || plan.roles.get(s.id)?.role === 'port').flatMap((s) => s.cells.map((c) => above(c)).filter((c) => c !== NO_CELL && nav.nodeAt.has(c)));
     if (from.length === 0) return [];
     const dests: (Place & { ref: string })[] = [];
     for (const s of all) {

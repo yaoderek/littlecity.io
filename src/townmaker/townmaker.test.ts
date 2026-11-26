@@ -26,7 +26,7 @@ const ROLES = [
   'lighthouse', 'windmill',
   'temple', 'gatehouse', 'keep', 'grand-steps', 'quay-wall', 'plinth', 'terrace',
   'stone-bridge', 'sky-bridge', 'flying-buttress', 'gateway', 'loggia', 'viaduct',
-  'quay', 'pier', 'boardwalk', 'jetty',
+  'quay', 'pier', 'boardwalk', 'jetty', 'shipyard',
   'palm', 'willow', 'pine', 'planter-tree', 'fruit-tree', 'grove-tree', 'round-tree', 'cypress', 'bush',
   'tiered-fountain', 'well', 'birdbath', 'basin', 'fish-stall', 'flower-stall', 'market-stall',
   'wheat-field', 'herb-garden', 'reed-bed', 'park-lawn', 'kitchen-garden', 'flower-garden',
@@ -35,6 +35,8 @@ const ROLES = [
   'podium', 'theatre', 'barn', 'watermill', 'warehouse', 'churchyard', 'smithy', 'forge-chimney', 'obelisk', 'folly-tower', 'bridge-shop', 'bandstand', 'stoa', 'schoolhouse',
   // the playing field (src/vocab/field.vocab.ts)
   'basketball-court', 'tennis-court', 'football-pitch', 'bowling-green', 'croquet-lawn', 'boules-court', 'running-track', 'kickabout-green',
+  // the container port (src/vocab/port.vocab.ts)
+  'port',
 ] as const satisfies readonly Role[];
 type Unlisted = Exclude<Role, (typeof ROLES)[number]>;
 const allListed: Unlisted extends never ? true : Unlisted = true;
@@ -277,6 +279,23 @@ describe('grow a town: the survey (seeds 1 to 30, both generators)', () => {
     // Most do; a town on an island too cramped for one of its showpieces may miss it.
     console.log(`promises missed: ${misses.length}\n${misses.join('\n')}`);
     expect(misses.length).toBeLessThanOrEqual(Math.ceil(survey().length * 0.15));
+  });
+
+  test('harbour towns grow the working waterfront: a port (a freighter calling) and a shipyard where the coast allows (counts printed)', () => {
+    const harbours = survey().filter((s) => s.character === 'harbour');
+    const line = (s: Surveyed): string => {
+      const why: string[] = [];
+      if (!s.roles.has('port')) why.push('no port (no straight stretch of shore with open sea off it)');
+      else if (!s.props.has('L38-F/ship-call')) why.push('a port, but no freighter can sail to its berth');
+      if (!s.roles.has('shipyard')) why.push('no shipyard (no shore with sea down both sides of a slip and a shed site behind)');
+      return `g${s.gen} s${s.seed}: ${why.join('; ') || 'port, freighter, shipyard'}`;
+    };
+    const ports = harbours.filter((s) => s.roles.has('port')).length, yards = harbours.filter((s) => s.roles.has('shipyard')).length;
+    const freighters = harbours.filter((s) => s.props.has('L38-F/ship-call')).length;
+    console.log(`harbour towns: ${harbours.length}, with a port ${ports} (a freighter calling at ${freighters}), with a shipyard ${yards}\n${harbours.map(line).join('\n')}`);
+    // Every harbour town keeps its old waterfront; most also have the new one.
+    expect(ports).toBeGreaterThanOrEqual(Math.ceil(harbours.length * 0.7));
+    expect(yards).toBeGreaterThanOrEqual(Math.ceil(harbours.length * 0.5));
   });
 
   test('every role the generator places appears in some towns', () => {

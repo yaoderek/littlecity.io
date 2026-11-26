@@ -8,6 +8,8 @@
 //   quay       iron bollards along the open edge, a stack of goods at one end
 //              against the shore, and a hoist crane once the dock has 8+ cells
 //   boardwalk  nothing (it has rope railings)
+//   port       iron bollards along the open edges, like a quay; its cranes,
+//              office and floodlights are J23-P's
 //
 // Every bollard owns a 'mooring' socket on the water below it. Each piece
 // claims the deck slot it stands on, so later rules keep clear of it.
@@ -41,9 +43,9 @@ function fittings(f: Facts, plan: ShapePlan, s: Structure): Candidate<Fitting>[]
     out.push({ anchor: cell, structure: s.id, key: `b${dir}`, data: { what: 'bollard', dir, variant, fender: fender(cell, dir) } });
   };
 
-  if (role === 'quay') {
+  if (role === 'quay' || role === 'port') {
     const quay = quayOf(f, s.cells, DOCK.quayCells);
-    if (quay) {
+    if (quay && role === 'quay') {
       const seaward = opposite(quay.landward);
       // The crane stands on the outer edge, half-way along.
       if (s.cells.length >= DOCK.craneCells) {

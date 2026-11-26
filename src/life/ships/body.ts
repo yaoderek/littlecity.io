@@ -45,8 +45,17 @@ export interface ShipWind {
   strength: number;
 }
 
+/** A container aboard a cargo ship (L38-F): its drawing, its colour, whether it still holds goods. */
+export interface CargoBox {
+  h: InstanceHandle;
+  look: number;
+  full: boolean;
+}
+
 export class ShipBody {
   readonly rig: ShipRig;
+  /** A cargo ship's containers, one per place in rig.cargo (null: an empty place). The port's cranes lift them. */
+  cargo: (CargoBox | null)[] = [];
   hull: InstanceHandle;
   /** Sails lost to mischief (torn away, or gone with their mast): never shown again. */
   private lost = new Set<number>();
@@ -87,6 +96,25 @@ export class ShipBody {
     if (this.rig.pennant) this.pennant = stage.spawn({ actor: 'ship-flag', variant: 'pennant', params: { look, length: this.rig.pennant.length } }, HIDDEN);
     if (this.rig.ensign) this.ensign = stage.spawn({ actor: 'ship-flag', variant: 'ensign', params: { look, length: this.rig.ensign.length } }, HIDDEN);
     if (this.rig.oars) this.oars = [1, -1].map((side) => stage.spawn({ actor: 'ship-oars', params: { side, look } }, HIDDEN));
+  }
+
+  /**
+   * A cargo ship's load for one visit (seeded): each column of containers 1 to 3 high, in the palette's six
+   * colours. Spawned out of sight with the ship (it comes in through the edge of the map already loaded).
+   */
+  stow(seed: number, fill = 0.7): void {
+    const plan = this.rig.cargo;
+    if (!plan || this.cargo.length) return;
+    this.cargo = plan.slots.map(() => null);
+    plan.columns.forEach((col, c) => {
+      const n = Math.max(1, Math.min(col.length, Math.round((0.35 + fill * hashUnit(seed, c, 'h')) * col.length)));
+      for (let k = 0; k < n; k++) {
+        const look = Math.floor(hashUnit(seed, c * 7 + k, 'look') * 6);
+        const h = this.stage.spawn({ actor: 'container', params: { look } }, HIDDEN);
+        if (this.cut) h.setParams(1, 0, 0, -2);
+        this.cargo[col[k]!] = { h, look, full: true };
+      }
+    });
   }
 
   /** Sets every sail's target: 1 all set, 0 all furled. */
@@ -169,6 +197,18 @@ export class ShipBody {
         }
       }
     });
+    if (this.cargo.length) {
+      const slots = rig.cargo!.slots;
+      this.cargo.forEach((box, i) => {
+        if (!box) return;
+        const [x, y, z] = slots[i]!;
+        const m = this.local;
+        m.fill(0);
+        m[0] = 1; m[5] = 1; m[10] = 1; m[15] = 1;
+        m[12] = x; m[13] = y; m[14] = z;
+        box.h.setMatrix(mulInto(this.world, hull, m));
+      });
+    }
     if (this.pennant) this.flag(this.pennant, rig.pennant!.at, hull, downwind, scale);
     if (this.ensign) this.flag(this.ensign, rig.ensign!.at, hull, downwind, scale);
     if (this.oars.length) this.poseOars(hull);
@@ -268,7 +308,7 @@ export class ShipBody {
     if (on === this.cut || this.released) return;
     this.cut = on;
     const w = on ? -2 : 0;
-    const all = [this.hull, ...this.sails.flatMap((s) => [s.yard, ...s.cloth]), ...this.oars];
+    const all = [this.hull, ...this.sails.flatMap((s) => [s.yard, ...s.cloth]), ...this.oars, ...this.cargo.flatMap((b) => (b ? [b.h] : []))];
     for (const h of all) h.setParams(1, 0, 0, w);
     // Flags are cut at the edge but have no section to fill (they are flat).
     for (const h of [this.pennant, this.ensign]) h?.setParams(1, 0, 0, on ? -1 : 0);
@@ -285,7 +325,24 @@ export class ShipBody {
     this.pennant?.release();
     this.ensign?.release();
     for (const h of this.oars) h.release();
+    // The containers aboard leave with the ship.
+    for (const b of this.cargo) b?.h.release();
+    this.cargo = [];
   }
+
+  /** Is it cut off at the edge of the map just now (what it carries is cut off with it)? */
+  get cutOff(): boolean {
+    return this.cut;
+  }
+}
+
+/** A seeded number in [0, 1). */
+function hashUnit(seed: number, i: number, what: string): number {
+  let h = (seed ^ 0x9e3779b9) >>> 0;
+  for (const c of `${i}:${what}`) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0;
+  h ^= h >>> 13;
+  h = Math.imul(h, 0x5bd1e995) >>> 0;
+  return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
 }
 
 /**

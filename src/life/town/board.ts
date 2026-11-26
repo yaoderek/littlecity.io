@@ -28,6 +28,7 @@ import type { Crowd, Person } from '../people/crowd';
 import type { ErrandHost, ErrandStep, Load } from '../people/errand';
 import type { PoseName } from '@/parts/people/pose';
 import type { MeshData } from '@/gen/mesh';
+import { stepTalks } from './talk';
 
 /** Heading that faces each way (0 faces +z). N E S W. */
 export const DIR_HEADING = [Math.PI, Math.PI / 2, 0, -Math.PI / 2] as const;
@@ -382,6 +383,8 @@ export function createBoard(opts: BoardOptions): Board {
       for (const p of [...plans.keys()]) if (p.mode === 'gone') end(p, true);
       for (const p of [...claimed.keys()]) if (p.mode === 'gone') claimed.delete(p);
       for (const chain of opts.chains) chain.step?.(dt, t, board);
+      // Market talk: coins and goods change hands on time (talk.ts).
+      stepTalks(board);
     },
     dispose() {
       for (const chain of opts.chains) chain.dispose?.(board);

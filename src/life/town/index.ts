@@ -13,6 +13,8 @@ import { createBoard, type Board, type Chain, type GoodsStage } from './board';
 import { breadChain } from './chains/bread';
 import { buildChain, type BuildChain } from './chains/build';
 import { fishChain } from './chains/fish';
+import { applesChain } from './chains/apples';
+import { cargoChain } from './chains/cargo';
 import { watchChain } from './chains/watch';
 import { marketChain } from './chains/market-day';
 import { weddingChain } from './chains/wedding';
@@ -32,11 +34,12 @@ import { picnicChain } from './chains/picnic';
 import { carolChain } from './chains/carols';
 import { iceCreamChain } from './chains/icecream';
 import { welcomeChain } from './chains/welcome';
+import { shipyardChain } from './chains/shipyard';
 
 /** Every chain, in the order they are offered a person (the first that wants them has them). */
 export function allChains(): Chain[] {
   // Mischief (design section 13b) first: a raid, a fire or a bomb comes before anybody's errand.
-  return [raidChain(), ...mischiefChains(), weddingChain(), beachChain(), iceCreamChain(), snowDayChain(), supperChain(), picnicChain(), carolChain(), welcomeChain(), buildChain(), watchChain(), breadChain(), fishChain(), tradeChain(), harvestChain(), laundryChain(), schoolChain(), smithChain(), showChain(), vendChain(), pickChain(), danceChain(), fieldChain(), marketChain(), waterChain(), dogsChain()];
+  return [raidChain(), ...mischiefChains(), weddingChain(), beachChain(), iceCreamChain(), snowDayChain(), supperChain(), picnicChain(), carolChain(), welcomeChain(), shipyardChain(), buildChain(), watchChain(), breadChain(), fishChain(), applesChain(), tradeChain(), cargoChain(), harvestChain(), laundryChain(), schoolChain(), smithChain(), showChain(), vendChain(), pickChain(), danceChain(), fieldChain(), marketChain(), waterChain(), dogsChain()];
 }
 
 /** Whoever keeps the peace near a scuffle: the watchman out on his round, else a guard on duty; sent over at a trot. */

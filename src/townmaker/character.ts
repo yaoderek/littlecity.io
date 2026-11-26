@@ -124,7 +124,8 @@ export function rollCharacter(site: Site, seed: number, avoid: readonly Characte
  * that allow them: a river town needs a river).
  */
 export const PROMISES: Record<Character, readonly (readonly Role[])[]> = {
-  harbour: [['warehouse'], ['quay'], ['lighthouse', 'keepers-cottage']],
+  // The working waterfront (2026-11-26): a container port and a shipyard, where the coast has room for them.
+  harbour: [['warehouse'], ['quay'], ['lighthouse', 'keepers-cottage'], ['port'], ['shipyard']],
   marble: [['temple'], ['podium'], ['stoa', 'theatre'], ['obelisk', 'bandstand']],
   castle: [['keep'], ['gatehouse', 'castle-turret'], ['smithy', 'chapel']],
   market: [['town-hall'], ['clock-tower'], ['townhouse', 'row-house'], ['schoolhouse', 'smithy']],

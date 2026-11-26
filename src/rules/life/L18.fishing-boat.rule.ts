@@ -29,7 +29,10 @@ const open = (facts: Facts, x: number, z: number): boolean =>
 export function berthOf(facts: Facts): Berth | null {
   let best: Berth | null = null;
   let bestScore = -1;
-  const docks = [...facts.kinds].filter(([c, k]) => k === 'dock' && keyY(c) === 0).map(([c]) => c).sort((a, b) => a - b);
+  // Not at a shipyard (R-D05): its ships are launched into that water.
+  const yard = new Set<number>();
+  if (facts.shapeReady) for (const [id, r] of facts.shape.roles) if (r.role === 'shipyard') for (const c of facts.structures.get(id)?.cells ?? []) yard.add(c);
+  const docks = [...facts.kinds].filter(([c, k]) => k === 'dock' && keyY(c) === 0 && !yard.has(c)).map(([c]) => c).sort((a, b) => a - b);
   // Only where it could have got in from the sea.
   const reach = facts.shapeReady ? edgeWater(facts) : null;
   for (const c of docks) {

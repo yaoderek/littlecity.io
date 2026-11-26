@@ -284,3 +284,54 @@ export const PLACES = defineStyle(
     pick: [1, 20, 0.5], danceCycle: [30, 900, 5], dance: [10, 300, 5], dancers: [2, 12, 1],
   },
 );
+
+/** Market talk: a purchase as a little conversation in picture bubbles, and apples from the orchard to the stalls. */
+export const TALK = defineStyle(
+  'talk',
+  {
+    /** Seconds each bubble of the exchange stays up (the ask, the seller's answer); the haggle's four bubbles together. */
+    bubble: 1.2,
+    haggle: 3,
+    /** One purchase in this many: the stall has not got the first thing asked for; one in this many haggles; one in this many leaves with a heart. */
+    soldOut: 6,
+    haggleEvery: 5,
+    heartEvery: 4,
+    /** Grid steps two bubbles' owners must be apart before both may show (bubbles of one exchange take turns, so never meet). */
+    gap: 2,
+    /** At most this many bubbles on screen at once: a big screen, a phone (the governor's lowest level shows none). */
+    cap: 6,
+    capPhone: 3,
+    /** How big a bubble is drawn: close in (zoom 6 and more), and from the whole-island view. */
+    near: 1,
+    far: 5,
+    /** Seconds the coin flies from hand to hand, and the bought thing from the counter to the hand. */
+    coinFlight: 0.4,
+    handFlight: 0.35,
+    /** Chance a resident choosing what to do goes to buy at a shop a ship has supplied (asking for a cheese or a jug). */
+    cargoBuy: 0.05,
+  },
+  {
+    bubble: [0.4, 4, 0.1], haggle: [1, 8, 0.1], soldOut: [1, 30, 1], haggleEvery: [1, 30, 1], heartEvery: [1, 30, 1], gap: [0, 6, 1],
+    cap: [0, 16, 1], capPhone: [0, 16, 1], near: [0.5, 3, 0.05], far: [0.5, 8, 0.05], coinFlight: [0.1, 1.5, 0.05], handFlight: [0.1, 1.5, 0.05], cargoBuy: [0, 1, 0.01],
+  },
+);
+
+/** Apples to market: from the orchard's big basket to the stalls. */
+export const APPLES = defineStyle(
+  'apples',
+  {
+    /** Apples a picker's basket adds to the big basket; how many the big basket holds; how many a carrier takes to market at once. */
+    perPick: 2,
+    bigBasket: 6,
+    carry: 3,
+    /** Seconds the carrier waits between trips at least. */
+    carryGap: 8,
+    /** Chance a resident choosing what to do goes for an apple when a stall has some (mornings, the rest of the day); when none has any. */
+    buyMorning: 0.16,
+    buy: 0.08,
+    buyEmpty: 0.02,
+    /** The farthest (grid steps) a resident walks for an apple. */
+    reach: 20,
+  },
+  { perPick: [1, 6, 1], bigBasket: [1, 9, 1], carry: [1, 6, 1], carryGap: [0, 120, 1], buyMorning: [0, 1, 0.01], buy: [0, 1, 0.01], buyEmpty: [0, 1, 0.01], reach: [4, 40, 1] },
+);

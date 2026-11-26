@@ -41,7 +41,7 @@ interface State {
   harbour: Harbour;
 }
 
-const kindOf = (call: ActorOf<'ship-call'>): ShipKind => (call.variant === 'cog' ? 'cog' : call.variant === 'galley' ? 'galley' : call.variant === 'barge' ? 'barge' : 'galleon');
+const kindOf = (call: ActorOf<'ship-call'>): ShipKind => (call.variant === 'cog' ? 'cog' : call.variant === 'galley' ? 'galley' : call.variant === 'barge' ? 'barge' : call.variant === 'freighter' ? 'freighter' : 'galleon');
 
 function poseStill(s: StillShip, signals: Signals): void {
   const now = onTwos(signals.time.seconds, s.phase);

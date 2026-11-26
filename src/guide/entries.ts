@@ -20,19 +20,23 @@ import supperScn from '../../scenarios/life/L65.supper.scenario';
 import carolScn from '../../scenarios/life/L67.carols.scenario';
 import harvestScn from '../../scenarios/life/L59.harvest.scenario';
 import tradeScn from '../../scenarios/life/L58.trade.scenario';
+import portScn from '../../scenarios/port/R-D00.port.scenario';
 import fishScn from '../../scenarios/life/L53.fish.scenario';
 import breadScn from '../../scenarios/life/L51.bread.scenario';
+import applesScn from '../../scenarios/life/L68.apples.scenario';
 import waterScn from '../../scenarios/life/L52.water.scenario';
 import laundryScn from '../../scenarios/life/L60.laundry.scenario';
 import schoolScn from '../../scenarios/life/L62.school.scenario';
 import bandScn from '../../scenarios/life/L62.bandstand.scenario';
 import dogsScn from '../../scenarios/life/L61.dogs.scenario';
+import bikesScn from '../../scenarios/life/bikes.scenario';
 import scuffleScn from '../../scenarios/life/L50.scuffle.scenario';
 import watchScn from '../../scenarios/life/L55.watchman.scenario';
 import harbourScn from '../../scenarios/life/ships-harbour.scenario';
 import jobsScn from '../../scenarios/rules/L23.jobs.scenario';
 import smithyScn from '../../scenarios/rules/R-H19.smithy.scenario';
 import courtScn from '../../scenarios/field/field-basketball.scenario';
+import yardScn from '../../scenarios/life/L75.shipyard.scenario';
 
 /** A happening's picture town: one of the living town's own fixtures (scenarios/life), as its tests run it. */
 const town = (s: Scenario): { seed: number; ground?: (t: TerrainBuilder) => void; build(b: TownBuilder): void } => ({ seed: s.seed + 7000, ...(typeof s.terrain === 'function' ? { ground: s.terrain } : {}), build: s.build });
@@ -40,6 +44,10 @@ const town = (s: Scenario): { seed: number; ground?: (t: TerrainBuilder) => void
 
 /** Seconds of life before the wedding's picture is taken: the couple on the doorstep in a shower of petals, the guard of honour either side, the doves going up (timed in a test run of its recipe). */
 const WEDDING_GUIDE_AT = 96;
+/** Seconds of life before the shipyard's picture: the ribs up and the planks climbing them (keel 30 s, frames 60, from 8 s in). */
+const SHIPYARD_GUIDE_AT = 150;
+/** Seconds of life before the launch's picture: the ship coming off the ways into a splash, the crowd on the decks (timed in a run of its recipe). */
+const LAUNCH_GUIDE_AT = 409;
 /** Seconds of life before the beach day's picture: the parasols up along the sand, the families there (timed in a run of its recipe). */
 const BEACH_GUIDE_AT = 130;
 /** Seconds of life before the picnics' picture: blankets spread, families round them. */
@@ -899,6 +907,34 @@ const LISTED: readonly GuideEntry[] = [
     view: FRONT,
   },
   {
+    id: 'port',
+    group: 'waterfront',
+    name: 'Container port',
+    how: 'Fill a big block of sea with docks along the shore, at least three deep and six long, with open water beyond it. It becomes a container port, with cranes, stacks of containers, an office and floodlights.',
+    proof: { role: 'port' },
+    seed: 7521,
+    ground: seaSouth,
+    build(b) {
+      for (let x = 17; x <= 24; x++) for (let z = 21; z <= 23; z++) b.block('dock', x, 0, z);
+      b.path(16, 20, 25, 20);
+    },
+    view: FRONT,
+  },
+  {
+    id: 'container-cranes',
+    group: 'waterfront',
+    name: 'Container cranes',
+    how: 'A port up to nine docks long gets a medium crane; from ten long, a big gantry crane as well, and from fourteen, more of both. With no ship in, the big crane holds its boom up high.',
+    proof: { actor: { rule: 'D15-P.port-yard', type: 'port-crane' } },
+    seed: 7522,
+    ground: seaSouth,
+    build(b) {
+      for (let x = 15; x <= 26; x++) for (let z = 21; z <= 24; z++) b.block('dock', x, 0, z);
+      b.path(14, 20, 27, 20);
+    },
+    view: { yaw: 35, pitch: 28 },
+  },
+  {
     id: 'boardwalk',
     group: 'waterfront',
     name: 'Boardwalk',
@@ -914,6 +950,24 @@ const LISTED: readonly GuideEntry[] = [
       b.path(15, 21, 17, 21).path(23, 21, 25, 21);
     },
     view: FRONT,
+  },
+  {
+    id: 'shipyard',
+    group: 'waterfront',
+    name: 'Shipyard',
+    how: 'Lay docks three wide and six or more long, straight out from the shore, with a warehouse or a barn by the land end. Shipwrights build a ship on the slip down the middle, a cog (or a galleon on a slip of eight or more), and launch it with the town looking on.',
+    proof: { role: 'shipyard' },
+    seed: 7505,
+    ground: seaSouth,
+    build(b) {
+      for (let x = 19; x <= 21; x++) for (let z = 21; z <= 26; z++) b.block('dock', x, 0, z);
+      b.house(16, 17, { w: 3, d: 2, floors: 2, color: 7 });
+      b.path(14, 19, 24, 19);
+    },
+    view: { yaw: 35, pitch: 32 },
+    // Half built: the ribs up and the planking climbing them, the staging round it.
+    life: { settle: SHIPYARD_GUIDE_AT },
+    frame: [17, 18, 23, 27, 3],
   },
   // Boats and ships ("Boats and ships": whatever fits comes). The picture shows the ship moored: a town opened
   // with a port has its biggest ship in.
@@ -1336,7 +1390,7 @@ const LISTED: readonly GuideEntry[] = [
     group: 'big-days',
     when: 'Market days, from dawn to early afternoon',
     name: 'Market day',
-    how: 'Lay a plaza at least three by three with two stalls on it, and houses round it. On market mornings traders set up stalls there, a busker juggles and the town comes to buy.',
+    how: 'Lay a plaza at least three by three with two stalls on it, and houses round it. On market mornings traders set up stalls there, a busker juggles and the town comes to buy, showing what they want in a picture bubble and paying with a coin, and a fisher\'s catch and an orchard\'s apples come to the stalls too.',
     proof: { socket: { rule: 'L56.market-day' } },
     seed: 7801,
     build(b) {
@@ -1375,6 +1429,20 @@ const LISTED: readonly GuideEntry[] = [
     // In the middle of a wedding: the couple come out (WEDDING_GUIDE_AT).
     life: { settle: WEDDING_GUIDE_AT, residents: true },
     frame: [16, 16, 24, 21, 2],
+  },
+  {
+    id: 'ship-launch',
+    group: 'big-days',
+    when: 'By day, when a ship is finished',
+    name: 'A ship is launched',
+    how: 'Build a shipyard with houses round about. When its ship is finished, bunting goes up along the slip, the town lines the decks and the shore, a bottle breaks on the bow, and the ship slides down into the sea with a great splash and sails away.',
+    proof: { socket: { rule: 'L75.shipyard' } },
+    ...town(yardScn),
+    view: { yaw: 40, pitch: 34 },
+    pad: 0.2,
+    // The splash: the stern in the sea, the crowd cheering (LAUNCH_GUIDE_AT).
+    life: { settle: LAUNCH_GUIDE_AT, residents: true },
+    frame: [17, 20, 28, 37, 3],
   },
   {
     id: 'beach-day',
@@ -1524,6 +1592,36 @@ const LISTED: readonly GuideEntry[] = [
     frame: [19, 22, 27, 28, 2],
   },
   {
+    id: 'cargo-ship',
+    group: 'by-water',
+    name: 'Cargo ship',
+    when: 'Whenever its berth is free',
+    how: 'Build a port ten or more docks long with open sea off it. A steel cargo ship stacked with containers comes in behind a little tug; the cranes lower their booms, unload some containers and load others, and it sails out again with the tug.',
+    proof: { actor: { rule: 'L38-F.freighter', type: 'ship-call' } },
+    seed: 7531,
+    ground: seaSouth,
+    build(b) {
+      for (let x = 15; x <= 26; x++) for (let z = 21; z <= 24; z++) b.block('dock', x, 0, z);
+      b.path(14, 20, 27, 20);
+    },
+    view: { yaw: 30, pitch: 30 },
+    pad: 0.2,
+    life: { settle: 14 },
+  },
+  {
+    id: 'unloading-containers',
+    group: 'by-water',
+    name: 'Unloading the containers',
+    when: 'After a cargo ship has been in',
+    how: 'Build a port with shops, an inn or stalls within 24 steps of it. A container from the ship is set down by the harbour office; dock workers in yellow jackets swing its doors open and carry out crates, barrels and sacks, and carters wheel them up to the shops.',
+    proof: { socket: { rule: 'L58.trade' } },
+    ...town(portScn),
+    view: { yaw: 120, pitch: 36 },
+    pad: 0.2,
+    life: { settle: 22, residents: true },
+    frame: [13, 20, 19, 25, 2],
+  },
+  {
     id: 'waving-ships-in',
     group: 'by-water',
     name: 'Waving a ship in',
@@ -1540,7 +1638,7 @@ const LISTED: readonly GuideEntry[] = [
     group: 'by-water',
     name: 'The catch comes in',
     when: 'Dawn and by day',
-    how: 'Put a pier with a fish stall or a fish shop within 20 steps of it. The fisher fishes off its end and carries a basket of the catch up to the stall, and people come down to buy a fish.',
+    how: 'Put a pier with a fish stall or a fish shop within 20 steps of it. The fisher carries baskets of the catch up to the stall (on market days, to the market), and people come down to buy a fish, asking with a fish in their speech bubble and paying with a coin.',
     proof: { socket: { rule: 'L53.fish' } },
     ...town(fishScn),
     view: { yaw: 30, pitch: 34 },
@@ -1560,6 +1658,19 @@ const LISTED: readonly GuideEntry[] = [
     pad: 0.2,
     life: { settle: 40, residents: true },
     frame: [16, 17, 24, 22, 2],
+  },
+  {
+    id: 'apples-to-market',
+    group: 'every-day',
+    name: 'Apples to market',
+    when: 'At harvest time, by day',
+    how: 'Plant an orchard with a market stall or a shop within 24 steps of it. At harvest the pickers fill the big baskets, the gardener carries a basket heaped with apples to the stall, and people come to buy one, asking with an apple in their speech bubble.',
+    proof: { socket: { rule: 'L68.apples' } },
+    ...town(applesScn),
+    view: { yaw: 35, pitch: 36 },
+    pad: 0.2,
+    life: { settle: 120, residents: true },
+    frame: [10, 11, 25, 17, 2],
   },
   {
     id: 'fetching-water',
@@ -1650,6 +1761,19 @@ const LISTED: readonly GuideEntry[] = [
     pad: 0.2,
     life: { settle: 30, residents: true },
     frame: [16, 18, 24, 23, 2],
+  },
+  {
+    id: 'bikes',
+    group: 'every-day',
+    name: 'Bikes',
+    when: 'By day and at dusk, in fair weather',
+    how: 'Build a street of houses: some front doors have a bike leaning by them. For a long trip its owner rides it, carries small shopping in the basket, and leans it by the door they stop at.',
+    proof: { prop: { rule: 'D11.doorstep', type: 'door-bike' } },
+    ...town(bikesScn),
+    view: { yaw: 45, pitch: 36 },
+    pad: 0.2,
+    life: { settle: 30, residents: true },
+    frame: [17, 18, 22, 22, 1],
   },
   {
     id: 'scuffle',

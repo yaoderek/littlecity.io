@@ -31,6 +31,7 @@
 //                            mouse events: picks up the one of that kind nearest the camera's target, carries it
 //                            <dx>,<dz> cells over <ms> milliseconds of the sequence and lets go moving (a throw)
 //                            or, with 'drop', after holding still (a drop). The camera is aimed at it first.
+//   --follow-bike            keeps the camera on somebody with a bike in hand (bikes: src/life/people/bikes.ts)
 //   --frames 8 --every 100   how many frames to keep, and the milliseconds between them
 //   --zoom 3 --target 10,1,10 --yaw 45 --pitch 35   move the camera (the app opens on the scenario's first camera)
 //   --size 640x400 --scale 1 --cols 4
@@ -452,6 +453,19 @@ try {
         const f = r.focus();
         window.__lc.view.setCamera({ target: [f.x, f.y + 0.3, f.z] });
       });
+    }
+    if (flags['follow-bike']) {
+      // The camera on somebody with a bike in hand (riding, if anybody is), the same one throughout.
+      await page.evaluate(() => {
+        const crowd = window.__lcPeople;
+        const inHand = crowd.people.filter((p) => crowd.bikes.inHand(p) && p.visible);
+        const was = inHand.find((p) => p.id === window.__lcBikeFollow);
+        const p = was ?? inHand.find((q) => crowd.bikes.mounted(q)) ?? inHand[0];
+        if (!p) return;
+        window.__lcBikeFollow = p.id;
+        window.__lc.view.setCamera({ target: [p.x, p.y + 0.2, p.z] });
+      });
+      await play(FRAME);
     }
     const png = await page.locator('#town').screenshot();
     shots.push({ png, label: `${Math.round(at)} ms` });

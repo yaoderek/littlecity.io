@@ -27,9 +27,10 @@ import { hash } from '@/core/rand';
 import { defineFact, type Facts } from '@/resolve/facts/api';
 import { socketsOfType } from '@/resolve/facts/plan-index.fact';
 import { SHIPS } from '@/style/ships';
+import { portColumn, portPlanOfStructure } from '../roles/port-shape';
 import { hullClear as hullClearAt, mooringAt, obstacleColumns, planArrival, planDeparture, seaField, type HullSize, type Mooring, type Pt, type SeaField } from './ship-routes';
 
-export type BigShip = 'galleon' | 'cog' | 'galley';
+export type BigShip = 'galleon' | 'cog' | 'galley' | 'freighter';
 
 export interface Berth {
   /** Stable name: first quay column, the way the run goes, the water side. */
@@ -47,6 +48,8 @@ export interface Berth {
   level: number;
   /** Columns of water it needs (column indices). */
   water: number[];
+  /** L38-F: the port (R-D00) whose seaward face it is, if it is one: cargo ships call only here. */
+  port?: number;
 }
 
 export interface ShipPlan {
@@ -74,6 +77,9 @@ export function hullSize(ship: BigShip | 'barge'): HullSize {
       return { stern: -1.8, bow: 2.1, halfBeam: SHIPS.cogBeam / 2 };
     case 'galley':
       return { stern: -3.15, bow: 3.3, halfBeam: SHIPS.galleyBeam / 2 + 0.17 };
+    case 'freighter':
+      // Its rig's numbers (src/parts/actors/ships/freighter-rig.ts; a test keeps them equal).
+      return { stern: -4.61, bow: 4.73, halfBeam: 0.92 };
     default:
       return { stern: -1.65, bow: 1.62, halfBeam: SHIPS.bargeBeam / 2 };
   }
@@ -82,6 +88,25 @@ export function hullSize(ship: BigShip | 'barge'): HullSize {
 /** A berth on a long quay is this many cells (a galleon's length), and the last at least this many (a cog's). */
 const SLOT = 7;
 const SLOT_MIN = 4;
+/** A port's quay is split for cargo ships: a berth a cargo ship long and a bit, the last at least one long. */
+const PORT_SLOT = 12;
+const PORT_SLOT_MIN = 10;
+
+/** The columns of every port's seaward row, with the port and the side its water is on (dressing stage only). */
+function portFaces(f: Facts): Map<number, { port: number; side: Dir4 }> {
+  const out = new Map<number, { port: number; side: Dir4 }>();
+  if (!f.shapeReady) return out;
+  for (const [id, r] of f.shape.roles) {
+    if (r.role !== 'port') continue;
+    const pp = portPlanOfStructure(f.shape, id);
+    if (!pp) continue;
+    for (let i = 0; i < pp.port.length; i++) {
+      const [x, z] = portColumn(pp.port, i, pp.port.depth - 1);
+      out.set(columnIndex(x, z), { port: id, side: pp.port.seaward });
+    }
+  }
+  return out;
+}
 
 /** Quay columns: a dock at sea level, or a quay wall's low cell. Value: the level people stand on (+1), 0 if none. */
 function quayColumns(f: Facts): Uint8Array {
@@ -100,6 +125,11 @@ function quayColumns(f: Facts): Uint8Array {
         q[i] = Math.max(q[i]!, keyY(c) + 2);
       }
     }
+    // A shipyard's docks are its slip and its working decks (R-D05): no ship berths alongside them.
+    for (const [id, r] of f.shape.roles) {
+      if (r.role !== 'shipyard') continue;
+      for (const c of f.structures.get(id)?.cells ?? []) q[columnIndex(keyX(c), keyZ(c))] = 0;
+    }
   }
   return q;
 }
@@ -107,6 +137,7 @@ function quayColumns(f: Facts): Uint8Array {
 /** Every berth in the town, longest first. */
 export function findBerths(f: Facts): Berth[] {
   const quay = quayColumns(f);
+  const ports = portFaces(f);
   const blocked = obstacleColumns(f.terrain, f.kinds);
   const W = Math.max(1, Math.round(SHIPS.berthWater));
   const clear = (x: number, z: number): boolean => inColumnBounds(x, z) && blocked[columnIndex(x, z)] === 0;
@@ -144,12 +175,24 @@ export function findBerths(f: Facts): Berth[] {
         if (!(inColumnBounds(fx, fz) && wet(fx, fz))) i1--;
         // A long quay holds several ships end to end: it is split into berths a galleon long with a cell's gap
         // between them, the last taking what is left (a cog's worth or more; less is added to the one before).
+        // A port's face (all of the run along one port, its water this side) is split a cargo ship long.
+        const port = (() => {
+          let id: number | undefined;
+          for (let q = i0; q <= i1; q++) {
+            const [qx, qz] = at(q);
+            const pf = ports.get(columnIndex(qx, qz));
+            if (!pf || pf.side !== side || (id !== undefined && pf.port !== id)) return undefined;
+            id = pf.port;
+          }
+          return id;
+        })();
+        const [slot, slotMin] = port !== undefined ? [PORT_SLOT, PORT_SLOT_MIN] : [SLOT, SLOT_MIN];
         const slots: [number, number][] = [];
         for (let a = i0, left = i1 - i0 + 1; left > 0; ) {
-          if (left >= SLOT + 1 + SLOT_MIN) {
-            slots.push([a, a + SLOT - 1]);
-            a += SLOT + 1;
-            left -= SLOT + 1;
+          if (left >= slot + 1 + slotMin) {
+            slots.push([a, a + slot - 1]);
+            a += slot + 1;
+            left -= slot + 1;
           } else {
             slots.push([a, i1]);
             left = 0;
@@ -181,6 +224,7 @@ export function findBerths(f: Facts): Berth[] {
             face: { ax: fx0, az: fz0, dx: ax, dz: az, len, ox, oz },
             level,
             water: [...new Set(water)].sort((a, b) => a - b),
+            ...(port !== undefined ? { port } : {}),
           });
         }
         p = next;
@@ -241,6 +285,8 @@ export function mooredClear(field: SeaField, h: HullSize, m: Mooring): boolean {
 
 /** The big ships, biggest first. */
 export const BIG_SHIPS: readonly BigShip[] = ['galleon', 'galley', 'cog'];
+/** At a port's berth a cargo ship first (L38-F): the old ships may still call there. */
+export const PORT_SHIPS: readonly BigShip[] = ['freighter', ...BIG_SHIPS];
 
 /** The last few harbours planned, by the sea they were planned on: an edit ashore changes nothing at sea. */
 const PLANNED = new Map<string, ShipPlan[]>();
@@ -253,7 +299,7 @@ export const harbour = defineFact<Harbour>('harbour', (f) => {
   const field = planningField(f, own);
   let h = 2166136261;
   for (let i = 0; i < field.blocked.length; i++) h = Math.imul(h ^ field.blocked[i]!, 16777619);
-  const key = `${f.seed}|${h >>> 0}|${berths.map((b) => `${b.key}/${b.cells}/${b.level}`).join(';')}|${SHIPS.shipsMax}`;
+  const key = `${f.seed}|${h >>> 0}|${berths.map((b) => `${b.key}/${b.cells}/${b.level}/${b.port ?? ''}`).join(';')}|${SHIPS.shipsMax}`;
   const cached = PLANNED.get(key);
   if (cached) return { berths, plans: cached.map((p) => ({ ...p, berth: berths.find((b) => b.key === p.berth.key)! })) };
   const plans: ShipPlan[] = [];
@@ -263,7 +309,7 @@ export const harbour = defineFact<Harbour>('harbour', (f) => {
     // Sailed in and out with the biggest hull that fits; the smaller ships lie the same way. (Each visit is
     // planned again with its own hull when it sets out: harbour.system.ts.)
     let lead: ShipPlan | null = null;
-    for (const ship of BIG_SHIPS) {
+    for (const ship of b.port !== undefined ? PORT_SHIPS : BIG_SHIPS) {
       if (!lead) {
         lead = planBerth(f, ship, b, field);
         if (lead) plans.push(lead);
