@@ -2218,3 +2218,20 @@ repo) passed the unit job with all four changes; its browser job had
 only those rotating misses. It does not yet carry the three gate
 commits (`295a390`'s workflow, `d769582`, `e4fe779`): cherry-pick them
 when it is next pushed, to `site`, not `origin`.
+
+**2026-11-26: live is the build from `6ae3da0`** (bundle
+`app-DDwy0iC4.js`, published by the strategy chat with Derek's
+sign-off; checked by the orchestrator on the site and on `gh-pages`).
+It is the previous live build `67313b0` plus the Almanac (the guide
+renamed Almanac, "Built N / 79" and stamps; a star-burst the first
+time a building type is built by hand; the tutorial hand after the
+starting town grows) plus the corrected README, on branch
+`preview/almanac-release` of yaoderek/littlecity.io. The same Almanac
+commits are in `main` (`b3e0bb7`, gate green there). **The port
+update on `main` is not live** and has no sign-off: `6ae3da0` is not
+an ancestor of `main`, and `main` is not what is live. For the
+orchestrator's waiting work (orchard ladders, raids landing where
+clicked, fishing line, garrison sally; `preview/next` `e9e24c7`, built
+on the live code of before the Almanac): the next preview and any
+publish must be rebuilt on `preview/almanac-release`, not on `main`
+(port update) and not on the old base.
