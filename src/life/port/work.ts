@@ -28,6 +28,8 @@ export interface Visit {
   busy: Set<string>;
   /** The unpacking bay has had its container off this ship. */
   unpacked: boolean;
+  /** A crane hit while it carried a container drops it (it falls loose: yard.ts); else it goes in a puff. */
+  drop?: (box: Box, at: Place, home: Stack | null) => void;
 }
 
 /** The world place of a slot on a ship (its floor's middle), lying the way the ship lies. */
@@ -169,7 +171,8 @@ function shipToStack(stage: LifeStage, seed: number, v: Visit, yard: Yard, col: 
       done();
     },
     abandon(h, at) {
-      if (h) puffAway(stage, seed, h, at, slot);
+      if (h && box && at && v.drop) v.drop(box as Box, at, to);
+      else if (h) puffAway(stage, seed, h, at, slot);
       else v.unload++;
       box = null;
       done();
@@ -216,7 +219,8 @@ function stackToShip(stage: LifeStage, seed: number, v: Visit, yard: Yard, from:
       done();
     },
     abandon(h, at) {
-      if (h) puffAway(stage, seed, h, at, slot + 100);
+      if (h && box && at && v.drop) v.drop(box, at, from);
+      else if (h) puffAway(stage, seed, h, at, slot + 100);
       else v.load++;
       box = null;
       done();

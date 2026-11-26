@@ -13,10 +13,11 @@
 // (cranesPhone on a phone, cranesLow at the lowest quality levels); the
 // others stand idle, booms up.
 
-import { below, CELL_H, keyX, keyZ, type CellKey } from '@/core/grid';
+import { below, CELL_H, columnIndex, inColumnBounds, key, keyX, keyZ, SEA_Y, type CellKey } from '@/core/grid';
+import { ruinCause, ruinMending, ruinProgress, ruinStage } from '@/world/damage';
 import { rand } from '@/core/rand';
 import type { ActorOf, ShapePlan, StructureId } from '@/resolve/plan';
-import { portPlanOfStructure, type PortPlan } from '@/rules/roles/port-shape';
+import { portCell, portPlanOfStructure, type PortPlan } from '@/rules/roles/port-shape';
 import { PORT } from '@/style/port';
 import { defineSystem, type LifeStage, type SpawnSpec } from '../api';
 import { fxOf } from '../fx/fx';
@@ -27,7 +28,11 @@ import { harbourOf, type Ship } from '../ships/visit';
 import { Crane } from './crane';
 import { newVisit, nextJob, type Visit } from './work';
 import { DockWorkers } from './workers';
-import { Yard } from './yard';
+import { Yard, type GroundAt, type Stack } from './yard';
+import { Fires } from './harm';
+import { mischiefOf } from '../mischief/director';
+import { wakeRing } from '../boats/afloat';
+import { removalPuff } from '../ships/puff';
 
 interface Port {
   id: StructureId;
@@ -53,11 +58,17 @@ interface State {
   spec: Map<string, { variant: string; look: number; off: number; lo: number; hi: number }>;
   /** The town has been shown once: from now on what appears arrives (opening a town shows it as it is). */
   shown: boolean;
+  /** Mischief: the port's flames, the last blast (where, how strong), each crane's deck cells, stacks alight. */
+  fires: Fires;
+  blast: { x: number; z: number; power: number } | null;
+  footprint: Map<string, CellKey[]>;
+  alight: Set<Stack>;
+  off: () => void;
 }
 
 const states = new WeakMap<LifeStage, State>();
 /** The ports and cranes running on a stage (for tests). */
-export function portLifeOf(stage: LifeStage): { ports: ReadonlyMap<StructureId, { yard: Yard; visit: Visit | null }>; cranes: ReadonlyMap<string, Crane> } | null {
+export function portLifeOf(stage: LifeStage): { ports: ReadonlyMap<StructureId, { yard: Yard; visit: Visit | null; plan: PortPlan }>; cranes: ReadonlyMap<string, Crane>; fires: Fires } | null {
   return states.get(stage) ?? null;
 }
 
@@ -100,6 +111,96 @@ export function deckPuffs(stage: LifeStage, seed: number, cells: readonly CellKe
   });
 }
 
+// ── mischief ──
+
+/** The damage of a dock cell (its block at sea level). */
+const ruinAt = (shape: ShapePlan, c: CellKey): number | undefined => shape.world.blocks.get(c)?.ruin;
+
+/** Where a falling thing comes to rest: a dock's deck (not a broken-through one), the land's top, or the water (null). */
+export function groundOf(shape: ShapePlan): GroundAt {
+  return (x, z) => {
+    const ix = Math.floor(x), iz = Math.floor(z);
+    if (!inColumnBounds(ix, iz)) return null;
+    const dock = key(ix, 0, iz);
+    if (shape.kinds.get(dock) === 'dock' && ruinStage(ruinAt(shape, dock)) < 3) return CELL_H + 0.02;
+    const h = shape.terrain.height[columnIndex(ix, iz)]!;
+    return h >= 1 ? h * CELL_H : null;
+  };
+}
+
+/** A stack's bay is sound (mended): its two deck cells undamaged. */
+function soundBay(shape: ShapePlan, pp: PortPlan): (s: Stack) => boolean {
+  return (s) => [s.spot.i, s.spot.i + 1].every((i) => !ruinAt(shape, portCell(pp.port, i, s.spot.r)));
+}
+
+/** The worst damage among some cells: its stage, whether fire did it, and mending (and how far). */
+function worst(shape: ShapePlan, cells: readonly CellKey[]): { stage: number; fire: boolean; mending: boolean; progress: number } {
+  let stage = 0, fire = false, mending = false, progress = 1;
+  for (const c of cells) {
+    const r = ruinAt(shape, c);
+    if (!r) continue;
+    if (ruinStage(r) > stage) {
+      stage = ruinStage(r);
+      fire = ruinCause(r) === 'fire';
+    }
+    if (ruinMending(r)) {
+      mending = true;
+      progress = Math.min(progress, ruinProgress(r));
+    }
+  }
+  return { stage, fire, mending, progress: mending ? progress : 0 };
+}
+
+/** What the town's damage does to the port's moving things: cranes bent or over, containers thrown, fires. */
+function harm(state: State, shape: ShapePlan): void {
+  for (const port of state.ports.values()) {
+    const pp = port.plan;
+    for (const s of port.yard.stacks) {
+      const d = worst(shape, [portCell(pp.port, s.spot.i, s.spot.r), portCell(pp.port, s.spot.i + 1, s.spot.r)]);
+      if (d.stage === 0 && !d.mending) {
+        state.alight.delete(s);
+        continue;
+      }
+      if (d.mending) continue;
+      if (d.stage >= 2 && !d.fire && s.boxes.length) {
+        const from: [number, number] | null = state.blast ? [state.blast.x, state.blast.z] : null;
+        const thrown = port.yard.scatter(s, from, state.blast?.power ?? 1);
+        thrown.forEach((box, k) => {
+          if (rand(state.seed, 'box-fire', s.key, k) < 0.35) state.fires.light(() => port.yard.whereIs(box), 0.32, 14 + 10 * rand(state.seed, 'box-life', s.key, k), k);
+        });
+      } else if (d.fire && !state.alight.has(s) && s.boxes.length) {
+        state.alight.add(s);
+        state.fires.light(() => (port.yard.stacks.includes(s) ? topOf(port.yard, s) : null), 0.38, 22, s.spot.i);
+      }
+    }
+  }
+  for (const [id, c] of state.cranes) {
+    const d = worst(shape, state.footprint.get(id) ?? []);
+    const was = c.harmed;
+    c.setHarm(d.stage, d.fire, d.mending, d.progress);
+    if (!was && d.stage > 0 && !d.mending) {
+      c.firePoints().forEach((_, k) => state.fires.light(() => (state.cranes.get(id) === c ? c.firePoints()[k] ?? null : null), c.large ? 0.5 : 0.4, 26, k + 3));
+    }
+  }
+}
+
+/** The top of a stack, for its flames. */
+function topOf(yard: Yard, s: Stack): [number, number, number] | null {
+  const p = yard.topOf(s);
+  return p ? [p.x, p.y + PORT.boxH, p.z] : null;
+}
+
+/** A crane comes down: a cloud of dust where it hits the deck, a splash where it hits the water. */
+function crashed(state: State, shape: ShapePlan, pts: readonly (readonly number[])[]): void {
+  const ground = groundOf(shape);
+  pts.forEach(([x = 0, y = 0, z = 0], k) => {
+    if (ground(x, z) === null) {
+      wakeRing(state.stage, x, z, 0.8, 3.4, 2.4);
+      removalPuff(state.stage, state.seed, x, SEA_Y + 0.2, z, 1.2, 40 + k);
+    } else removalPuff(state.stage, state.seed, x, Math.max(y, CELL_H) + 0.1, z, 1.8, 50 + k);
+  });
+}
+
 /** The ports in a town, by structure. */
 export function portsOf(shape: ShapePlan): Map<StructureId, PortPlan> {
   const out = new Map<StructureId, PortPlan>();
@@ -115,7 +216,10 @@ export default defineSystem<State>({
   id: 'port',
   order: 45,
   create(ctx) {
-    const state: State = { cranes: new Map(), craneAt: new Map(), ports: new Map(), shape: null, stage: ctx.stage, seed: ctx.seed, leaving: [], spec: new Map(), shown: false };
+    const state: State = { cranes: new Map(), craneAt: new Map(), ports: new Map(), shape: null, stage: ctx.stage, seed: ctx.seed, leaving: [], spec: new Map(), shown: false, fires: new Fires(ctx.stage), blast: null, footprint: new Map(), alight: new Set(), off: () => {} };
+    state.off = mischiefOf(ctx.stage).on((e) => {
+      if (e.type === 'blast') state.blast = { x: e.blast.point[0], z: e.blast.point[2], power: e.blast.power };
+    });
     states.set(ctx.stage, state);
     return state;
   },
@@ -139,7 +243,11 @@ export default defineSystem<State>({
       }
       for (const [id, port] of state.ports) {
         if (now.has(id)) continue;
-        if (port.visit) port.visit.ship.held = false;
+        if (port.visit) {
+          port.visit.ship.held = false;
+          // Its cranes are going too: what they hold has no yard left to fall into, and goes in a puff.
+          port.visit.drop = undefined;
+        }
         port.workers?.release();
         port.yard.remove();
         // Back to boards: the same run of puffs over what was its deck.
@@ -187,13 +295,23 @@ export default defineSystem<State>({
       const crane = new Crane(ctx.stage, actor.id, spec.variant === 'large' ? 'large' : 'medium', spec.look, body, body.base, spec.off, spec.lo, spec.hi, ctx.seed);
       // Raised where it stands, one after another (never all in one frame), once the town has been shown.
       if (state.shown) crane.arrive(0.15 + fresh++ * 0.25);
+      crane.onCrash = (pts) => crashed(state, next.shape, pts);
       state.cranes.set(actor.id, crane);
       state.spec.set(actor.id, spec);
       const at = actor.at && 'cell' in actor.at ? next.shape.structureAt.get(below(actor.at.cell)) : undefined;
-      if (at !== undefined) state.craneAt.set(actor.id, at);
+      if (at !== undefined) {
+        state.craneAt.set(actor.id, at);
+        // The deck cells it stands on: their damage is its damage.
+        const reach = crane.large ? 1.0 : 0.75;
+        state.footprint.set(actor.id, (next.shape.structures.get(at)?.cells ?? []).filter((c) => {
+          const [lx, , lz] = crane.local(keyX(c) + 0.5, CELL_H, keyZ(c) + 0.5);
+          return Math.abs(lx) <= reach && Math.abs(lz) <= 1.0;
+        }));
+      }
     }
     for (const [id, c] of [...state.cranes]) if (!seen.has(id)) going(id, c);
     state.shown = true;
+    harm(state, next.shape);
   },
   update(state, dt) {
     const cap = craneCap();
@@ -206,6 +324,7 @@ export default defineSystem<State>({
       }
       if (ship && !port.visit) {
         port.visit = newVisit(ship, state.seed);
+        port.visit.drop = (box, at, home) => port.yard.dropLoose(box, at, home);
         ship.held = true;
       }
       const coming = ship ?? shipFor(state.stage, port.id, false);
@@ -225,7 +344,7 @@ export default defineSystem<State>({
       const v = port.visit;
       const overtime = v !== null && v.ship.t > PORT.freighterStay + PORT.freighterHold;
       cranes.forEach((c, k) => {
-        if (c.coming) return;
+        if (c.coming || c.harmed) return;
         if (!coming || k >= cap) {
           c.park();
           return;
@@ -247,16 +366,21 @@ export default defineSystem<State>({
       c.release();
       return false;
     });
+    const ground = state.shape ? groundOf(state.shape) : () => null;
     for (const port of state.ports.values()) {
-      port.yard.update(dt);
+      port.yard.update(dt, ground);
+      if (port.yard.loose.length && state.shape) port.yard.putBack(soundBay(state.shape, port.plan));
       port.workers?.update(dt, port.yard);
     }
+    state.fires.update(dt, mischiefOf(state.stage).camera.yaw);
   },
   dispose(state) {
     for (const c of state.cranes.values()) c.release();
     state.cranes.clear();
     for (const c of state.leaving) c.release();
     state.leaving = [];
+    state.fires.release();
+    state.off();
     for (const p of state.ports.values()) {
       p.workers?.release();
       p.yard.release();
