@@ -107,7 +107,7 @@ function spawnArt(stage: LifeStage, n: number, s: Scuffle): ScuffleArt {
  * Which way the camera looks, to turn the swearing bubble to it: read from the app's debug handle
  * (window.__lc.view), the one place it is known; the default view where there is none (tests, shots).
  */
-function cameraAngles(): { yaw: number; pitch: number } {
+export function cameraAngles(): { yaw: number; pitch: number } {
   type Angles = { yaw: number; pitch: number };
   const view = (globalThis as { __lc?: { view?: { getCamera?(): Angles; getEyeCamera?(): Angles | null } } }).__lc?.view;
   const deg = Math.PI / 180;
@@ -127,7 +127,7 @@ function balloonScale(): number {
 }
 
 /** A flat drawing (a balloon) at (x, y, z) turned square to the camera, scaled by `sc`: Ry(yaw) · Rx(-pitch) · S. */
-function facing(x: number, y: number, z: number, cam: { yaw: number; pitch: number }, sc: number): Mat4Like {
+export function facing(x: number, y: number, z: number, cam: { yaw: number; pitch: number }, sc: number): Mat4Like {
   const c = Math.cos(cam.yaw), sn = Math.sin(cam.yaw), ct = Math.cos(cam.pitch), st = Math.sin(cam.pitch);
   return [c * sc, 0, -sn * sc, 0, -sn * st * sc, ct * sc, -c * st * sc, 0, sn * ct * sc, st * sc, c * ct * sc, 0, x, y, z, 1];
 }

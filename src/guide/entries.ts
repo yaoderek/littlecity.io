@@ -22,6 +22,7 @@ import harvestScn from '../../scenarios/life/L59.harvest.scenario';
 import tradeScn from '../../scenarios/life/L58.trade.scenario';
 import fishScn from '../../scenarios/life/L53.fish.scenario';
 import breadScn from '../../scenarios/life/L51.bread.scenario';
+import applesScn from '../../scenarios/life/L68.apples.scenario';
 import waterScn from '../../scenarios/life/L52.water.scenario';
 import laundryScn from '../../scenarios/life/L60.laundry.scenario';
 import schoolScn from '../../scenarios/life/L62.school.scenario';
@@ -1337,7 +1338,7 @@ const LISTED: readonly GuideEntry[] = [
     group: 'big-days',
     when: 'Market days, from dawn to early afternoon',
     name: 'Market day',
-    how: 'Lay a plaza at least three by three with two stalls on it, and houses round it. On market mornings traders set up stalls there, a busker juggles and the town comes to buy.',
+    how: 'Lay a plaza at least three by three with two stalls on it, and houses round it. On market mornings traders set up stalls there, a busker juggles and the town comes to buy, showing what they want in a picture bubble and paying with a coin, and a fisher\'s catch and an orchard\'s apples come to the stalls too.',
     proof: { socket: { rule: 'L56.market-day' } },
     seed: 7801,
     build(b) {
@@ -1541,7 +1542,7 @@ const LISTED: readonly GuideEntry[] = [
     group: 'by-water',
     name: 'The catch comes in',
     when: 'Dawn and by day',
-    how: 'Put a pier with a fish stall or a fish shop within 20 steps of it. The fisher fishes off its end and carries a basket of the catch up to the stall, and people come down to buy a fish.',
+    how: 'Put a pier with a fish stall or a fish shop within 20 steps of it. The fisher carries baskets of the catch up to the stall (on market days, to the market), and people come down to buy a fish, asking with a fish in their speech bubble and paying with a coin.',
     proof: { socket: { rule: 'L53.fish' } },
     ...town(fishScn),
     view: { yaw: 30, pitch: 34 },
@@ -1561,6 +1562,19 @@ const LISTED: readonly GuideEntry[] = [
     pad: 0.2,
     life: { settle: 40, residents: true },
     frame: [16, 17, 24, 22, 2],
+  },
+  {
+    id: 'apples-to-market',
+    group: 'every-day',
+    name: 'Apples to market',
+    when: 'At harvest time, by day',
+    how: 'Plant an orchard with a market stall or a shop within 24 steps of it. At harvest the pickers fill the big baskets, the gardener carries a basket heaped with apples to the stall, and people come to buy one, asking with an apple in their speech bubble.',
+    proof: { socket: { rule: 'L68.apples' } },
+    ...town(applesScn),
+    view: { yaw: 35, pitch: 36 },
+    pad: 0.2,
+    life: { settle: 120, residents: true },
+    frame: [10, 11, 25, 17, 2],
   },
   {
     id: 'fetching-water',

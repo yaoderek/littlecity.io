@@ -9,6 +9,7 @@ import type { Person } from '../../people/crowd';
 import type { Chain, Post } from '../board';
 import { canWork, keepHand, standAt } from '../hands';
 import { buyerPlan, deliverStep, morning, outletsOf, roomiest, type Outlet } from '../market';
+import type { MarketChain } from './market-day';
 
 export function fishChain(): Chain {
   let catches: Post[] = [];
@@ -37,7 +38,9 @@ export function fishChain(): Chain {
       const post = catches.find((c) => fishers.get(c.id) === p);
       if (post) {
         if (board.now < next) return null;
-        const to = roomiest(board, p, outlets, post.cell);
+        // On market days the catch goes to the market's fish pitch while its stall is up (market talk).
+        const pitch = (board.chains.find((c) => c.id === 'market') as MarketChain | undefined)?.pitchFor('fish') ?? null;
+        const to = (pitch && roomiest(board, p, [pitch], post.cell)) ?? roomiest(board, p, outlets, post.cell);
         if (!to) return null;
         next = board.now + CHAINS.fishGap;
         return {
