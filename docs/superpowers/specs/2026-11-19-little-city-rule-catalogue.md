@@ -1271,6 +1271,52 @@ back.
   day, never at a wedding, on top of two other big scenes, or while other
   mischief is going on. Time held at noon does not stop them; held at night
   they wait. Each holds the act open: one undo puts it all back.
+- **L73 · 2 · The Raid tool: where you click, as many as you like**
+  (`site.ts` `planAt`, `raids.ts`; Derek, 2026-11-25: "the boat goes to the
+  nearest coast on where you clicked … you can just spam them"). A click
+  (on the sea, the land or the town) → a party lands on the stretch of shore
+  nearest it that a vessel can reach (the very nearest if it can; else the
+  next nearest; refused only if the island has no reachable shore): a
+  longship where there is a beach to run up there, two or three rowing
+  boats to landings beside each other where there is not. It comes in by the
+  shortest clear way from the edge of the map, so it appears on the side
+  clicked. Raids on their own still choose their own site (L69, L70). Every
+  click brings another party, whatever is going on: each its own ship,
+  landing, band, loot pile and horn. A new party never lands within 2.6
+  cells of another's landing (a second click on one spot lands beside the
+  first) and plans its way clear of the others' ships and beached hulls; at
+  sea a newer party lies on its oars while an older one's vessel is close
+  ahead (12 s at most). No building is gone for by two parties, and nothing
+  is looted twice while raids are on. Raiders alive at once, all parties
+  together: at most 40 (24 on a phone-sized screen); past that a party is a
+  token crew of 3, and past half as many again the chief comes alone. One note ("Raiders off the coast!") while any raid is on;
+  at most four raid sounds at once and one horn at a time; at most six war
+  cry balloons. All the parties share one open act: one undo puts the town
+  back as it was before the first of them and ends them all.
+- **L74 · 2 · The garrison turns out** (`sally.ts`; Derek, 2026-11-25:
+  "i want the castle guards to fight the raiders if there is a castle guard
+  of people. they can repel one viking raid successfully") — a raid sighted
+  (2 s in) in a town with a castle garrison (L36) that can reach its landing
+  on foot → the alarm bell, the note "The castle's garrison marches out to
+  meet the raiders!", the troop leaves its round and forms up at the gate
+  (marching off once half are formed; the rest fall in at a run), and marches
+  out at the double (1.05 cells/s) along the streets to the landing, a tall
+  banner in the castle's colour at its head, the rider (L37) a horse's length
+  ahead. Within 4 cells of the band (or at the landing) each soldier runs at
+  the nearest raider nobody else has (two on one at most) and the pair vanish
+  into a dust cloud (several at once, drawn by the raid; 2.2–3.6 s). The
+  soldier wins 80 % alone, nearly always two on one; the loser sits dizzy with
+  stars (2.6 s), then runs: a raider for his ship, a soldier back to the gate.
+  When 40 % of the band (3 at least) is beaten it breaks: the horn early, back
+  to the ship, nothing more set alight, everything taken left behind (the pile
+  cleared, nothing aboard). The soldiers stand on the shore facing the sea,
+  cheering, until the ship is away, then walk back to their places in the
+  round, which carries on from there; the garrison rests 120 s before it will
+  turn out again. One party at a time: others raid as usual; it goes for the
+  first sighted it can reach. Undo puts the soldiers straight back; a raid
+  that ends otherwise (its ship sunk) sends them home. A soldier in the air
+  (blast, Hand) is missing from it until he is down. No castle, nothing
+  changes. Raids on their own are met the same way.
 
 - **LM03 · 2 · The UFO** (the Mischief drawer; run time, `src/life/mischief/ufo.system.ts`)
   — a click → a saucer from beyond the edge at a cruising height above the

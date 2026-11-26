@@ -25,6 +25,7 @@ import { place } from '../motion/pose';
 import { harbourOf } from '../ships/visit';
 import { scenesOf } from '../town/scenes';
 import { Raid } from './raid';
+import { createSallies } from './sally';
 import { raidsOf, type Raids, type Summon } from './raids';
 import { planRaid, raidField } from './site';
 import { raiderScale } from './far';
@@ -46,10 +47,12 @@ interface State {
   cryMeshes: MeshData[];
   flames: InstanceHandle[];
   smokeAcc: number;
-  /** The raid over and hidden: let go next frame. */
-  hidden: boolean;
+  /** Raids over and hidden this frame: let go next frame. */
+  hidden: Set<Raid>;
   /** Seconds of play with this town shown (for raids on their own). */
   played: number;
+  /** The castles' garrisons turning out against raids (sally.ts). */
+  sallies: ReturnType<typeof createSallies>;
   /** The next raid on its own may come at this many seconds of play. */
   nextAuto: number | null;
 }
@@ -99,29 +102,38 @@ export default defineSystem<State>({
     const own = ownStage(ctx.stage);
     const raids = raidsOf(ctx.stage);
     const d = mischiefOf(ctx.stage);
-    const st: State = { own, stage: ctx.stage, raids, d, off: () => {}, now: 0, pending: [], cries: new Map(), cryMeshes: [], flames: [], smokeAcc: 0, hidden: false, played: 0, nextAuto: null };
-    raids.current = null;
+    const st: State = { own, stage: ctx.stage, raids, d, off: () => {}, now: 0, pending: [], cries: new Map(), cryMeshes: [], flames: [], smokeAcc: 0, hidden: new Set(), played: 0, nextAuto: null, sallies: createSallies(ctx.stage, own, raids, (e) => raids.emit(e.type === 'horn' ? { type: 'horn', x: e.x, z: e.z, long: e.long ?? false } : { type: e.type, x: e.x, z: e.z })) };
+    raids.list = [];
     raids.start = (s: Summon) => start(st, s);
+    raids.handles = () => own.live;
     const offD = d.on((e: MischiefEvent) => {
-      const raid = raids.current;
       if (e.type === 'reset') {
-        // Undo while it is on, a new town, growing one: it ends now, nothing left.
+        // Undo while they are on, a new town, growing one: every raid ends now, nothing left; the garrison back in its round.
+        st.sallies.reset();
         raids.end();
         clearDrawn(st);
+        st.hidden.clear();
+        st.d.threats = [];
         // Not straight back: the next on its own waits its full time.
         st.nextAuto = st.played + RAID.every + rand(raids.count, 'raid-every') * RAID.everySpread;
         return;
       }
-      if (!raid) return;
+      if (raids.list.length === 0) return;
       if (e.type === 'blast') {
         const [x, , z] = e.blast.point;
         if (e.nuke) st.pending.push({ at: st.now + 0.3, x, z, power: NUKE.power });
-        else raid.hit(x, z, BLAST.rubble * e.blast.power * 0.9 * 1.5, BLAST.wreck * e.blast.power * 1.2, BLAST.shake * e.blast.power);
+        else for (const raid of raids.list) raid.hit(x, z, BLAST.rubble * e.blast.power * 0.9 * 1.5, BLAST.wreck * e.blast.power * 1.2, BLAST.shake * e.blast.power);
       } else if (e.type === 'strike' && e.strike.cell === -1) {
-        raid.strike(e.strike.point[0], e.strike.point[2]);
+        for (const raid of raids.list) if (raid.strike(e.strike.point[0], e.strike.point[2])) break;
       }
     });
-    d.extraVessels = (x, z) => raids.current?.vesselAt(x, z) ?? null;
+    d.extraVessels = (x, z) => {
+      for (const raid of raids.list) {
+        const v = raid.vesselAt(x, z);
+        if (v) return v;
+      }
+      return null;
+    };
     st.off = () => {
       offD();
       if (d.extraVessels) d.extraVessels = null;
@@ -141,24 +153,39 @@ export default defineSystem<State>({
       const p = st.pending[i]!;
       if (st.now < p.at) continue;
       st.pending.splice(i, 1);
-      raids.current?.hit(p.x, p.z, BLAST.rubble * p.power * 0.9, BLAST.wreck * p.power, BLAST.shake * p.power);
+      for (const raid of raids.list) raid.hit(p.x, p.z, BLAST.rubble * p.power * 0.9, BLAST.wreck * p.power, BLAST.shake * p.power);
     }
-    const raid = raids.current;
-    if (raid) {
-      const w = signals.wind(raid.lead.x, raid.lead.z);
-      raid.stepSea(dt, signals.time.seconds, w.strength);
-      st.d.threats = raid.threats();
-      drawCries(st, raid, signals.time.seconds);
-      drawFlames(st, raid, dt, signals.time.seconds);
-      if (raid.beat === 'done' && !st.hidden) {
-        // Hidden this frame, let go the next: nothing of it goes while it is drawn.
-        raid.hideAll();
-        for (const h of st.cries.values()) h.setVisible(false);
-        for (const h of st.flames) h.setVisible(false);
-        st.hidden = true;
-      } else if (raid.beat === 'done') {
-        st.hidden = false;
-        raids.end();
+    // The garrisons (before the raids are let go: a sally sees its raid end and marches home).
+    st.sallies.step(dt, signals.time.seconds);
+    if (raids.list.length > 0) {
+      const threats: { x: number; z: number }[] = [];
+      for (const raid of [...raids.list]) {
+        if (st.hidden.has(raid)) {
+          // Hidden last frame: let go now (nothing of it goes while it is drawn).
+          st.hidden.delete(raid);
+          for (const [k, h] of st.cries) {
+            if (Math.floor(k / 1000) !== raid.n) continue;
+            h.release();
+            st.cries.delete(k);
+          }
+          raids.remove(raid);
+          continue;
+        }
+        const w = signals.wind(raid.lead.x, raid.lead.z);
+        raid.stepSea(dt, signals.time.seconds, w.strength);
+        if (raid.beat === 'done') {
+          raid.hideAll();
+          for (const [k, h] of st.cries) if (Math.floor(k / 1000) === raid.n) h.setVisible(false);
+          st.hidden.add(raid);
+          continue;
+        }
+        for (const t of raid.threats()) threats.push(t);
+      }
+      st.d.threats = threats;
+      const drawn = raids.list.filter((r) => !st.hidden.has(r));
+      drawCries(st, drawn, signals.time.seconds);
+      drawFlames(st, drawn, dt, signals.time.seconds);
+      if (raids.list.length === 0) {
         clearDrawn(st);
         st.d.threats = [];
         st.d.hold('raid', false);
@@ -168,8 +195,9 @@ export default defineSystem<State>({
     void ctx;
   },
   dispose(st) {
-    st.raids.current?.end(null);
-    st.raids.current = null;
+    st.sallies.dispose();
+    for (const raid of st.raids.list) raid.end(null);
+    st.raids.list = [];
     st.raids.start = null;
     st.raids.board = null;
     st.off();
@@ -185,22 +213,70 @@ function start(st: State, s: Summon): string | null {
   for (const [c, k] of shape.kinds) if (KINDS[k as keyof typeof KINDS]?.building && keyY(c) <= 3) buildings++;
   if (buildings < 3) return 'there is no town here to raid';
   const seed = hash(shape.world.seed, 'raid', raids.count + 1, Math.floor(st.now));
-  const extra = harbourColumns(st.own.stage);
-  const site = planRaid(shape, dressing.nav, seed, { ...(s.kind ? { kind: s.kind } : {}), near: s.at, extra });
+  // Clear of the harbour's ships and of the other raids' (where they are, and where they lie on the beach).
+  const extra = [...harbourColumns(st.own.stage), ...raidColumns(raids.list)];
+  const avoid = raids.list.flatMap((r) => r.site.landings.map((l) => ({ x: l.x, z: l.z })));
+  const site = planRaid(shape, dressing.nav, seed, { ...(s.kind ? { kind: s.kind } : {}), near: s.at, extra, avoid });
   if (!site) return 'no ship can reach a shore near the town';
+  // A ceiling on raiders alive at once (every click brings another party): past it, a token crew.
+  let alive = 0;
+  for (const r of raids.list) for (const x of r.raiders) if (x.where !== 'lost') alive++;
+  const ceiling = phone() ? RAID.ceilingPhone : RAID.ceiling;
+  // Well past it (a storm of clicks): the chief alone, standard up, so the ship still comes.
+  const most = alive >= ceiling * 1.5 ? 1 : Math.max(RAID.tokenCrew, ceiling - alive);
   // Buildings are counted by structure for the band's size.
   const structures = new Set<number>();
   for (const [c, k] of shape.kinds) if (KINDS[k as keyof typeof KINDS]?.building) structures.add(shape.structureAt.get(c) ?? -1);
-  const raid = new Raid({ own: st.own, stage: st.stage, director: st.d, sound: (e) => raids.emit(e) }, site, seed, structures.size);
-  const field = raidField(shape, extra);
+  const raid: Raid = new Raid(
+    {
+      own: st.own,
+      stage: st.stage,
+      director: st.d,
+      sound: (e) => raids.emit(e),
+      others: () => raids.list.filter((r) => r !== raid).flatMap((r) => r.vessels.map((v) => ({ n: r.n, v }))),
+      claimed: raids.claimed,
+      looted: raids.looted,
+      most,
+    },
+    site,
+    seed,
+    structures.size,
+  );
+  const field = raidField(shape, harbourColumns(st.own.stage));
   raid.field = (x, z) => field.at(x, z);
-  raids.current = raid;
+  raids.list.push(raid);
   raids.count++;
   raids.lastAt = st.now;
   st.d.hold('raid', true);
   // The horn from the ship (or the first boat) as it comes over the edge.
   raids.emit({ type: 'horn', x: raid.lead.x, z: raid.lead.z, long: false });
   return null;
+}
+
+/** The columns under the other raids' vessels now, and under a longship's place on its beach. */
+function raidColumns(list: readonly Raid[]): number[] {
+  const out: number[] = [];
+  const hull = (x: number, z: number, yaw: number, stern: number, bow: number, half: number): void => {
+    const sx = Math.sin(yaw), cz = Math.cos(yaw);
+    for (let a = stern; a <= bow; a += 0.4) {
+      for (const w of [-half, 0, half]) {
+        const cx = Math.floor(x + sx * a + cz * w), cz2 = Math.floor(z + cz * a - sx * w);
+        if (cx >= 0 && cz2 >= 0 && cx < SIZE_X && cz2 < SIZE_Z) out.push(columnIndex(cx, cz2));
+      }
+    }
+  };
+  for (const r of list) {
+    for (const v of r.vessels) if (v.sink < 0.5 && !v.aground) hull(v.x, v.z, v.yaw, v.hull.stern, v.hull.bow, v.hull.halfBeam);
+    const b = r.site.beached;
+    if (b) hull(b.x, b.z, b.yaw, r.site.hull.stern, r.site.hull.bow, r.site.hull.halfBeam);
+  }
+  return out;
+}
+
+/** True on a phone-sized viewport (the crowd's test, src/life/people/people.system.ts). */
+function phone(): boolean {
+  const g = globalThis as { innerWidth?: number; innerHeight?: number };
+  return typeof g.innerWidth === 'number' && typeof g.innerHeight === 'number' && Math.min(g.innerWidth, g.innerHeight) < 600;
 }
 
 /** Raids on their own (the menu's switch): rarely, on a town worth raiding, never in its first minutes, at a wedding, or at night. */
@@ -249,12 +325,14 @@ function clearDrawn(st: State): void {
   st.flames = [];
 }
 
-function drawCries(st: State, raid: Raid, seconds: number): void {
+/** War cries over the bands ashore, one balloon to a knot of raiders (whichever party they are from). */
+function drawCries(st: State, list: readonly Raid[], seconds: number): void {
   if (st.cryMeshes.length === 0) st.cryMeshes = [0, 1, 2].map((v) => cryMesh(v));
   const cam = cameraAngles();
   const k = balloonScale();
   const live = new Set<number>();
-  for (const r of raid.raiders) {
+  const shown: { x: number; z: number }[] = [];
+  for (const raid of list) for (const r of raid.raiders) {
     const p = r.person;
     if (!p || !p.visible || p.inCloud) continue;
     // A brand trails a little smoke as it is run through the streets.
@@ -265,13 +343,14 @@ function drawCries(st: State, raid: Raid, seconds: number): void {
     if (r.cry <= 0) continue;
     // One balloon to a knot of them: none within 1.3 cells of one already shown (a band landing all shouts,
     // and a heap of balloons reads as nothing).
-    if ([...live].some((j) => {
-      const q = raid.raiders[j]?.person;
-      return q && Math.hypot(q.x - p.x, q.z - p.z) < 1.3;
-    })) continue;
-    live.add(r.i);
-    let h = st.cries.get(r.i);
-    if (!h) st.cries.set(r.i, (h = st.own.stage.spawnMesh(st.cryMeshes[r.i % 3]!, HIDDEN)));
+    if (shown.some((q) => Math.hypot(q.x - p.x, q.z - p.z) < 1.3)) continue;
+    // A few at once at most, however many parties are ashore (a sky of balloons reads as nothing).
+    if (shown.length >= 6) continue;
+    shown.push({ x: p.x, z: p.z });
+    const id = raid.n * 1000 + r.i;
+    live.add(id);
+    let h = st.cries.get(id);
+    if (!h) st.cries.set(id, (h = st.own.stage.spawnMesh(st.cryMeshes[r.i % 3]!, HIDDEN)));
     h.setVisible(true);
     // Over the head (the horns), jiggling on twos.
     const jig = Math.floor(seconds * 8) % 2 ? 0.012 : 0;
@@ -282,8 +361,8 @@ function drawCries(st: State, raid: Raid, seconds: number): void {
 }
 
 /** Flames on a burning longship or boat, and smoke off it, while it burns and goes down. */
-function drawFlames(st: State, raid: Raid, dt: number, seconds: number): void {
-  const fires = raid.fires.filter((f) => f.v.sink < 0.7);
+function drawFlames(st: State, list: readonly Raid[], dt: number, seconds: number): void {
+  const fires = list.flatMap((r) => r.fires).filter((f) => f.v.sink < 0.7).slice(0, 18);
   while (st.flames.length < fires.length) st.flames.push(st.own.stage.spawnMesh(flameMesh(st.flames.length % 3), HIDDEN));
   st.flames.forEach((h, i) => {
     const f = fires[i];

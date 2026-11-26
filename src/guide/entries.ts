@@ -1162,7 +1162,7 @@ const LISTED: readonly GuideEntry[] = [
     id: 'garrison',
     group: 'town',
     name: 'Garrison',
-    how: 'Build a keep, or ring a yard with castle walls and a gatehouse or castle turret: a troop of soldiers marches round it.',
+    how: 'Build a keep, or ring a yard with castle walls and a gatehouse or castle turret: a troop of soldiers marches round it. When raiders land, it marches out under its banner and drives one party back to its ship.',
     proof: { actor: { rule: 'L36.garrison', type: 'garrison' } },
     seed: 7704,
     build: smallCastle,

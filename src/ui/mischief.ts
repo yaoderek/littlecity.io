@@ -3,7 +3,7 @@
 //   Lightning  click a building: a storm cloud gathers, a bolt strikes, it catches fire
 //   Bomb    click anywhere: a bomb drops there, fizzes, and goes off
 //   Mallet  click a building: it is knocked a stage worse (cracked, half, rubble)
-//   Raid    click near a shore: raiders come in off the nearest coast (src/life/raid)
+//   Raid    click a shore: raiders land there; click again for more (src/life/raid)
 //   Hand    press on a person or an animal: picked up; drag and let go to throw it (./hand.ts)
 //   UFO     click anywhere: a flying saucer comes for somebody near, beams them up, and brings them back later
 //   Mend    click a damaged building: scaffolding goes up, then it is mended a
@@ -34,7 +34,7 @@ export const mischiefGuide = (): readonly { tool: MischiefToolId; name: string; 
   { tool: 'torch', name: t('Lightning'), how: t('Click a building: a little storm cloud gathers over it and a bolt of lightning sets it alight. Timber and thatch burn fast and the wind carries the fire along a row; a street, a wall or water stops it, and stone only scorches.') },
   { tool: 'bomb', name: t('Bomb'), how: t('Click anywhere: a bomb drops, fizzes and goes off. What is right beside it falls to rubble, what is near loses its glass, and every bird takes off. In the sea it only splashes.') },
   { tool: 'nuke', name: t('Nuke'), how: t('The big one: a siren, a long whistle, a white flash, a shockwave racing out, a fireball rising into a mushroom cloud. Everything for streets around is flattened, fires start at the edge, and a crater is left in the ground. One undo puts even the ground back.') },
-  { tool: 'raid', name: t('Raid'), how: t('Click near a shore: a longship with a striped sail and a dragon at its prow comes in off the nearest coast, or a little fleet of rowing boats rows in, each to its own landing. The raiders storm ashore roaring, set the thatch alight, kick in doors and carry off sacks, chests and a pig, then sail away with the town in flames. Sink their ship with a bomb or a bolt of lightning and they are stranded: the town chases them into the sea. Undo puts it all back.') },
+  { tool: 'raid', name: t('Raid'), how: t('Click a shore: raiders land there. Click again for more. A longship with a striped sail and a dragon at its prow runs up the beach nearest your click, or a little fleet of rowing boats rows in where there is no beach. The raiders storm ashore roaring, set the thatch alight, kick in doors and carry off sacks, chests and a pig, then sail away with the town in flames. Sink their ship with a bomb or a bolt of lightning and they are stranded: the town chases them into the sea. Undo puts it all back.') },
   { tool: 'mallet', name: t('Mallet'), how: t('Click a building to knock it a stage worse: cracked, then half-wrecked, then a heap of its own bricks.') },
   { tool: 'hand', name: t('Hand'), how: t('Press on anybody out in the town, a dog, a cat, a hen, a sheep, a soldier, the knight or his horse, a little boat or a big ship: up it comes, kicking. Drag it over the roofs and let go to drop it, or flick to throw it across the island. People land, see stars, get up and carry on; whoever they hit goes over too. A ship dropped on the land lies there until it is refloated. Press on a building and it wobbles on its foundations until you let go.') },
   { tool: 'ufo', name: t('UFO'), how: t('Click anywhere: a flying saucer swoops in, hovers over somebody out of doors near where you clicked, and beams them up, kicking and shouting for help. Half a minute later it brings them back somewhere else in town, a little dizzy. With nobody about, it searches the empty streets with its beam and flies off.') },
@@ -200,7 +200,7 @@ export function createMischiefTools(host: {
         return true;
       }
       if (tool === 'raid') {
-        // The raid (src/life/raid): a longship off the coast nearest the click (anywhere on the town will do).
+        // The raid (src/life/raid): a party lands on the shore nearest the click; every click brings another.
         const at = pick ? { x: pick.point[0], z: pick.point[2] } : null;
         const why = raidsOf(host.view.stage).summon({ at });
         if (why) {

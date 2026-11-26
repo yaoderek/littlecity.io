@@ -13,6 +13,10 @@
 // (Rebuilding them all on every change put every soldier and the rider back
 // at the start of their round, drawn anew, every few seconds while the town
 // mended.)
+//
+// Sallying out (the raid, src/life/raid/sally.ts): while a garrison's `out` is set, its troop and rider stay
+// where they are in their round (not stepped) and are drawn where `out` says instead; when it is cleared they
+// carry on from there. The raid walks them back to those places first.
 
 import { defineSystem, type InstanceHandle, type LifeStage } from '@/life/api';
 import type { MeshData } from '@/gen/mesh';
@@ -38,6 +42,37 @@ interface Figure {
   handles: InstanceHandle[];
   tool: { kind: Tool; handle: InstanceHandle } | null;
   last: Float32Array;
+  /** Hidden (in a brawl's dust cloud while out). */
+  hidden?: boolean;
+}
+
+/** A soldier or the rider out of the castle (the raid's sally): where, how, and whether hidden in a dust cloud. */
+export interface OutFigure {
+  x: number;
+  y: number;
+  z: number;
+  heading: number;
+  pose: 'walk' | 'run' | 'stand' | 'cheer' | 'sit';
+  /** Stride phase (walking, running), or seconds. */
+  stride: number;
+  hidden: boolean;
+}
+
+/** What the raid sees of a castle's garrison: its troop and rider in their round, and `out` to sally. */
+export interface GarrisonView {
+  readonly key: string;
+  readonly castle: Castle;
+  readonly troop: Troop | null;
+  readonly ride: Ride | null;
+  /** The castle's colour (tabards, the banner). */
+  readonly colour: string;
+  out: { soldiers: OutFigure[]; rider: OutFigure | null } | null;
+}
+
+const views = new WeakMap<LifeStage, () => readonly GarrisonView[]>();
+/** The castles' garrisons on this stage now (none without a castle). */
+export function garrisonsOf(stage: LifeStage): readonly GarrisonView[] {
+  return views.get(stage)?.() ?? [];
 }
 
 interface Garrison {
@@ -53,6 +88,7 @@ interface Garrison {
   horse: { pieces: InstanceHandle[]; last: Float32Array } | null;
   rider: { look: Look; rig: Rig; fig: Figure | null; reins: InstanceHandle | null } | null;
   horseLook: number;
+  out: GarrisonView['out'];
 }
 
 interface State {
@@ -168,7 +204,7 @@ function build(shape: ShapePlan, dressing: DressingPlan, seed: number, time: Par
     const colours = clothColors();
     const colour = colours[(((Number((a.params as { color?: number } | undefined)?.color ?? 0)) % colours.length) + colours.length) % colours.length]!;
     if (!g) {
-      g = { key: `castle${castle.id}`, castle, patrol: null, route: null, troop: null, ride: null, colour, soldiers: [], horse: null, rider: null, horseLook: 0 };
+      g = { key: `castle${castle.id}`, castle, patrol: null, route: null, troop: null, ride: null, colour, soldiers: [], horse: null, rider: null, horseLook: 0, out: null };
       out.push(g);
     }
     if (a.type === 'garrison') {
@@ -250,6 +286,7 @@ export default defineSystem<State>({
     setObstacles(ctx.stage, () => state.obstacles);
     // The debug handle for watching (like window.__lcPeople).
     (globalThis as { __lcGarrison?: State }).__lcGarrison = state;
+    views.set(ctx.stage, () => state.list);
     return state;
   },
   sync(state, next, prev, ctx) {
@@ -285,10 +322,14 @@ export default defineSystem<State>({
     };
     state.obstacles.length = 0;
     for (const g of state.list) {
-      g.troop?.step(dt, signals.time);
-      g.ride?.step(dt, signals.time, crowded);
-      for (const s of g.troop?.soldiers ?? []) state.obstacles.push({ x: s.x, z: s.z, y: s.y });
-      if (g.ride) {
+      // Out (the raid's sally): their round waits for them where they left it.
+      if (!g.out) {
+        g.troop?.step(dt, signals.time);
+        g.ride?.step(dt, signals.time, crowded);
+      }
+      for (const s of g.out?.soldiers ?? g.troop?.soldiers ?? []) state.obstacles.push({ x: s.x, z: s.z, y: s.y });
+      if (g.out?.rider) state.obstacles.push({ x: g.out.rider.x, z: g.out.rider.z, y: g.out.rider.y });
+      else if (g.ride) {
         // The horse is long: its middle and both ends.
         const hx = Math.sin(g.ride.heading) * 0.2, hz = Math.cos(g.ride.heading) * 0.2;
         state.obstacles.push({ x: g.ride.x, z: g.ride.z, y: g.ride.y }, { x: g.ride.x + hx, z: g.ride.z + hz, y: g.ride.y }, { x: g.ride.x - hx, z: g.ride.z - hz, y: g.ride.y });
@@ -301,22 +342,48 @@ export default defineSystem<State>({
     state.fresh = false;
     for (const g of state.list) {
       if (g.troop) {
-        g.troop.soldiers.forEach((s, i) => {
+        g.troop.soldiers.forEach((s0, i) => {
           const d = g.soldiers[i]!;
           d.fig ??= newFigure(ctx.stage, d.look, `${g.key}-soldier${i}`);
+          // Out on a sally: drawn where the raid has them (hidden while in a brawl's dust cloud).
+          const o = g.out?.soldiers[i];
+          const s = o ?? s0;
           // Mischief: blown about or in the Hand (src/life/mischief/critters.ts): thrown as a whole, arms and legs out.
           const held = critterPose(ctx.stage, `${g.key}-soldier${i}`, 'soldier', s.x, s.y, s.z, s.heading, 0.46, d.look.scale);
-          const pose = held ? poseOf('dive', 0) : s.pose === 'walk' ? poseOf('walk', s.stride, 0) : { legL: 0, legR: 0, armL: 0, armR: 0, outL: 0.08, outR: 0.08, lean: 0, lift: 0, twist: 0 };
+          const hide = !held && (o?.hidden ?? false);
+          if (hide !== (d.fig.hidden ?? false)) {
+            d.fig.hidden = hide;
+            for (const h of d.fig.handles) h.setVisible(!hide);
+            d.fig.tool?.handle.setVisible(!hide);
+          }
+          if (hide) return;
+          const still = { legL: 0, legR: 0, armL: 0, armR: 0, outL: 0.08, outR: 0.08, lean: 0, lift: 0, twist: 0 };
+          const pose = held
+            ? poseOf('dive', 0)
+            : o
+              ? o.pose === 'walk' || o.pose === 'run'
+                ? poseOf(o.pose, o.stride, 0)
+                : o.pose === 'cheer' || o.pose === 'sit'
+                  ? poseOf(o.pose, o.stride, i)
+                  : still
+              : s0.pose === 'walk'
+                ? poseOf('walk', s0.stride, 0)
+                : still;
+          const torch = !o && s0.torch;
           // The pike (or the sentry's torch) in the right hand: the hand closes on its shaft (hands.ts).
-          applyHold(pose, d.rig, { tool: s.torch ? 'torch' : 'pike', load: null, hold: null, anchor: null });
-          rigMatrices(d.look, pose, local, 0, d.rig);
+          applyHold(pose, d.rig, { tool: torch ? 'torch' : 'pike', load: null, hold: null, anchor: null });
+          rigMatrices(d.look, pose, local, o?.pose === 'sit' ? sitDrop(d.rig, 0) : 0, d.rig);
           if (held) by(6, held, local, world);
           else place(5, s.x, s.y, s.z, s.heading, d.look.scale, local, world);
-          drawFigure(ctx.stage, d.fig, world, s.torch ? 'torch' : 'pike', g.colour);
+          drawFigure(ctx.stage, d.fig, world, torch ? 'torch' : 'pike', g.colour);
         });
       }
       if (g.ride && g.rider) {
-        const r = g.ride;
+        // Out on a sally: in the saddle where the raid has him, trotting or standing.
+        const o = g.out?.rider;
+        const r: Pick<Ride, 'x' | 'y' | 'z' | 'heading' | 'gait' | 'phase' | 'riding'> = o
+          ? { x: o.x, y: o.y, z: o.z, heading: o.heading, gait: o.pose === 'stand' || o.pose === 'cheer' ? 'stand' : 'trot', phase: o.stride, riding: true }
+          : g.ride;
         const meshes = g.horse ? null : buildHorse(g.horseLook, g.colour);
         g.horse ??= { pieces: HORSE_PIECES.map((p) => ctx.stage.spawnMesh(meshes![p], IDENTITY)), last: new Float32Array(96) };
         // Mischief (src/life/mischief/critters.ts): the horse, and its rider apart from it, can be blown about

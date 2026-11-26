@@ -68,7 +68,7 @@ const toolInfo = (): Record<ToolId, { label: string; hint: string }> => ({
   torch: { label: t('Lightning'), hint: t('Strike a building with lightning') },
   bomb: { label: t('Bomb'), hint: t('Drop a bomb') },
   nuke: { label: t('Nuke'), hint: t('The big one: a mushroom cloud and a crater') },
-  raid: { label: t('Raid'), hint: t('Call raiders: a longship comes in off the nearest coast') },
+  raid: { label: t('Raid'), hint: t('Click a shore: raiders land there. Click again for more.') },
   mallet: { label: t('Mallet'), hint: t('Knock a building down a stage') },
   mend: { label: t('Mend'), hint: t('Mend a building a stage (Shift: all at once)') },
   ufo: { label: t('UFO'), hint: t('Call a flying saucer: it beams up somebody near where you click, and brings them back') },

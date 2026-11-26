@@ -27,6 +27,19 @@ interface State {
   bellUntil: number;
   bellAt: number;
   n: number;
+  /** When the sounds now playing end (AudioContext seconds): a few voices at most, however many raids are on. */
+  voices: number[];
+  /** A horn is sounding until then: one horn at a time. */
+  hornUntil: number;
+}
+
+/** Voices at once, all raids together: a click storm of raids is a few horns and cries, not a din. */
+const VOICES = 4;
+function room(st: State, t: number, len: number): boolean {
+  st.voices = st.voices.filter((e) => e > t);
+  if (st.voices.length >= VOICES) return false;
+  st.voices.push(t + len);
+  return true;
 }
 
 const hasAudio = (): boolean => typeof window !== 'undefined' && typeof (window as { AudioContext?: unknown }).AudioContext === 'function';
@@ -139,7 +152,7 @@ export default defineSystem<State>({
   id: 'raid.sound',
   order: 102,
   create(ctx) {
-    const st: State = { wanted: false, audio: null, off: [], bellUntil: 0, bellAt: 0, n: 0 };
+    const st: State = { wanted: false, audio: null, off: [], bellUntil: 0, bellAt: 0, n: 0, voices: [], hornUntil: 0 };
     if (!hasAudio()) return st;
     st.wanted = soundOn();
     const gesture = (): void => {
@@ -167,11 +180,20 @@ export default defineSystem<State>({
         const a = st.audio;
         if (!a || !st.wanted) return;
         st.n++;
-        if (e.type === 'horn') horn(a, e.long);
-        else if (e.type === 'cry') cry(a, st.n);
-        else if (e.type === 'splash') splash(a, false, st.n);
-        else if (e.type === 'crash') splash(a, true, st.n);
-        else if (e.type === 'bell') st.bellUntil = a.ac.currentTime + 7;
+        const t = a.ac.currentTime;
+        if (e.type === 'horn') {
+          const len = e.long ? 3.5 : 2.4;
+          if (t >= st.hornUntil && room(st, t, len)) {
+            st.hornUntil = t + len;
+            horn(a, e.long);
+          }
+        } else if (e.type === 'cry') {
+          if (room(st, t, 0.7)) cry(a, st.n);
+        } else if (e.type === 'splash') {
+          if (room(st, t, 0.4)) splash(a, false, st.n);
+        } else if (e.type === 'crash') {
+          if (room(st, t, 1)) splash(a, true, st.n);
+        } else if (e.type === 'bell') st.bellUntil = Math.max(st.bellUntil, t + 7);
       }),
     );
     return st;

@@ -444,7 +444,11 @@ try {
       console.log(`then: ${(await applyEdits(second)).join(', ')}`);
       await play(FRAME);
     }
-    if (flags.aim && flags.follow) await aim();
+    if (flags.aim && flags.follow) {
+      await aim();
+      // Drawn once from there (the clock is held: the camera moves only when a frame is drawn).
+      await play(FRAME);
+    }
     if (flags['follow-raid']) {
       await page.evaluate(() => {
         const r = window.__lc.raids?.current;
