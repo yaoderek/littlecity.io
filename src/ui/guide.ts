@@ -170,7 +170,8 @@ export function createGuide(host: GuideHost): Guide {
     }
     const { got, all } = progress(mine);
     built.textContent = t('Built {got} / {all}', { got, all });
-    bar.style.width = `${((got / Math.max(1, all)) * 100).toFixed(1)}%`;
+    // One built shows as a start, not as nothing.
+    bar.style.width = got === 0 ? '0' : `${Math.max(4, (got / Math.max(1, all)) * 100).toFixed(1)}%`;
   };
   let stale = true;
 
