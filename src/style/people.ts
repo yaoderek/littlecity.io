@@ -187,6 +187,44 @@ export const RIDER = defineStyle(
   { trot: [0.5, 3, 0.05], walk: [0.2, 1.2, 0.02], crowd: [0.4, 3, 0.05], rides: [0, 8, 1], walkSteps: [1, 6, 0.1], trotSteps: [0.6, 4, 0.1] },
 );
 
+/** Bikes (src/life/people/bikes.ts): the bikes by front doors, ridden by their owners. */
+export const BIKE = defineStyle(
+  'bike',
+  {
+    /** The shortest trip that is ridden, in cells of the walk; and riding speed, as a share of the rider's walk. */
+    minWalk: 14,
+    speed: 2.2,
+    /** Riders at once: on a desktop, on a phone, and at the quality governor's lowest level. Over it, people walk. */
+    cap: 8,
+    capPhone: 4,
+    capLow: 2,
+    /** No riding in rain heavier than this (they walk under umbrellas), nor in falling or settled snow over these. */
+    rain: 0.25,
+    snow: 0.05,
+    cover: 0.3,
+    /** How much of the speed is kept round a right-angle turn (it slows into it), and how quickly speed changes (per second). */
+    turn: 0.5,
+    ease: 2.4,
+    /** Slowing before getting off: from this far (world units) before the end of the ridden stretch. */
+    slowAt: 0.45,
+    /** Getting on or off: seconds stood still beside the bike. */
+    mount: 0.35,
+    /** People in one cell (others) that make it crowded: they get off and push it through. */
+    crowd: 3,
+    /** Leaning into a turn: radians per radian a second of turning, and the most. */
+    lean: 0.08,
+    leanMax: 0.16,
+    /** Pedal turns per cell ridden (the wheels roll without slipping). */
+    pedal: 1.1,
+    /** A bike in hand is drawn up to this much longer (not taller) from the whole-island view, so it reads there. */
+    far: 1.5,
+  },
+  {
+    minWalk: [4, 40, 1], speed: [1, 4, 0.05], cap: [0, 30, 1], capPhone: [0, 20, 1], capLow: [0, 10, 1], rain: [0, 1, 0.05], snow: [0, 1, 0.05], cover: [0, 1, 0.05],
+    turn: [0.1, 1, 0.05], ease: [0.5, 8, 0.1], slowAt: [0, 1.5, 0.05], mount: [0, 1.5, 0.05], crowd: [1, 8, 1], lean: [0, 0.3, 0.01], leanMax: [0, 0.4, 0.01], pedal: [0.3, 3, 0.05], far: [1, 2.5, 0.05],
+  },
+);
+
 /** People are solid: how walkers step round each other (crowd.ts, "stepping aside"). Lengths in world units. */
 export const AVOID = defineStyle(
   'avoid',

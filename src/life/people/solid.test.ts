@@ -146,11 +146,13 @@ describe('people are solid', () => {
   });
 
   test('a day and an evening in the people town: overlaps a fraction of what they were, nobody stuck or off the graph', { timeout: 120_000 }, () => {
-    // Seven and a half minutes. Before people were solid: 121 sustained overlaps. Now about 20, mostly
-    // knots at single-file approaches squeezed through as the last resort.
+    // Seven and a half minutes. Before people were solid: 121 sustained overlaps. Now about 20 to 40, mostly
+    // knots at single-file approaches squeezed through as the last resort. The count is chaotic: a
+    // nudge to any dial (homeMin + 0.1, speedVary + 0.001, chat × 1.01, measured 2026-11-25 with the
+    // bikes, bikes.ts) moves it anywhere from 26 to 40 with or without bikes; 34 as the town is now.
     const { o, w } = day(scenarioTown(peopleTown), 360, 90);
     expect(w.problems).toEqual([]);
-    expect(o.sustained).toBeLessThan(30);
+    expect(o.sustained).toBeLessThan(45);
   });
 
   test('… and in the everything town (busier, with knots at its arch passage and carved steps)', { timeout: 120_000 }, () => {

@@ -38,8 +38,11 @@ import { createDoors, type DoorTable } from './doors';
 import { BODY } from './overlap';
 /** How close anybody lets another come: a body and a hand's breadth (steady following sits just outside an overlap). */
 const KEEP = BODY + 0.025;
+/** How far a ridden bike reaches ahead of its rider (bikes.ts): the front wheel and basket. */
+const BIKE_NOSE = 0.2;
 import { createRouter, type Router } from './route';
 import { createScuffles, type Scuffle, type Scuffles } from './scuffle';
+import { createBikes, type BikeOptions, type Bikes } from './bikes';
 import type { ErrandHost, ErrandStep, Load } from './errand';
 import { HEAVY } from '@/parts/people/loads';
 import type { Finery } from '@/parts/people/finery';
@@ -278,6 +281,8 @@ export interface CrowdOptions {
   scuffle?: { chance?: number; squeeze?: number; rest?: number };
   /** L38–L40: how much a place that is only sometimes worth going to weighs now (a quay with a ship in); 0 = not now. */
   favour?(h: Haunt): number;
+  /** The bikes by front doors and their riders (bikes.ts): the cap and the weather; false for none. */
+  bikes?: BikeOptions | false;
 }
 
 export interface Crowd {
@@ -316,6 +321,8 @@ export interface Crowd {
   upend(p: Person): boolean;
   /** The walking graph's node nearest a world point (-1 if none), as a person set down there would stand at. */
   nearestNode(x: number, y: number, z: number): number;
+  /** The bikes by front doors, and who has one in hand (bikes.ts). */
+  readonly bikes: Bikes;
   /** Mischief: a thrown person back on their feet in this node's cell (they stand where they are): they choose again. */
   settle(p: Person, node: number): void;
 }
@@ -372,6 +379,10 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
   const doors = createDoors();
   /** Cells with something standing in them a while, and how much dearer they are to cross (setCrowded). */
   const crowdedCells = new Map<CellKey, number>();
+  /** The bikes by front doors and their riders. */
+  const bikes = createBikes({ people, crowded: (cell) => crowdedCells.has(cell) }, opts.bikes || {});
+  /** A walker's speed now: a rider's is a share more (or nothing, getting on or off). */
+  const speedOf = (p: Person): number => p.speed * (bikes.inHand(p)?.v ?? 1);
   /** Cluttered cells (café tables, benches) where somebody sits now: routes go round them while they do. */
   let seated = new Set<number>();
   const updateSeated = (): void => {
@@ -725,6 +736,12 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
       if (g) return g;
       opts.errands!.failed(p, e);
     }
+    // Their bike: in hand, it goes home with them; left somewhere, they go for it.
+    const bike = bikes.next(p, fromHome && mustBeHome(p, time));
+    if (bike === 'home') {
+      const g = homeGoal(p);
+      if (g) return g;
+    } else if (bike && !p.load) return { kind: 'haunt', node: bike.node, haunt: null, door: null, spot: freeSpot(p, bike.node, bike.spot), face: bike.face, pose: 'stand', linger: 0.3, seat: -1 };
     // Something still in their hands that no errand wants: it goes home with them.
     if (p.load) return fromHome ? null : homeGoal(p);
     const work = workGoal(p, time);
@@ -828,6 +845,8 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
     if (p.inside) free.push(p.inside.structure);
     const route = router.find(p.node, goal.node, free);
     if (!route) return false;
+    // A bike: taken from its wall for a long trip, or ridden or wheeled on from here (or laid down to run).
+    if (now) bikes.plan(p, route, goal, now);
     const inside = p.mode === 'home' ? homeDoor(p) : p.mode === 'visit' ? p.inside : null;
     const pieces = buildWalk(nav, route, {
       ...(inside ? { startDoor: inside } : { from: { x: p.x, z: p.z } }),
@@ -856,11 +875,15 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
     p.load = goal.errand ? goal.errand.load : p.load;
     p.carrying = p.load !== null || (goal.haunt?.type === 'workplace' && (p.work?.job === 'miller' || p.work?.job === 'baker'));
     p.brisk = (goal.haunt?.type === 'workplace' && p.work?.job === 'lamplighter') || goal.errand?.brisk === true;
+    bikes.started(p, pieces);
     enterPiece(p);
     return true;
   };
   const enterPiece = (p: Person): void => {
     const piece = p.walk![p.at]!;
+    // Into the doorway at the end of the walk: the bike is leaned by that door (or put back on its wall) now.
+    if (piece.kind === 'door' && piece.enter && p.at === p.walk!.length - 1 && p.goal) bikes.arrive(p, p.goal);
+    else bikes.entered(p, p.goal);
     p.visible = piece.kind !== 'hide';
     if (piece.node !== p.node) {
       place(p, piece.node);
@@ -913,6 +936,8 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
     }
     // The chain hears first: it sets down, picks up, fills a stall (and may change what is in their hands).
     if (goal.errand) opts.errands?.arrived(p, goal.errand);
+    // A bike in hand is leaned where they stop (or put back on its wall at home).
+    bikes.arrive(p, goal);
     if (goal.kind === 'home') {
       p.load = null; // put away inside
       p.mode = 'home';
@@ -1112,18 +1137,22 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
     let moved = 0;
     let turning = false;
     p.queued = false;
+    // On a bike: a share more than their walk (or still, getting on or off); a rider never turns on the spot.
+    const bike = bikes.pace(p, dt);
+    const riding = bikes.mounted(p);
     for (let guard = 0; guard < 32 && left > 1e-9; guard++) {
       const piece = walk[p.at]!;
       let rate: number; // share of the piece per second
       let limit = 1;
       if (piece.kind === 'move') {
-        // Turn first, then walk: nobody sets off backwards.
+        // Turn first, then walk: nobody sets off backwards. (A rider turns as they ride, never on the spot:
+        // only if something has turned them right round while stopped do they turn before going on.)
         pieceAt(piece, p.t, scratch);
         if (scratch.dx * scratch.dx + scratch.dz * scratch.dz > 1e-8) {
           const want = Math.atan2(scratch.dx, scratch.dz);
           let d = want - p.heading;
           d -= Math.round(d / (Math.PI * 2)) * Math.PI * 2;
-          if (d > FACE_FIRST || d < -FACE_FIRST) {
+          if ((d > FACE_FIRST || d < -FACE_FIRST) && (!riding || d > 1.5 || d < -1.5)) {
             turnTo(p, want, left);
             turning = true;
             break;
@@ -1132,7 +1161,7 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
       }
       if (piece.kind === 'hide') rate = 1 / Math.max(0.05, piece.seconds);
       else {
-        const speed = p.speed * piece.pace * (piece.kind === 'door' ? 1 : p.slow) * (p.brisk ? PEOPLE.lampPace : 1) * (p.load !== null && HEAVY.has(p.load) ? PEOPLE.laden : 1);
+        const speed = p.speed * bike * piece.pace * (piece.kind === 'door' ? 1 : p.slow) * (p.brisk ? PEOPLE.lampPace : 1) * (p.load !== null && HEAVY.has(p.load) ? PEOPLE.laden : 1);
         rate = speed / piece.length;
         if (piece.kind === 'move' && !mayEnter(p, piece)) {
           limit = WAIT_AT;
@@ -1185,7 +1214,19 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
     p.z = scratch.z;
     p.visible = piece.kind !== 'hide';
     const fx = scratch.dx, fz = scratch.dz;
+    const lineX = p.x, lineZ = p.z;
     stepAside(p, piece, dt, moved, turning);
+    {
+      // Never a shuffle backwards: held up nearly still, a step aside and a turn of the way can add up to a
+      // few millimetres behind them. Then they stay where they were this frame (the step aside waits).
+      const mx = p.x - px0, mz = p.z - pz0, md = Math.hypot(mx, mz);
+      if (md > 1e-5 && md < 0.02 && piece.kind === 'move' && (Math.sin(p.heading) * mx + Math.cos(p.heading) * mz) / md < -0.3) {
+        p.x = px0;
+        p.z = pz0;
+        p.offX = px0 - lineX;
+        p.offZ = pz0 - lineZ;
+      }
+    }
     if (!turning && fx * fx + fz * fz > 1e-8 && piece.kind !== 'hide') {
       // The body turns with the way it really goes, a step aside included (nobody strafes), but never
       // more than a little off the way of the walk.
@@ -1276,24 +1317,29 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
           const dx = q.x - p.x, dz = q.z - p.z;
           if (dx * fx0 + dz * fz0 > 0 && dx * dx + dz * dz < 0.36 && Math.abs(q.y - p.y) < 0.3) in_ = q;
         }
-        if (in_ && scuffles.bump(p, in_, 0, true)) continue;
+        if (in_ && !bikes.inHand(p) && !bikes.inHand(in_) && scuffles.bump(p, in_, 0, true)) continue;
         p.stuck = -1.5;
       }
       if (p.stuck < 0) continue;
       const fx = Math.sin(p.heading), fz = Math.cos(p.heading);
+      // A rider's bike reaches this far ahead of them: they keep that much farther back, and look farther.
+      const nose = bikes.mounted(p) ? BIKE_NOSE : 0;
       for (const q of people) {
         if (q === p || !q.visible || q.mode !== 'walk') continue;
         // A raiding band is a mob: they jostle through one another (src/life/raid), never queue.
         if (p.raider && q.raider) continue;
         const dx = q.x - p.x, dz = q.z - p.z;
-        if (dx > 0.6 || dx < -0.6 || dz > 0.6 || dz < -0.6 || Math.abs(q.y - p.y) > 0.3) continue;
+        const near = 0.6 + nose * 2;
+        if (dx > near || dx < -near || dz > near || dz < -near || Math.abs(q.y - p.y) > 0.3) continue;
         // Two people meeting (L26): going opposite ways, about to pass, on open ground. Once per meeting.
         if (p.id < q.id && p.lastMet !== q && Math.sin(q.heading) * fx + Math.cos(q.heading) * fz < -0.5 && dx * dx + dz * dz < 0.2) {
           p.lastMet = q;
           q.lastMet = p;
           // L50: a head-on bump, now and then, is a scuffle.
-          if (scuffles.bump(p, q, Math.abs(dx * fz - dz * fx), false)) continue;
+          if (!bikes.inHand(p) && !bikes.inHand(q) && scuffles.bump(p, q, Math.abs(dx * fz - dz * fx), false)) continue;
+          // (Nobody with a bike in hand stops for a chat: they ride or wheel on.)
           const open = (w: Person): boolean =>
+            !bikes.inHand(w) &&
             w.chat <= 0 && w.chatRest <= 0 && w.startled <= 0 && !w.scuffle && w.held < 0 && !w.queued && !w.leaving && !w.carrying && w.fade >= 1 && w.walk![w.at]!.kind === 'move' && !onDutyNow(w);
           if (open(p) && open(q) && rand(p.seed, 'chat', q.seed, p.trips) < PEOPLE.chat) {
             const t = PEOPLE.chatTime * (0.6 + 0.4 * rand(p.seed, 'chat-time', q.seed, p.trips));
@@ -1306,11 +1352,11 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
           }
         }
         const ahead = dx * fx + dz * fz;
-        if (ahead <= 0.02 || ahead >= PEOPLE.slowAt) continue;
+        if (ahead <= 0.02 || ahead >= PEOPLE.slowAt + nose * 2) continue;
         if (Math.abs(dx * fz - dz * fx) > 0.16) continue;
         // Only somebody going my way holds me up; somebody coming the other way passes on their side.
         if (Math.sin(q.heading) * fx + Math.cos(q.heading) * fz < 0.5) continue;
-        const k = (ahead - PEOPLE.gap) / (PEOPLE.slowAt - PEOPLE.gap);
+        const k = (ahead - PEOPLE.gap - nose) / (PEOPLE.slowAt + nose * 2 - PEOPLE.gap - nose);
         const keep = k < 0 ? 0 : k;
         if (keep < p.slow) p.slow = keep;
       }
@@ -1356,7 +1402,7 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
             shift = away();
           } else if (moving && along > 0.5) {
             // The same way: overtake on the outside only if they are slower and there is room.
-            if (q.speed * q.slow >= p.speed * 0.92 || p.dodge + left < -room) continue;
+            if (speedOf(q) * q.slow >= speedOf(p) * 0.92 || p.dodge + left < -room) continue;
             shift = left;
           } else if (moving && along < -0.3) shift = right;
           else if (moving) {
@@ -1375,7 +1421,7 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
         if (p.queued && p.walk![p.at + 1]?.kind !== 'door') p.dodgeTo = room * 0.85;
         if (blocked) p.slow = 0;
         // And whatever was decided, never a step into somebody: no closer than a body to anyone ahead.
-        const reach = p.speed * dt * 1.4;
+        const reach = speedOf(p) * dt * 1.4;
         if (reach > 0) {
           for (const q of people) {
             if (q === p || !q.visible || q.mode === 'gone' || q.mode === 'hop' || q.mode === 'thrown' || q.mode === 'home' || q.mode === 'visit') continue;
@@ -1383,11 +1429,11 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
             if (p.raider && q.raider) continue;
             if (q.mode === 'walk' && q.walk![q.at]!.kind !== 'move') continue;
             const dx = q.x - p.x, dz = q.z - p.z;
-            if (dx > 0.5 || dx < -0.5 || dz > 0.5 || dz < -0.5 || Math.abs(q.y - p.y) > 0.3) continue;
+            if (dx > 0.5 + nose || dx < -0.5 - nose || dz > 0.5 + nose || dz < -0.5 - nose || Math.abs(q.y - p.y) > 0.3) continue;
             const ahead = dx * fx + dz * fz;
             const lat = dx * rx + dz * rz;
             if (ahead <= 0 || Math.abs(lat) >= KEEP) continue;
-            const allowed = ahead - Math.sqrt(KEEP * KEEP - lat * lat) - 0.005;
+            const allowed = ahead - nose - Math.sqrt(KEEP * KEEP - lat * lat) - 0.005;
             const keep = Math.max(0, Math.min(1, allowed / reach));
             if (keep < p.slow) p.slow = keep;
           }
@@ -1448,6 +1494,8 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
     }
     clearWalk(p);
     leaveHaunt(p);
+    // A bike in hand is laid down on the ground they are put on.
+    bikes.drop(p, node);
     p.hop = { x0: p.x, y0: p.y, z0: p.z, x1: c.x, y1: nodeHeight(nav!, node), z1: c.z, t: 0 };
     p.mode = 'hop';
     p.visible = true;
@@ -1457,6 +1505,7 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
     place(p, node);
   };
   const remove = (p: Person): void => {
+    bikes.gone(p);
     if (p.mode === 'home') setHome(p.home, -1);
     leaveHaunt(p);
     clearWalk(p);
@@ -1773,6 +1822,7 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
 
     sync(shape, dressing, time) {
       if (!dressing) return;
+      now = time;
       const first = nav === null;
       const old = nav;
       seed = shape.world.seed;
@@ -1925,6 +1975,7 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
       assignJobs();
       inns = new Set([...shape.roles].filter(([, r]) => r.role === 'inn').map(([id]) => id));
       scuffles.sync();
+      if (opts.bikes !== false) bikes.sync(shape, dressing, nav);
       for (const p of fresh) {
         p.part = time.part;
         if (first) warmStart(p, time);
@@ -2067,7 +2118,8 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
         } else p.flying = false;
         if (p.startled > 0) {
           p.startled -= dt;
-          if (p.seat < 0) {
+          // (A rider looks without turning the bike.)
+          if (p.seat < 0 && !bikes.mounted(p)) {
             turnTo(p, p.startledFace, dt);
             p.react = p.admire ?? 'stand';
           }
@@ -2147,6 +2199,7 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
     get scuffles() {
       return scuffles;
     },
+    bikes,
     setCrowded(cell, extra) {
       if (extra > 0) crowdedCells.set(cell, extra);
       else crowdedCells.delete(cell);
@@ -2166,6 +2219,8 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
       if (w?.errand && w.errand !== g?.errand) opts.errands?.failed(p, w.errand);
       leaveHaunt(p);
       clearWalk(p);
+      // Off the bike, and it falls where they were.
+      bikes.drop(p);
       // Drawn where they are drawn (a paddler out in the shallows).
       p.x += p.drawX ?? 0;
       p.z += p.drawZ ?? 0;
@@ -2219,6 +2274,8 @@ export function createCrowd(opts: CrowdOptions = {}): Crowd {
       for (const p of people) {
         if (!p.visible || (p.mode !== 'walk' && p.mode !== 'linger')) continue;
         if (p.mode === 'walk' && p.walk![p.at]!.kind !== 'move') continue;
+        // A rider keeps their eyes on the road.
+        if (bikes.mounted(p)) continue;
         const dx = x - p.x, dz = z - p.z;
         if (Math.abs(dx) + Math.abs(dz) > PEOPLE.lookReach || (dx === 0 && dz === 0)) continue;
         p.startled = PEOPLE.lookTime * (0.7 + rand(p.seed, 'startle', p.trips) * 0.6);

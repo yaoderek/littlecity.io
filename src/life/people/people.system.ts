@@ -42,6 +42,9 @@ import { cloudMesh, dazeStarMesh, popMesh, POPS, swearMesh, type PopKind } from 
 import { rand } from '@/core/rand';
 import { LOADS, SCUFFLE } from '@/style/town-life';
 import type { Scuffle } from './scuffle';
+import { bikePose, createBikeArt, rollFigure, type BikeArt } from './bike-art';
+import { inBasket, type Bikes } from './bikes';
+import { BIKE } from '@/style/people';
 
 declare module '@/life/api' {
   interface SignalEvents {
@@ -228,6 +231,20 @@ let flyTick = -1;
 
 /** Seasons: what the sky is doing, read once a frame in update (draw() has no signals). */
 const sky = { rain: 0, cold: 0 };
+/** The town's bikes, for the riders' poses (set in update; draw() has no state). */
+let bikesNow: Bikes | null = null;
+
+/** The quality governor's level, from the app's view (window.__lc): at its lowest, the cheapest of everything. */
+function lowestQuality(): boolean {
+  const q = (globalThis as { __lc?: { view?: { quality?(): { level: number; levels: unknown[] } } } }).__lc?.view?.quality?.();
+  return q !== undefined && q.levels.length > 1 && q.level >= q.levels.length - 1;
+}
+
+/** Riders at once on this device (BIKE.cap, capPhone, capLow); over it, people walk. */
+export function bikeCap(): number {
+  if (lowestQuality()) return BIKE.capLow;
+  return residentCap() === PEOPLE.capPhone ? BIKE.capPhone : BIKE.cap;
+}
 
 /** Seasons: wrapped up for the cold: most put on a woolly hat, many a long coat. Each by their own seed. */
 export function wrapLook(look: Look, id: string): Look {
@@ -308,6 +325,8 @@ interface State {
   unsubscribe: () => void;
   /** L50: the scuffle's drawings, while one is on. */
   art: ScuffleArt | null;
+  /** The bikes, wherever they are (bike-art.ts). */
+  bikeArt: BikeArt;
 }
 
 /** The five pieces' matrices, then (slot 5) a long tool's, in the figure's frame and in the world. */
@@ -391,23 +410,26 @@ function draw(p: Person, d: Drawn, stage: LifeStage, gust: boolean): void {
   const tumble = p.tumble ?? null;
   const name = p.react ?? p.pose;
   const walking = !tumble?.pose && (name === 'walk' || name === 'run' || name === 'panic');
-  const pose = tumble?.pose ? { ...tumble.pose } : poseOf(name, walking ? p.stride : p.poseTime, p.rank);
+  // On a bike (bike-art.ts): seated and pedalling, or wheeling it with a hand on the grip; a small load in its basket.
+  const onBike = !tumble && bikesNow ? bikePose(p, bikesNow, d.rig, walking, d.look.scale) : null;
+  const basket = onBike !== null && inBasket(p.load);
+  const pose = onBike?.pose ?? (tumble?.pose ? { ...tumble.pose } : poseOf(name, walking ? p.stride : p.poseTime, p.rank));
   // L26: a strong gust, and a hand goes to the hat.
-  if (gust && d.look.hat !== 'none' && (walking || name === 'stand')) {
+  if (gust && !onBike && d.look.hat !== 'none' && (walking || name === 'stand')) {
     pose.armR = 2.95;
     pose.outR = -0.2;
   }
   // Hands on what they hold (hands.ts): the thing is placed, then the arms are posed onto it.
   // Seasons: in the rain, an umbrella for anyone walking or standing about with their hands free.
-  const tool = tumble ? null :
+  const tool = tumble || onBike ? null :
     toolOf(p, name) ??
     (sky.rain > 0.25 && !p.load && rand(0, p.id, 'umbrella') < 0.75 && (walking || name === 'stand' || name === 'look' || name === 'chat')
       ? UMBRELLAS[Math.floor(rand(0, p.id, 'umbrella-colour') * UMBRELLAS.length)]!
       : null);
   // A load is in the hands whatever the pose (a cheer, a turn to look, a flinch): only the scythe leaves them, to mow.
-  const holding = p.load !== null && name !== 'mow';
+  const holding = p.load !== null && name !== 'mow' && !basket;
   const longTool = applyHold(pose, d.rig, {
-    tool: tool ?? (walking && !tumble && p.carrying && !p.load ? (p.work?.job === 'baker' ? 'tray' : 'sack') : null),
+    tool: onBike ? null : tool ?? (walking && !tumble && p.carrying && !p.load ? (p.work?.job === 'baker' ? 'tray' : 'sack') : null),
     load: holding ? p.load : null,
     hold: holding ? HOLD_OF[p.load!] : null,
     anchor: holding ? holdAnchor(p.load!) : null,
@@ -425,6 +447,8 @@ function draw(p: Person, d: Drawn, stage: LifeStage, gust: boolean): void {
   const py = p.y + p.lift - depth * easeIn(Math.max(0, Math.min(1, (away - from) / (0.92 - from))));
   rigMatrices(d.look, pose, local, tumble ? tumble.drop : sitting ? sitDrop(d.rig, p.seat / scale) : 0, d.rig);
   if (longTool) local.set(longTool, 80);
+  // Leaning into a turn with the bike.
+  if (onBike) rollFigure(local, onBike.roll, longTool ? 6 : 5);
   if (tumble?.rot) tumbled(tumble, scale, p.x, p.y, p.z, longTool ? 6 : 5);
   else {
     // world = T(x, y, z) · Ry(heading) · S(scale) · local
@@ -453,7 +477,7 @@ function draw(p: Person, d: Drawn, stage: LifeStage, gust: boolean): void {
     d.shown = false; // place it now
   }
   // An errand's load: in the hands, at the body's frame (a scythe off the shoulder and in the hands while mowing).
-  const load = name === 'mow' ? null : p.load;
+  const load = name === 'mow' || basket ? null : p.load;
   if (d.load && d.load.kind !== load) {
     d.load.handle.release();
     d.load = null;
@@ -544,6 +568,8 @@ export default defineSystem<State>({
       doorAt,
       wind: (x, z) => ctx.signals.wind(x, z),
       obstacles: () => obstaclesOf(ctx.stage),
+      // The bikes by front doors: riders at once on this device, and no riding in heavy rain or snow.
+      bikes: { cap: bikeCap, weather: () => weatherOf(ctx.signals) },
       // L38–L40: the quay draws a crowd while a big ship is in.
       favour: (h) => (shipInFor(ctx.stage, h.id.split('/')[0]!) ? 6 : 0),
       seatAt(socket) {
@@ -607,7 +633,7 @@ export default defineSystem<State>({
     // The debug handle for browser tests and for watching (like the app's window.__lc): the newest crowd.
     (globalThis as { __lcPeople?: Crowd }).__lcPeople = crowd;
     (globalThis as { __lcTown?: LivingTown }).__lcTown = town;
-    return { crowd, town, drawn, bubbleMesh: null, lineMesh: null, standIns: [], tick: -1, fresh: true, unsubscribe, art: null };
+    return { crowd, town, drawn, bubbleMesh: null, lineMesh: null, standIns: [], tick: -1, fresh: true, unsubscribe, art: null, bikeArt: createBikeArt(ctx.stage) };
   },
   sync(state, next, _prev, ctx) {
     if (!next.dressing) {
@@ -665,6 +691,9 @@ export default defineSystem<State>({
       return;
     }
     state.tick = tick;
+    // The bikes first: where each is, and the riders' pedals and lean for their poses.
+    state.bikeArt.draw(state.crowd.bikes, state.crowd.nav, signals.time.seconds, lowestQuality(), state.fresh);
+    bikesNow = state.crowd.bikes;
     state.fresh = false;
     for (const p of state.crowd.people) {
       const d = state.drawn.get(p);
@@ -718,6 +747,7 @@ export default defineSystem<State>({
     state.town.dispose();
     if (state.art) releaseArt(state.art);
     state.art = null;
+    state.bikeArt.dispose();
     setDoorTable(ctx.stage, null);
     setCrowd(ctx.stage, null);
     for (const d of state.drawn.values()) {
