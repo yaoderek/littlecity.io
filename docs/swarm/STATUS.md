@@ -2156,3 +2156,65 @@ Phone-sized page, idle, `everything`: 16.7 ms median on the base and
 on the preview alike. Two rare faults found on the base and left: a
 person walking backwards to a shop haunt, a one-storey drop in one
 frame on a fire errand.
+
+**2026-11-26, small hours.** Derek: the machine is too slow ("why is
+the test suite taking 40 minutes"). Found: 16 GB of RAM, swap 7.7 of
+8 GB used, 11 Claude processes and 8 headless browsers; the suite is 7
+to 9 minutes in parallel and the raid agent's serial full runs were 21
+and 41. His rulings: kill the headless browsers (done; one belongs to
+another chat's `tools/capture/capture.mjs shipyard-timelapse` and came
+back), **agents never run the full suite** (targeted tests only; the
+one full gate is the orchestrator's), and put the gate on GitHub
+Actions. `.github/workflows/gate.yml` (public repo, free): first run
+on Linux, unit job green in 7 min, browser job timed out nearly every
+test in software WebGL (cancelled at 45 min); browser job moved to
+`macos-latest`, second run going. `tools/lib/browser.mjs` asks for
+SwiftShader off the Mac. The :5180 preview server reached its two-hour
+limit and is down; not restarted (nothing he needs previewed now).
+
+**Garrison sally back** (`swarm/barbarians` `d7eb8cd`, L74,
+`src/life/raid/sally.ts`): bell and a note, the troop forms at the
+gate and marches at the double under a banner, the rider ahead;
+brawl clouds drawn by the raid (a soldier wins 80%, two on one nearly
+always); the band breaks at 40% beaten and leaves with nothing; the
+soldiers cheer it off and walk home; rests 120 s
+(`RAID.garrisonRest`); one party at a time. Harbour town: 18
+buildings alight and 12 loot without, 2 and 0 with. Hook in
+`garrison.system.ts` (`garrisonsOf`, `out`). Its own tests pass; two
+`raid.test.ts` tests timed out at 400 s at a load of 66 to 74.
+Orchestrator's read of the films: the column and the fight are right
+close up, but from the normal town view they are a few pixels and the
+march can pass behind the castle; only the note and the bell carry it
+at a glance. Not verified: two castles, a night sally, a soldier held
+by the Hand mid-fight (jumps back when let go); the rider does not
+fight. Merged into `preview/next` (`e9e24c7`, with the working
+branch's Raiders-in-the-menu text; eight locale files resolved by
+hand, three dead keys dropped), typecheck and lint clean, pushed to
+GitHub for the gate there. Not built, not served, not live.
+
+**2026-11-26: the code moves to yaoderek/littlecity.io, branch
+`main`** (Derek, relayed by the strategy chat). Remote `site`; base on
+`site/main`, `git push site HEAD:main`, fast-forward only, never
+force; no more pushes to yaoderek/littlecity (not archived, not
+deleted). The site is still published only by `tools/deploy-pages.sh`
+to `gh-pages` of the same repo, after his sign-off. The orchestrator
+merged `site/main` (`6d3afbe`, which carries the port update, 34
+commits) into its branch and pushed; README corrected; the gate
+workflow now runs on `main` (and preview, swarm, fix branches), not
+for docs-only pushes. **Note: `main` is ahead of what is live** (live
+is the build from `67313b0`, before the port update), so a publish
+from `main` ships the port update too.
+
+**2026-11-26: the whole gate green on GitHub** (`main` `e4fe779`,
+yaoderek/littlecity.io): unit job 9 min (192 files, 2,515 passed),
+browser job 12 min on `macos-latest` (26 files, 146 passed, one
+needing a retry). What it took: the browser job on a Mac (software
+WebGL on Linux timed out nearly everything); the touch-orbit test
+waits for the camera's next frame; on CI only, two browsers at a time
+and `retry: 2` (`vitest.config.ts`), because one to three timing-bound
+browser tests missed on each run there, a different set each time, on
+`main` and on `preview/next` alike. `preview/next` (`e9e24c7`, old
+repo) passed the unit job with all four changes; its browser job had
+only those rotating misses. It does not yet carry the three gate
+commits (`295a390`'s workflow, `d769582`, `e4fe779`): cherry-pick them
+when it is next pushed, to `site`, not `origin`.

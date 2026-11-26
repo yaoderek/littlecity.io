@@ -5,9 +5,11 @@ import { execFileSync } from 'node:child_process';
 import { chromium } from 'playwright';
 import { ROOT } from './vite.mjs';
 
-// Ask for the real GPU through ANGLE's Metal backend on macOS; Chromium falls
-// back to software rendering (SwiftShader) by itself where there is none.
-const ARGS = ['--ignore-gpu-blocklist', '--enable-gpu', '--use-angle=metal', '--enable-unsafe-swiftshader'];
+// Ask for the real GPU through ANGLE's Metal backend on macOS. Anywhere else (the gate on GitHub's
+// Linux machines, .github/workflows/gate.yml) there is no graphics card to ask for: draw WebGL in
+// software (SwiftShader).
+const ANGLE = process.platform === 'darwin' ? 'metal' : 'swiftshader';
+const ARGS = ['--ignore-gpu-blocklist', '--enable-gpu', `--use-angle=${ANGLE}`, '--enable-unsafe-swiftshader'];
 
 export async function launchBrowser() {
   const launch = () => chromium.launch({ headless: true, args: ARGS });
