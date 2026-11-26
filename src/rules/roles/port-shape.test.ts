@@ -47,15 +47,43 @@ describe('R-D00: when a dock is a port', () => {
     expect(keyZ(portCell(p, 11, 3))).toBe(23);
   });
 
-  test('an L-shape is not a port; nor is a rectangle with a gap out on the water', () => {
-    const plan = town((b) => {
-      fill(b, 6, 20, 11, 22);
-      fill(b, 12, 20, 13, 20); // a tail along the shore: no longer a rectangle
-      fill(b, 20, 20, 27, 22);
-      b.erase(23, 0, 21); // a hole in the middle row
+  test('a port with an L, a stray cell or a strip along the shore stays a port; its port proper is the rectangle', () => {
+    const base = (b: TownBuilder): void => fill(b, 6, 20, 17, 23);
+    const port = (plan: ShapePlan) => portOf(plan, plan.structures.get(plan.structureAt.get(key(6, 0, 20))!)!.cells, RULES)!;
+    const plain = port(town(base));
+    for (const extra of [
+      (b: TownBuilder) => fill(b, 18, 20, 19, 20), // a strip on along the shore
+      (b: TownBuilder) => fill(b, 6, 24, 7, 28), // an L running out to sea from one end
+      (b: TownBuilder) => fill(b, 18, 21, 18, 21), // one stray cell beside it
+    ]) {
+      const plan = town((b) => {
+        base(b);
+        extra(b);
+      });
+      expect(roleAt(plan, 6, 20)).toBe('port');
+      const p = port(plan);
+      // The rectangle may grow with the extension, but it always keeps the shore on the same side.
+      expect(p.landward).toBe(plain.landward);
+      expect(p.length * p.depth).toBeGreaterThanOrEqual(plain.length * plain.depth - 2 * plain.depth);
+    }
+  });
+
+  test('a port with a bite taken out stays a port while a 3 × 6 remains; a hole that leaves none makes it a quay', () => {
+    const bitten = town((b) => {
+      fill(b, 6, 20, 15, 22);
+      b.erase(15, 0, 22).erase(14, 0, 22).erase(15, 0, 21); // the far corner bitten off: 6..13 still 3 deep
     });
-    expect(roleAt(plan, 6, 20)).toBe('quay');
-    expect(roleAt(plan, 20, 20)).not.toBe('port');
+    expect(roleAt(bitten, 6, 20)).toBe('port');
+    const holed = town((b) => {
+      fill(b, 20, 20, 27, 22);
+      b.erase(23, 0, 21); // a hole in the middle row: 3 and 4 long either side of it
+    });
+    expect(roleAt(holed, 20, 20)).not.toBe('port');
+    const thin = town((b) => {
+      fill(b, 6, 20, 13, 21);
+      fill(b, 6, 22, 7, 24); // an L, two deep along the shore: no 3 × 6 in it
+    });
+    expect(roleAt(thin, 6, 20)).not.toBe('port');
   });
 
   test('a gap in the inner row is allowed only where the land itself comes out', () => {

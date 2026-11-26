@@ -1,5 +1,6 @@
-// J23-P: the port's deck. A pale concrete apron laid over the dock's boards
-// (paving: one slab to a cell), a lip down its open edges so the quay reads
+// J23-P: the port's deck. A pale concrete apron laid over the dock's boards,
+// every cell of it, extensions and all (paving: one slab to a cell), a lip
+// down its open edges so the quay reads
 // as concrete on timber piles; two steel crane rails along the seaward rows;
 // a yellow lane line where the crane rows meet the yard; white corner marks
 // for each container bay.
@@ -8,12 +9,12 @@
 // is rebuilt from the feature's params (port-shape.ts); the yard from the
 // port and what stands on the deck.
 
-import { CELL_H, DIR4, key, keyX, keyZ, opposite, type Dir4 } from '@/core/grid';
+import { CELL_H, DIR4, key, keyX, keyY, keyZ, opposite, type Dir4 } from '@/core/grid';
 import type { Vec3 } from '@/core/mat4';
 import { definePart } from '@/gen/api';
 import { PATTERN, type MeshBuilder } from '@/gen/mesh';
 import { flat } from '@/parts/actors/boats/hull';
-import { deckTaken } from '@/rules/roles/dock-shape';
+import { deckTaken, DIRS, dockSide } from '@/rules/roles/dock-shape';
 import { portCell, portPoint, yardOf, type Port } from '@/rules/roles/port-shape';
 import { DOCK } from '@/style/dock';
 import { PALETTE } from '@/style/palette';
@@ -52,33 +53,25 @@ export default definePart({
     const o: Vec3 = [keyX(cell) + 0.5, 0, keyZ(cell) + 0.5];
     const top = CELL_H + 0.004;
     const mine = new Set(ctx.structure?.cells ?? []);
-    const has = (i: number, r: number): boolean => mine.has(portCell(p, i, r));
-    const [sx, sz] = DIR4[p.seaward]!;
     const [ax, az] = DIR4[p.along]!;
-    // ── the apron: a slab over every cell, and a lip down the open edges ──
+    // ── the apron: a slab over every cell of the dock (extensions too), and a lip down its open edges ──
     const ap = top + 0.016;
     const over = DOCK.over + 0.02;
+    const drop = 0.11;
     b.with({ color: PALETTE.stoneShade, pattern: PATTERN.paving, ink: 'apron' }, () => {
-      for (let i = 0; i < p.length; i++) {
-        for (let r = 0; r < p.depth; r++) {
-          if (!has(i, r)) continue;
-          const bIn = p.depth - r, bOut = p.depth - r - 1;
-          const a0 = i === 0 ? -over : i, a1 = i === p.length - 1 ? p.length + over : i + 1;
-          strip(b, p, o, a0, bOut === 0 ? -over : bOut, a1, bIn, ap);
-        }
+      for (const c of ctx.structure?.cells ?? []) {
+        if (keyY(c) !== 0) continue;
+        const open = DIRS.map((d) => dockSide(ctx.plan, c, d) === 'open');
+        const x0 = keyX(c) - (open[3] ? over : 0) - o[0], x1 = keyX(c) + 1 + (open[1] ? over : 0) - o[0];
+        const z0 = keyZ(c) - (open[0] ? over : 0) - o[2], z1 = keyZ(c) + 1 + (open[2] ? over : 0) - o[2];
+        flat(b, [[x0, ap, z0], [x1, ap, z0], [x1, ap, z1], [x0, ap, z1]], [0, 1, 0]);
+        // The lip down each open side.
+        const lip = (p0: Vec3, p1: Vec3, n: Vec3): void => flat(b, [p0, p1, [p1[0], ap, p1[2]], [p0[0], ap, p0[2]]], n);
+        if (open[0]) lip([x0, ap - drop, z0], [x1, ap - drop, z0], [0, 0, -1]);
+        if (open[2]) lip([x0, ap - drop, z1], [x1, ap - drop, z1], [0, 0, 1]);
+        if (open[3]) lip([x0, ap - drop, z0], [x0, ap - drop, z1], [-1, 0, 0]);
+        if (open[1]) lip([x1, ap - drop, z0], [x1, ap - drop, z1], [1, 0, 0]);
       }
-      // The lip: down the seaward face and the two ends (where they stand on the water).
-      const drop = 0.11;
-      const face = (a0: number, b0: number, a1: number, b1: number, n: Vec3): void => {
-        const [x0, z0] = portPoint(p, a0, b0), [x1, z1] = portPoint(p, a1, b1);
-        const q: Vec3[] = [[x0 - o[0], ap - drop, z0 - o[2]], [x1 - o[0], ap - drop, z1 - o[2]], [x1 - o[0], ap, z1 - o[2]], [x0 - o[0], ap, z0 - o[2]]];
-        const cr = (q[1]![0] - q[0]![0]) * n[2] - (q[1]![2] - q[0]![2]) * n[0];
-        flat(b, cr > 0 ? q : [q[1]!, q[0]!, q[3]!, q[2]!], n);
-      };
-      face(-over, -over, p.length + over, -over, [sx, 0, sz]);
-      const firstRow = (i: number): number => (has(i, 0) ? 0 : 1);
-      face(-over, p.depth - firstRow(0), -over, -over, [-ax, 0, -az]);
-      face(p.length + over, -over, p.length + over, p.depth - firstRow(p.length - 1), [ax, 0, az]);
     });
     // ── the crane rails ──
     const y = ap;
