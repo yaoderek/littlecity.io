@@ -9,6 +9,7 @@ import type { Person } from '../people/crowd';
 import type { Load } from '../people/errand';
 import { heapSpots, type Board, type Chain, type Plan, type Post, type Spot, type Store } from './board';
 import { reaches, standAt } from './hands';
+import { converse, middleOf, pictureOf, wantsIn, type Counter, type Want } from './talk';
 
 /** A delivery is never sent further than this walk (a stall a few steps off as the crow flies but far round by the streets). */
 const FAR = 30;
@@ -42,7 +43,21 @@ export function outletsOf(board: Board, chain: string, before: readonly Outlet[]
   return board
     .posts(chain)
     .filter((p) => p.role === 'sell')
-    .map((post) => ({ post, store: board.store(`${chain}:sell:${post.structure ?? post.cell}:${post.ref}`, outletSpots(board, post)), coming: was.get(post.id)?.coming ?? 0 }));
+    .map((post) => ({ post, store: board.store(counterKey(post), outletSpots(board, post)), coming: was.get(post.id)?.coming ?? 0 }));
+}
+
+/**
+ * The store at a selling place: one per counter or door, whichever chains sell there (loaves and apples
+ * side by side on one stall's counter), so two chains never lay things in the same spots.
+ */
+export function counterKey(post: Post): string {
+  return `counter:${post.structure ?? post.cell}:${post.ref}`;
+}
+
+/** Where a purchase at an outlet happens (talk.ts): its goods, and the middle of its counter (or of the row by its door). */
+export function counterOf(board: Board, o: Outlet): Counter {
+  const at = middleOf(o.store) ?? { ...board.centre(o.post.cell), y: board.centre(o.post.cell).y + 0.4 };
+  return { store: o.store, at };
 }
 
 /** Where a delivery goes: the outlet with the most room (at least `room` free spots), then the nearest to `from`. */
@@ -73,16 +88,25 @@ export function deliverStep(board: Board, to: Outlet, load: Load, item: Load, n:
 
 /**
  * A resident goes to buy one `item` at the nearest outlet that has one (more than buyers already on the
- * way), within `reach`, stops at it a moment and walks home with it. `chance` is rolled per choice.
+ * way), within `reach`, asks for it at the counter in a picture bubble, pays and walks home with it
+ * (talk.ts). `chance` is rolled per choice. `want` says what to buy at each outlet instead (and how to
+ * ask for it), or null to pass one by; `empty` lets a buyer go to an outlet that has none of it (to be
+ * told so: the sold-out talk).
  */
-export function buyerPlan(board: Board, chain: Chain, p: Person, outlets: readonly Outlet[], item: Load, chance: number, reach: number, tag: string): Plan | null {
+export function buyerPlan(board: Board, chain: Chain, p: Person, outlets: readonly Outlet[], item: Load, chance: number, reach: number, tag: string, opts: { want?(o: Outlet): Want | null; empty?: boolean } = {}): Plan | null {
   if (rand(p.seed, tag, p.trips) >= chance) return null;
   const here = p.cell;
+  const own: Want = { item, pic: pictureOf(item) ?? 'apple' };
+  const wantAt = (o: Outlet): Want | null => (opts.want ? opts.want(o) : own);
   const to = outlets
-    .filter((o) => board.count(o.store, item) > o.coming && board.dist(o.post.cell, here) <= reach && reaches(board, p, o.post.cell) && board.walk(here, o.post.cell) <= reach * 1.5)
+    .filter((o) => {
+      const w = wantAt(o);
+      return w !== null && (opts.empty || board.count(o.store, w.item) > o.coming) && board.dist(o.post.cell, here) <= reach && reaches(board, p, o.post.cell) && board.walk(here, o.post.cell) <= reach * 1.5;
+    })
     .sort((x, y) => board.walk(here, x.post.cell) - board.walk(here, y.post.cell) || x.post.cell - y.post.cell)[0];
   if (!to) return null;
-  const home = board.homeStep(p, { tag: `${tag}:home`, load: item });
+  const want = wantAt(to)!;
+  const home = board.homeStep(p, { tag: `${tag}:home`, load: want.give ?? want.item });
   if (!home) return null;
   to.coming++;
   let counted = true;
@@ -91,25 +115,22 @@ export function buyerPlan(board: Board, chain: Chain, p: Person, outlets: readon
     counted = false;
   };
   const side = (rand(p.seed, `${tag}-side`, p.trips) - 0.5) * 0.4;
-  return {
-    chain,
-    at: 0,
-    steps: [
-      board.stepAt(to.post.cell, {
-        ...standAt(board, to.post, to.post.ref === 'stall' ? 0.18 : 0.05, side),
-        pose: 'chat',
-        linger: 2.2,
-        tag,
-        done: (q) => {
-          arrived();
-          if (!board.take(to.store, item)) return false;
-          q.load = item;
-        },
-      }),
-      home,
-    ],
-    fail: arrived,
-  };
+  const plan: Plan = { chain, at: 0, steps: [], fail: arrived };
+  plan.steps.push(
+    board.stepAt(to.post.cell, {
+      ...standAt(board, to.post, to.post.ref === 'stall' ? 0.18 : 0.05, side),
+      pose: 'chat',
+      linger: 2.2,
+      tag,
+      // At the counter: the talk (talk.ts) says what is bought, and hands it over as it goes.
+      done: (q) => {
+        arrived();
+        return converse(board, q, plan, counterOf(board, to), want, () => wantsIn(board, to.store), home, tag);
+      },
+    }),
+    home,
+  );
+  return plan;
 }
 
 /** Mornings (dawn and the first third of the day) are when people shop most. */

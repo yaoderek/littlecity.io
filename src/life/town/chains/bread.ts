@@ -19,7 +19,7 @@ import { CHAINS } from '@/style/town-life';
 import type { Person } from '../../people/crowd';
 import { heapSpots, type Board, type Chain, type Plan, type PlanStep, type Post, type Store } from '../board';
 import { canWork, keepHand, standAt } from '../hands';
-import { buyerPlan, deliverStep, morning, outletSpots, outletsOf, roomiest, type Outlet } from '../market';
+import { buyerPlan, counterKey, deliverStep, morning, outletSpots, outletsOf, roomiest, type Outlet } from '../market';
 
 export function breadChain(): Chain {
   let mill: Post | undefined;
@@ -41,7 +41,7 @@ export function breadChain(): Chain {
       outlets = outletsOf(board, 'bread', outlets);
       // The bakery's own door, for when every other place is a long way round by the streets.
       const own = bakery && !outlets.some((o) => o.post.cell === bakery!.cell) ? { ...bakery, ref: 'door', role: 'sell' } : null;
-      if (own) outlets.push({ post: own, store: board.store(`bread:own:${bakery!.structure}`, outletSpots(board, own)), coming: 0 });
+      if (own) outlets.push({ post: own, store: board.store(counterKey(own), outletSpots(board, own)), coming: 0 });
       sacks = bakery && mill ? board.store(`bread:sacks:${bakery.structure}`, heapSpots(bakery.cell, opposite(bakery.dir ?? 0), board.centre(bakery.cell).y).slice(0, CHAINS.sacks)) : null;
       if (!bakery) {
         for (const m of millers) if (m) board.unclaim(m);

@@ -29,6 +29,9 @@ import { drawLoot, type Loot } from './loot';
  *   basket   a basket of vegetables          washing  a basket of washing
  *   sheaf    a sheaf of wheat                petals   a basket of petals
  *   bouquet  a bride's flowers
+ * Market talk (src/life/town/talk.ts, chains/apples.ts):
+ *   apples   a basket heaped with red apples   apple    one apple, bought (set down: a little heap)
+ *   jug      a jug, bought
  * L63, the beach (beach.ts draws them; the number is the family's colour):
  *   parasol-n       a furled parasol with a rolled towel, on the shoulder
  *   parasol-open-n  the same held up open (running home in the rain)
@@ -42,7 +45,10 @@ import { drawLoot, type Loot } from './loot';
  * L66, a picnic (picnic.ts):
  *   blanket-n       a checked blanket rolled up, on the shoulder
  */
-export type Load = 'sack' | 'tray' | 'loaf' | 'bucket' | 'fish' | 'fishes' | 'ladder' | 'hod' | 'crate' | 'lantern' | 'basket' | 'washing' | 'sheaf' | 'petals' | 'bouquet' | 'barrel' | 'cart' | 'cart-1' | 'cart-2' | 'cart-3' | 'scythe' | 'trestle' | 'lantern-pole' | 'icecart' | 'cone' | `blanket-${0 | 1 | 2 | 3}` | BeachLoad | Loot;
+export type Load = 'sack' | 'tray' | 'loaf' | 'bucket' | 'fish' | 'fishes' | 'ladder' | 'hod' | 'crate' | 'lantern' | 'basket' | 'washing' | 'sheaf' | 'petals' | 'bouquet' | 'barrel' | 'cart' | 'cart-1' | 'cart-2' | 'cart-3' | 'scythe' | 'trestle' | 'lantern-pole' | 'icecart' | 'cone' | `blanket-${0 | 1 | 2 | 3}` | BeachLoad | Loot | MarketLoad;
+
+/** Market talk: the orchard's apples on their way to the stalls and home, and a jug from a shop. */
+export type MarketLoad = 'apples' | 'apple' | 'jug';
 
 /** The six canvas colours (beach.ts CANVAS_COLOURS) and four pail colours. */
 type Canvas = 0 | 1 | 2 | 3 | 4 | 5;
@@ -226,6 +232,23 @@ function drawLoadAt(b: MeshBuilder, kind: Load): void {
       b.polygon([[0, 0.3, 0.02], [0.02, 0.32, 0.02], [0.16, 0.24, 0.02], [0.12, 0.23, 0.02]]);
       b.polygon([[0.12, 0.23, 0.02], [0.16, 0.24, 0.02], [0.02, 0.32, 0.02], [0, 0.3, 0.02]]);
       break;
+    case 'apples':
+      // A basket heaped with red apples: one soft body, so one outline round the heap.
+      basket(b, 0.075, 0.065);
+      soft(b, { ink: 'apples' }, (s) => {
+        s.b.setColor(APPLE_RED);
+        for (const [x, y, z] of [[-0.035, 0.07, -0.02], [0.03, 0.07, -0.025], [0.0, 0.07, 0.03], [-0.03, 0.075, 0.03], [0.035, 0.072, 0.025], [0.0, 0.1, 0.0]] as const) s.ball(x, y, z, 0.026, 0.024, 0.026, 7, 5);
+      });
+      break;
+    case 'apple':
+      appleAt(b, 0, 0.032, 0, 0.034);
+      break;
+    case 'jug':
+      b.setInk('jug').setColor('#c9744a');
+      smoothLathe(b, [[0, 0], [0.032, 0], [0.042, 0.035], [0.03, 0.075], [0.022, 0.085], [0.026, 0.095], [0, 0.095]], { segments: 10, crease: 0.9 });
+      b.setInk('handle').setColor('#a95a36');
+      tube(b, [[0.03, 0.075, 0], [0.058, 0.07, 0], [0.058, 0.035, 0], [0.04, 0.025, 0]], 0.006, { seg: 4 });
+      break;
     case 'bouquet':
       b.setInk('stems').setColor('#5d8f3a');
       b.lathe([[0, 0], [0.012, 0], [0.025, 0.06], [0, 0.06]], { segments: 6 });
@@ -237,6 +260,18 @@ function drawLoadAt(b: MeshBuilder, kind: Load): void {
       });
       break;
   }
+}
+
+const APPLE_RED = '#e0453a';
+
+/** One apple: a red round with a stalk and a leaf. */
+function appleAt(b: MeshBuilder, x: number, y: number, z: number, r: number): void {
+  b.setInk('apple').setColor(APPLE_RED);
+  smoothBall(b, x, y, z, r, r * 0.92, r, 8, 5);
+  b.setInk('stalk').setColor(PALETTE.trunk);
+  b.box([x - 0.004, y + r * 0.8, z - 0.004], [x + 0.004, y + r * 1.3, z + 0.004]);
+  b.setInk('leaf').setColor(PALETTE.leafDark);
+  b.box([x + 0.004, y + r * 1.05, z - 0.003], [x + r * 0.75, y + r * 1.25, z + 0.003]);
 }
 
 /** L63: the beach's loads, in the figure's units at their own size; false for any other load. */
@@ -311,6 +346,9 @@ export const HOLD_OF: Readonly<Record<Load, Hold>> = {
   cheese: 'chest',
   hen: 'high',
   candlestick: 'high',
+  apples: 'head',
+  apple: 'chest',
+  jug: 'chest',
 };
 /** Loads drawn at their own size whatever the camera's distance (they are big enough, or would swamp their carrier). */
 export const NOT_GROWN: ReadonlySet<Load> = new Set<Load>(['icecart', 'cart', 'cart-1', 'cart-2', 'cart-3', ...BEACH_LOADS.filter((k) => k.startsWith('parasol-open-'))]);
@@ -377,6 +415,9 @@ const HOLD: Record<Load, Mat4Like> = {
   cheese: translation(0, 0.18, 0.09),
   hen: translation(0.085, 0.335, 0.05),
   candlestick: translation(0.085, 0.335, 0.05),
+  apples: translation(0, 0.41, 0),
+  apple: translation(0, 0.19, 0.09),
+  jug: translation(0, 0.17, 0.09),
 };
 
 const cache = new Map<string, MeshData>();
@@ -437,6 +478,10 @@ export function restingMesh(kind: Load): MeshData {
         // A sheaf stood up on its butt, leaning in (-X) to the others of its stook (L59), darker than the
         // standing wheat so it shows against it.
         b.at(rotZ(0.3), () => drawLoad(b, kind, 1.7));
+      } else if (kind === 'apple') {
+        // Set out on a counter, apples lie in a little heap (each one bought takes the heap's worth: one apple).
+        const k = BIG_REST;
+        for (const [x, y, z] of [[-0.03, 0, -0.012], [0.03, 0, -0.012], [0, 0, 0.028], [0, 0.045, 0.002]] as const) appleAt(b, x * k, (y + 0.03) * k, z * k, 0.03 * k);
       } else if (kind === 'sack') {
         // Set down, a sack lies on its side (they heap up by a door), its middle over the origin.
         b.at(multiply(translation(0, 0.068 * BIG_REST, -0.085 * BIG_REST), rotationX(Math.PI / 2)), () => drawLoad(b, kind, BIG_REST));
