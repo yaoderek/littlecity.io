@@ -129,8 +129,9 @@ export interface Yard {
   chipAt: number;
   checkAt: number;
   confettiAt: number;
-  /** Seconds waited for a free town in `ready`. */
+  /** Seconds waited for a free town in `ready`; seconds into the launch's countdown (−1 before it). */
   waited: number;
+  go: number;
 }
 
 /** A ship launched: the sea's now, whatever happens to its yard. */
@@ -159,6 +160,8 @@ export interface Launched {
   splashed: number;
   wake: number;
   retry: number;
+  /** Where it was as it came off the ways (origin's height, pitch, distance along the slip). */
+  tip?: { y: number; th: number; u: number };
 }
 
 export interface ShipyardChain extends Chain {
@@ -294,6 +297,7 @@ export function shipyardChain(): ShipyardChain {
   const setPhase = (board: Board, y: Yard, p: YardPhase): void => {
     y.phase = p;
     y.t = 0;
+    y.go = -1;
     if (p === 'keel') {
       y.look = Math.floor(rand(board.seed, 'yard-look', y.key, y.built) * 1000);
       show(board, y, 0);
@@ -568,7 +572,7 @@ export function shipyardChain(): ShipyardChain {
         for (const [du, dx] of [[0.28, 1.22], [0.72, 1.3]] as const) {
           const p = onSlip(g, side * dx, i + du);
           const c = onSlip(g, 0, i + du + 0.6);
-          out.push({ cell: col[i]!, spot: p, face: Math.atan2(c.x - p.x, c.z - p.z), rank: i * 2 + du + (side > 0 ? 0 : 0.3) });
+          out.push({ cell: col[i]!, spot: p, face: Math.atan2(c.x - p.x, c.z - p.z), rank: i * 0.45 + du * 0.3 + (side > 0 ? 0 : 0.1) });
         }
       }
     }
@@ -581,7 +585,7 @@ export function shipyardChain(): ShipyardChain {
         for (const dx of [-0.22, 0.22]) {
           const p = onSlip(g, across + dx, -back + 0.5 + (back === 1 ? 0.2 : 0));
           const c = onSlip(g, across * 0.4, 2.5);
-          out.push({ cell, spot: p, face: Math.atan2(c.x - p.x, c.z - p.z), rank: 1 + back * 3 + Math.abs(across) * 1.5 + (dx > 0 ? 0.1 : 0) });
+          out.push({ cell, spot: p, face: Math.atan2(c.x - p.x, c.z - p.z), rank: 0.8 + back * 1.6 + Math.abs(across) * 0.7 + (dx > 0 ? 0.05 : 0) });
         }
       }
     }
@@ -717,8 +721,9 @@ export function shipyardChain(): ShipyardChain {
   /** The slide: s along the ways from where it was built; returns the hull's pose (and whether it is afloat). */
   const slide = (l: Launched): { sA: number; sB: number; rest: number } => {
     const h = hullOnSlip(l.kind);
+    // The stern reaches the lip of the slip; the hull comes off the ways (its bow nearly at the lip).
     const sA = Math.max(0.2, l.geo.n - (h.u0 + h.aft));
-    const sB = sA + h.aft + 0.25;
+    const sB = sA + h.aft + h.fwd * 0.85;
     // At rest its bow (bowsprit and all) lies well clear of the end of the ways: room to turn.
     const rest = l.geo.n + SHIPYARD.wayRun + 0.8 + Math.max(rigOf(l.kind, 0).bow, l.size.bow) - h.u0;
     return { sA, sB, rest: Math.max(rest, sB + 1) };
@@ -777,25 +782,36 @@ export function shipyardChain(): ShipyardChain {
     const { sA, sB, rest } = slide(l);
     const h = hullOnSlip(l.kind);
     if (l.phase === 'slide') {
-      const a = SHIPYARD.slideAccel * (l.s < sA ? 1 : 3.2);
+      // Down the ways (slowly, then faster); past their end it tips about the lip of the slip, stern down
+      // into the sea (as deep as the water lets it: it floats), and comes off the end afloat.
+      const n = l.geo.n;
+      const th0 = Math.atan((SHIPYARD.wayHead - SHIPYARD.wayFoot) / n);
+      const a = SHIPYARD.slideAccel * (l.s < sA ? 1 : 2.6);
       l.v += a * dt;
       l.s += l.v * dt;
       const u = h.u0 + l.s;
       if (l.s <= sA) slipPose(l.geo, l.kind, u, l.m);
       else {
-        const k = Math.min(1, (l.s - sA) / (sB - sA));
-        const yOn = slipPose(l.geo, l.kind, u, l.m)[13]!;
-        const p = onSlip(l.geo, 0, u);
-        const th = Math.atan((SHIPYARD.wayHead - SHIPYARD.wayFoot) / l.geo.n);
-        const y = yOn + (SEA_Y - 0.12 - yOn) * k * k;
-        fly(p.x, y, p.z, l.geo.yaw + Math.PI, th + (0.2 - th) * Math.sin((k * Math.PI) / 2), 0, 1, l.m);
+        // zc: where the lip is along the keel (hull frame, + toward the bow).
+        const zc = u - n;
+        const yk = cradleFoot(l.kind);
+        const lip = slipTop(n, n);
+        const tip = th0 + (0.3 - th0) * smoothstep(zc / h.fwd);
+        const buoy = Math.asin(Math.min(1, Math.max(0, (lip - (SEA_Y - 0.2)) / Math.max(0.1, zc + h.aft))));
+        const th = Math.max(0, Math.min(tip, Math.max(th0, buoy)));
+        const u0 = n + zc * Math.cos(th) - yk * Math.sin(th);
+        const y0 = lip - zc * Math.sin(th) - yk * Math.cos(th);
+        const p = onSlip(l.geo, 0, u0);
+        fly(p.x, y0, p.z, l.geo.yaw + Math.PI, th, 0, 1, l.m);
+        l.tip = { y: y0, th, u: u0 };
         // The stern hits the water: a great splash, and spray along the hull as it goes in.
-        if (l.splashed === 0 && k > 0.35) {
+        const sternY = lip - (zc + h.aft) * Math.sin(th);
+        if (l.splashed === 0 && sternY < SEA_Y + 0.05) {
           l.splashed = 1;
-          const st = onSlip(l.geo, 0, u + h.aft - 0.3);
+          const st = onSlip(l.geo, 0, n + (zc + h.aft) * Math.cos(th) - 0.2);
           splash(board, st.x, st.z, l.kind === 'galleon' ? 2.1 : 1.6);
           for (const side of [-1, 1]) {
-            const sp = onSlip(l.geo, side * 0.8, u + h.aft * 0.4);
+            const sp = onSlip(l.geo, side * 0.85, n + (zc + h.aft) * 0.6);
             splash(board, sp.x, sp.z, 0.8);
           }
           if (stage) {
@@ -809,13 +825,14 @@ export function shipyardChain(): ShipyardChain {
         // Afloat: the ship itself takes over from the drawing it was built in (behind the splash).
         l.phase = 'afloat';
         l.t = 0;
+        if (l.tip) l.s = l.tip.u - h.u0;
         l.pose = settledPose(l);
         l.hull?.release();
         l.hull = null;
         if (stage) {
           l.body = new ShipBody(stage, l.kind, l.look, l.m, 0);
           l.body.setAll(0);
-          const p = onSlip(l.geo, 0, h.u0 + l.s);
+          const p = onSlip(l.geo, 0, h.u0 + l.s - h.fwd * 0.3);
           splash(board, p.x, p.z, l.kind === 'galleon' ? 1.8 : 1.3);
           hullRing(stage, p.x, p.z, l.geo.yaw, 2.4, 3, 3, 3.6);
         }
@@ -824,15 +841,16 @@ export function shipyardChain(): ShipyardChain {
       return;
     }
     if (l.phase === 'afloat') {
-      // Running on, slowed by the water, to rest clear of the slip; it rights itself in a few rolls.
-      const left = Math.max(0, rest - l.s);
       // Running on, slowed by the water; at the last it drifts (and its boats warp it) the rest of the way.
-      l.v = Math.max(0.12 * Math.min(1, left * 3), Math.min(l.v, left * SHIPYARD.drag * 2.2) * Math.exp(-SHIPYARD.drag * dt));
+      // It drops level onto the water from where it came off the ways, dips, and rights itself in a few rolls.
+      const left = Math.max(0, rest - l.s);
+      l.v = Math.max(0.3 * Math.min(1, left * 2), Math.min(l.v, left * SHIPYARD.drag * 2.2) * Math.exp(-SHIPYARD.drag * dt));
       l.s = Math.min(rest, l.s + l.v * dt);
       l.pose = settledPose(l);
       const tf = l.t;
-      const y = SEA_Y - 0.12 * Math.exp(-1.6 * tf) * Math.cos(3.2 * tf);
-      const pitch = 0.2 * Math.exp(-1.4 * tf) * Math.cos(2.6 * tf);
+      const y1 = l.tip?.y ?? SEA_Y, th1 = l.tip?.th ?? 0.2;
+      const y = SEA_Y + (y1 - SEA_Y) * Math.exp(-3.2 * tf) - 0.11 * Math.sin(Math.min(Math.PI, tf * 2.2)) * Math.exp(-0.6 * tf);
+      const pitch = th1 * Math.exp(-1.3 * tf) * Math.cos(2.4 * tf);
       const roll = 0.06 * Math.exp(-0.7 * tf) * Math.sin(2.1 * tf);
       fly(l.pose.x, y, l.pose.z, l.pose.yaw, pitch, roll, 1, l.m);
       l.body?.trim(dt, { lee: 0, along: 0, strength: AIR.strength }, SHIPS.sailTime);
@@ -1108,7 +1126,11 @@ export function shipyardChain(): ShipyardChain {
       case 'ready': {
         y.waited += dt;
         const scenes = scenesOf(board);
-        if (time.isDay && (scenes.may('launch') || y.waited > 90)) {
+        // A crowd to see it off: fifteen at least (most of a small town), else it waits a while for one.
+        const town = board.crowd.people.filter((p) => !p.shutIn && !p.leaving && p.mode !== 'gone' && !p.raider);
+        const free = town.filter((p) => unbusy(board, p) && !p.scuffle && !p.load).length;
+        const enough = free >= Math.min(15, Math.ceil(town.length * SHIPYARD.crowdShare)) || y.waited > 120;
+        if (time.isDay && enough && (scenes.may('launch') || y.waited > 90)) {
           y.waited = 0;
           setPhase(board, y, 'gather');
           if (board.stage) y.bunting = board.stage.spawnMesh(buntingMesh(y.geo.n, 1.42, y.key + y.built), place(y.geo.ox, 0, y.geo.oz, y.geo.yaw));
@@ -1136,18 +1158,22 @@ export function shipyardChain(): ShipyardChain {
       case 'gather': {
         y.t += dt;
         const G = SHIPYARD.gather;
+        // Once most of the crowd is in its places (or it has waited long enough), the countdown: the bottle, the
+        // staging down and the wedges out, and away she goes.
+        const here = y.watchers.filter((p) => watching(board, p)).length;
+        if (y.go < 0 && ((y.t >= G * 0.5 && here >= Math.ceil(y.watchers.length * 0.75)) || y.t >= G * 1.75)) y.go = 0;
+        if (y.go < 0) break;
+        y.go += dt;
         // The bottle: swung from the sponsor's hand on its ribbon against the bow; a glint, glass flying.
         const atBow = y.sponsor?.mode === 'linger' && y.sponsor.goal?.errand?.tag === 'shipyard:bow';
-        if (y.t >= G - 9 && y.t < G - 6 && !y.bottle && atBow && board.stage) {
-          y.bottle = { h: board.stage.spawnMesh(bottleMesh(), HIDDEN), t: 0 };
-        }
+        if (y.go >= 0.5 && y.go < 3 && !y.bottle && atBow && board.stage) y.bottle = { h: board.stage.spawnMesh(bottleMesh(), HIDDEN), t: 0 };
         if (y.bottle) stepBottle(dt, board, y);
-        if (y.t >= G - 4 && y.staging) {
+        if (y.go >= 6 && y.staging) {
           foldAway(board, y, 'staging');
           // The wedges are knocked out: the hands hammer at the cradle.
           for (const p of y.watchers.slice(0, 4)) if (watching(board, p)) p.pose = 'hammer';
         }
-        if (y.t >= G) {
+        if (y.go >= 10) {
           launch(board, y);
           setPhase(board, y, 'launched');
           react(board, y, 'look');
@@ -1279,6 +1305,7 @@ export function shipyardChain(): ShipyardChain {
       checkAt: 0,
       confettiAt: 0,
       waited: 0,
+      go: -1,
     };
     void board;
   };
@@ -1403,6 +1430,11 @@ export function shipyardChain(): ShipyardChain {
   };
   return chain;
 }
+
+const smoothstep = (v: number): number => {
+  const x = v < 0 ? 0 : v > 1 ? 1 : v;
+  return x * x * (3 - 2 * x);
+};
 
 function dirOf(g: YardGeo): number {
   return g.sx === 0 ? (g.sz > 0 ? 2 : 0) : g.sx > 0 ? 1 : 3;

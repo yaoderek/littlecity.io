@@ -100,6 +100,11 @@ function quayColumns(f: Facts): Uint8Array {
         q[i] = Math.max(q[i]!, keyY(c) + 2);
       }
     }
+    // A shipyard's docks are its slip and its working decks (R-D05): no ship berths alongside them.
+    for (const [id, r] of f.shape.roles) {
+      if (r.role !== 'shipyard') continue;
+      for (const c of f.structures.get(id)?.cells ?? []) q[columnIndex(keyX(c), keyZ(c))] = 0;
+    }
   }
   return q;
 }
