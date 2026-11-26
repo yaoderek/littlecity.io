@@ -42,7 +42,9 @@ import { drawLoot, type Loot } from './loot';
  * L66, a picnic (picnic.ts):
  *   blanket-n       a checked blanket rolled up, on the shoulder
  */
-export type Load = 'sack' | 'tray' | 'loaf' | 'bucket' | 'fish' | 'fishes' | 'ladder' | 'hod' | 'crate' | 'lantern' | 'basket' | 'washing' | 'sheaf' | 'petals' | 'bouquet' | 'barrel' | 'cart' | 'cart-1' | 'cart-2' | 'cart-3' | 'scythe' | 'trestle' | 'lantern-pole' | 'icecart' | 'cone' | `blanket-${0 | 1 | 2 | 3}` | BeachLoad | Loot;
+export type Load = 'sack' | 'tray' | 'loaf' | 'bucket' | 'fish' | 'fishes' | 'ladder' | 'hod' | 'crate' | 'lantern' | 'basket' | 'washing' | 'sheaf' | 'petals' | 'bouquet' | 'barrel' | 'cart' | 'cart-1' | 'cart-2' | 'cart-3' | 'scythe' | 'trestle' | 'lantern-pole' | 'icecart' | 'cone' | `blanket-${0 | 1 | 2 | 3}` | BeachLoad | Loot | ShipyardLoad;
+/** The shipyard (src/life/town/chains/shipyard.ts): a plank on the shoulder; one end of the keel timber, carried by two. */
+export type ShipyardLoad = 'plank' | 'beam';
 
 /** The six canvas colours (beach.ts CANVAS_COLOURS) and four pail colours. */
 type Canvas = 0 | 1 | 2 | 3 | 4 | 5;
@@ -140,6 +142,16 @@ function drawLoadAt(b: MeshBuilder, kind: Load): void {
         const z = -0.25 + i * 0.1;
         b.box([-0.03, 0.004, z - 0.006], [0.03, 0.012, z + 0.006]);
       }
+      break;
+    case 'plank':
+      // A fresh-sawn board lying along Z on the shoulder, its middle at the origin.
+      b.setInk('plank').setColor('#d9ad78').setPattern(PATTERN.planks);
+      b.box([-0.032, 0, -0.34], [0.032, 0.014, 0.34]);
+      break;
+    case 'beam':
+      // The near end of a long square timber (the shipyard draws the rest of it between its two carriers).
+      b.setInk('beam').setColor('#b98656').setPattern(PATTERN.planks);
+      b.box([-0.03, 0, -0.12], [0.03, 0.055, 0.12]);
       break;
     case 'hod':
       b.setInk('hod').setColor(PALETTE.wood).setPattern(PATTERN.planks);
@@ -277,6 +289,8 @@ export const HOLD_OF: Readonly<Record<Load, Hold>> = {
   crate: 'shoulder',
   sheaf: 'shoulder',
   ladder: 'shoulder',
+  plank: 'shoulder',
+  beam: 'shoulder',
   hod: 'shoulderL',
   fish: 'head',
   basket: 'head',
@@ -313,9 +327,9 @@ export const HOLD_OF: Readonly<Record<Load, Hold>> = {
   candlestick: 'high',
 };
 /** Loads drawn at their own size whatever the camera's distance (they are big enough, or would swamp their carrier). */
-export const NOT_GROWN: ReadonlySet<Load> = new Set<Load>(['icecart', 'cart', 'cart-1', 'cart-2', 'cart-3', ...BEACH_LOADS.filter((k) => k.startsWith('parasol-open-'))]);
+export const NOT_GROWN: ReadonlySet<Load> = new Set<Load>(['beam', 'icecart', 'cart', 'cart-1', 'cart-2', 'cart-3', ...BEACH_LOADS.filter((k) => k.startsWith('parasol-open-'))]);
 /** Loads heavy enough that their carrier leans into them and walks slower. */
-export const HEAVY: ReadonlySet<Load> = new Set<Load>(['trestle', 'sack', 'crate', 'sheaf', 'hod', 'fish', 'bucket', 'washing', 'ladder', 'barrel', 'cart-2', 'cart-3', 'chest']);
+export const HEAVY: ReadonlySet<Load> = new Set<Load>(['trestle', 'sack', 'crate', 'sheaf', 'hod', 'fish', 'bucket', 'washing', 'ladder', 'barrel', 'cart-2', 'cart-3', 'chest', 'plank', 'beam']);
 
 const rotX = (a: number): Mat4Like => rotationX(a);
 const rotZ = (a: number): Mat4Like => [Math.cos(a), Math.sin(a), 0, 0, -Math.sin(a), Math.cos(a), 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
@@ -342,6 +356,8 @@ const HOLD: Record<Load, Mat4Like> = {
   crate: translation(0.07, 0.26, 0),
   sheaf: multiply(translation(0.07, 0.27, -0.12), rotX(Math.PI / 2 - 0.4)),
   ladder: translation(0.1, 0.3, 0.02),
+  plank: translation(0.1, 0.3, 0.02),
+  beam: translation(0.1, 0.3, 0),
   hod: translation(-0.085, 0.28, -0.01),
   fish: translation(0, 0.41, 0),
   basket: translation(0, 0.41, 0),
