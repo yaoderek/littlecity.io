@@ -307,10 +307,12 @@ export const TALK = defineStyle(
     /** Seconds the coin flies from hand to hand, and the bought thing from the counter to the hand. */
     coinFlight: 0.4,
     handFlight: 0.35,
+    /** Chance a resident choosing what to do goes to buy at a shop a ship has supplied (asking for a cheese or a jug). */
+    cargoBuy: 0.05,
   },
   {
     bubble: [0.4, 4, 0.1], haggle: [1, 8, 0.1], soldOut: [1, 30, 1], haggleEvery: [1, 30, 1], heartEvery: [1, 30, 1], gap: [0, 6, 1],
-    cap: [0, 16, 1], capPhone: [0, 16, 1], near: [0.5, 3, 0.05], far: [0.5, 5, 0.05], coinFlight: [0.1, 1.5, 0.05], handFlight: [0.1, 1.5, 0.05],
+    cap: [0, 16, 1], capPhone: [0, 16, 1], near: [0.5, 3, 0.05], far: [0.5, 5, 0.05], coinFlight: [0.1, 1.5, 0.05], handFlight: [0.1, 1.5, 0.05], cargoBuy: [0, 1, 0.01],
   },
 );
 

@@ -93,7 +93,7 @@ export function deliverStep(board: Board, to: Outlet, load: Load, item: Load, n:
  * ask for it), or null to pass one by; `empty` lets a buyer go to an outlet that has none of it (to be
  * told so: the sold-out talk).
  */
-export function buyerPlan(board: Board, chain: Chain, p: Person, outlets: readonly Outlet[], item: Load, chance: number, reach: number, tag: string, opts: { want?(o: Outlet): Want | null; empty?: boolean } = {}): Plan | null {
+export function buyerPlan(board: Board, chain: Chain, p: Person, outlets: readonly Outlet[], item: Load, chance: number, reach: number, tag: string, opts: { want?(o: Outlet): Want | null; others?(o: Outlet): Want[]; empty?: boolean } = {}): Plan | null {
   if (rand(p.seed, tag, p.trips) >= chance) return null;
   const here = p.cell;
   const own: Want = { item, pic: pictureOf(item) ?? 'apple' };
@@ -125,7 +125,7 @@ export function buyerPlan(board: Board, chain: Chain, p: Person, outlets: readon
       // At the counter: the talk (talk.ts) says what is bought, and hands it over as it goes.
       done: (q) => {
         arrived();
-        return converse(board, q, plan, counterOf(board, to), want, () => wantsIn(board, to.store), home, tag);
+        return converse(board, q, plan, counterOf(board, to), want, () => (opts.others ? opts.others(to) : wantsIn(board, to.store)), home, tag);
       },
     }),
     home,

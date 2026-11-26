@@ -75,6 +75,8 @@ export interface Talks {
   /** Purchases that ran to the end, and things that went into a hand, by kind (tests). */
   readonly sold: Map<Load, number>;
   next: number;
+  /** The board's time when the talks were last stepped (the drawing reads it). */
+  now: number;
 }
 
 const byBoard = new WeakMap<Board, Talks>();
@@ -84,7 +86,7 @@ const byStage = new WeakMap<LifeStage, Talks>();
 export function talksOf(board: Board): Talks {
   let t = byBoard.get(board);
   if (!t) {
-    t = { list: [], sold: new Map(), next: 1 };
+    t = { list: [], sold: new Map(), next: 1, now: board.now };
     byBoard.set(board, t);
     if (board.stage) byStage.set(board.stage, t);
   }
@@ -257,8 +259,9 @@ export function beatNow(talk: Talk, now: number, who: Beat['who']): Beat | null 
 /** Every frame, after the crowd has moved: the coin and the goods change hands on time; the two gesture as they talk. */
 export function stepTalks(board: Board): void {
   const talks = byBoard.get(board);
-  if (!talks || talks.list.length === 0) return;
-  const now = board.now;
+  if (!talks) return;
+  const now = (talks.now = board.now);
+  if (talks.list.length === 0) return;
   for (const talk of talks.list) {
     const s = now - talk.start;
     const b = talk.buyer;

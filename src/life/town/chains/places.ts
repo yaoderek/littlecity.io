@@ -18,13 +18,15 @@
 
 import { DIR4, key, keyX, keyY, keyZ, type CellKey } from '@/core/grid';
 import { rand } from '@/core/rand';
-import { PLACES } from '@/style/town-life';
+import { APPLES, PLACES } from '@/style/town-life';
 import { fxOf } from '../../fx/fx';
 import { place } from '../../motion/pose';
 import type { Person } from '../../people/crowd';
 import { DIR_HEADING, type Board, type Chain, type Plan, type PlanStep, type Post } from '../board';
 import { canWork, homeCell, keepHand, reaches, standAt } from '../hands';
 import { harvestTime } from './harvest';
+import { converse, type Picture, type Want } from '../talk';
+import { fillBasket } from './apples';
 
 /** A cycle in life time: where in it we are (0 ≤ t < len) and which one it is. */
 function cycle(now: number, len: number, offset: number): { t: number; n: number } {
@@ -268,10 +270,31 @@ export function vendChain(): Chain {
       const home = board.homeStep(p, { tag: 'vend:home', load: 'basket' });
       if (!home) return null;
       const at = b.dir !== undefined ? standAt(board, b, 0.15) : { spot: null, face: NaN };
-      return { chain, at: 0, steps: [board.stepAt(b.cell, { ...at, pose: 'chat', linger: 3, tag: 'vend:browse', done: (q) => void (q.load = 'basket') }), home] };
+      // Market talk (talk.ts): asked for by what the booth sells; they go home with a basket of it.
+      const want: Want = { item: 'basket', pic: boothPicture(board.dressing?.props.find((x) => x.id === b.ref)?.variant), give: 'basket' };
+      const c = board.centre(b.cell);
+      const [fx, fz] = b.dir !== undefined ? DIR4[b.dir]! : [0, 0];
+      const counter = { store: null, at: { x: c.x + fx * 0.45, y: c.y + 0.35, z: c.z + fz * 0.45 } };
+      const plan: Plan = { chain, at: 0, steps: [] };
+      plan.steps.push(board.stepAt(b.cell, { ...at, pose: 'chat', linger: 3, tag: 'vend:browse', done: (q) => converse(board, q, plan, counter, want, () => [], home, 'vend:browse') }), home);
+      return plan;
     },
   };
   return chain;
+}
+
+/** What a wall booth's customers ask for, by what it sells (U16's variants). */
+function boothPicture(variant: string | undefined): Picture {
+  switch (variant) {
+    case 'bread':
+      return 'loaf';
+    case 'fruit':
+      return 'apple';
+    case 'cobbler':
+      return 'shoe';
+    default:
+      return 'jug';
+  }
 }
 
 // ─────────────────────────────────────────────────────── orchard picking ──
@@ -299,7 +322,8 @@ export function pickChain(): Chain {
       const pick = picks[(i + Math.floor(board.now / 20)) % picks.length]!;
       const into = baskets.slice().sort((a, b) => board.dist(a.cell, pick.cell) - board.dist(b.cell, pick.cell))[0];
       const steps: PlanStep[] = [board.stepAt(pick.cell, { ...(pick.dir !== undefined ? standAt(board, pick, 0.2) : { spot: null, face: NaN }), pose: 'wave', linger: PLACES.pick, tag: 'pick:pick', done: (q) => void (q.load = 'basket') })];
-      if (into) steps.push(board.stepAt(into.cell, { ...(into.dir !== undefined ? standAt(board, into, 0.15) : { spot: null, face: NaN }), pose: 'tend', linger: 1, load: 'basket', tag: 'pick:basket', done: (q) => void (q.load = null) }));
+      // L68: tipped into the big basket, where the apples heap up for the carrier to take to market (apples.ts).
+      if (into) steps.push(board.stepAt(into.cell, { ...(into.dir !== undefined ? standAt(board, into, 0.15) : { spot: null, face: NaN }), pose: 'tend', linger: 1, load: 'basket', tag: 'pick:basket', done: (q) => void ((q.load = null), fillBasket(board, into.ref, APPLES.perPick)) }));
       return { chain, at: 0, steps };
     },
   };
