@@ -27,6 +27,7 @@ import laundryScn from '../../scenarios/life/L60.laundry.scenario';
 import schoolScn from '../../scenarios/life/L62.school.scenario';
 import bandScn from '../../scenarios/life/L62.bandstand.scenario';
 import dogsScn from '../../scenarios/life/L61.dogs.scenario';
+import bikesScn from '../../scenarios/life/bikes.scenario';
 import scuffleScn from '../../scenarios/life/L50.scuffle.scenario';
 import watchScn from '../../scenarios/life/L55.watchman.scenario';
 import harbourScn from '../../scenarios/life/ships-harbour.scenario';
@@ -1650,6 +1651,19 @@ const LISTED: readonly GuideEntry[] = [
     pad: 0.2,
     life: { settle: 30, residents: true },
     frame: [16, 18, 24, 23, 2],
+  },
+  {
+    id: 'bikes',
+    group: 'every-day',
+    name: 'Bikes',
+    when: 'By day and at dusk, in fair weather',
+    how: 'Build a street of houses: some front doors have a bike leaning by them. For a long trip its owner rides it, carries small shopping in the basket, and leans it by the door they stop at.',
+    proof: { prop: { rule: 'D11.doorstep', type: 'door-bike' } },
+    ...town(bikesScn),
+    view: { yaw: 45, pitch: 36 },
+    pad: 0.2,
+    life: { settle: 30, residents: true },
+    frame: [17, 18, 22, 22, 1],
   },
   {
     id: 'scuffle',

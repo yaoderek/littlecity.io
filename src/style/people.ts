@@ -214,13 +214,14 @@ export const BIKE = defineStyle(
     /** Leaning into a turn: radians per radian a second of turning, and the most. */
     lean: 0.08,
     leanMax: 0.16,
-    /** Pedal turns per cell ridden, and wheel radius (world units; the wheels roll without slipping). */
+    /** Pedal turns per cell ridden (the wheels roll without slipping). */
     pedal: 1.1,
-    wheel: 0.082,
+    /** A bike in hand is drawn up to this much longer (not taller) from the whole-island view, so it reads there. */
+    far: 1.5,
   },
   {
     minWalk: [4, 40, 1], speed: [1, 4, 0.05], cap: [0, 30, 1], capPhone: [0, 20, 1], capLow: [0, 10, 1], rain: [0, 1, 0.05], snow: [0, 1, 0.05], cover: [0, 1, 0.05],
-    turn: [0.1, 1, 0.05], ease: [0.5, 8, 0.1], slowAt: [0, 1.5, 0.05], mount: [0, 1.5, 0.05], crowd: [1, 8, 1], lean: [0, 0.3, 0.01], leanMax: [0, 0.4, 0.01], pedal: [0.3, 3, 0.05], wheel: [0.05, 0.12, 0.002],
+    turn: [0.1, 1, 0.05], ease: [0.5, 8, 0.1], slowAt: [0, 1.5, 0.05], mount: [0, 1.5, 0.05], crowd: [1, 8, 1], lean: [0, 0.3, 0.01], leanMax: [0, 0.4, 0.01], pedal: [0.3, 3, 0.05], far: [1, 2.5, 0.05],
   },
 );
 

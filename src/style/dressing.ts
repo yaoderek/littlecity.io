@@ -31,7 +31,7 @@ export const DRESSING = defineStyle(
     creeper: 0.4,
     doorPots: 0.4,
     doorBarrel: 0.2,
-    doorBicycle: 0.1,
+    doorBicycle: 0.2,
     // ── D15 dock goods ──
     dockRope: 0.3,
     dockPots: 0.2,
