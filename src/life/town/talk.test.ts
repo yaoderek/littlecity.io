@@ -80,7 +80,8 @@ describe('market talk', () => {
   test('an empty counter: "none left", then something it does have, or off with nothing', () => {
     const { t, c } = living(fishTown);
     const b = t.board;
-    const buyer = t.crowd.people.find((p) => !p.child)!;
+    // Someone standing at what they came for: the talk holds them there by its goal's linger (a walker is not held).
+    const buyer = t.crowd.people.find((p) => !p.child && p.goal !== null && p.mode !== 'walk')!;
     const store = b.store('test:counter', [0, 1, 2].map((i) => ({ x: 20 + i * 0.2, y: 1.2, z: 28, yaw: 0 })));
     b.put(store, 'loaf');
     const ask = (): { plan: { chain: (typeof b.chains)[number]; at: number; steps: never[] }; home: ReturnType<typeof b.stepAt>; ok: boolean } => {
