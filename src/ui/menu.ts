@@ -15,6 +15,7 @@ import { LANG_NAMES, LANGS, t, type Lang } from '@/i18n';
 import { ISLAND_KIND_NAMES, ISLAND_KINDS, type IslandKind } from '@/terrain/kinds';
 import { CHARACTER_NAMES, CHARACTERS, type Character } from '@/townmaker/character';
 import { el, iconButton, isPhone, setIcon } from './dom';
+import { setDot } from './dots';
 import { icon } from './icons';
 import { track } from '@/app/analytics';
 
@@ -66,6 +67,10 @@ export interface MenuActions {
   setRaiders?(on: boolean): void;
   /** The language the game speaks: the one in use, and the player's choice of another. Left out of the menu when absent. */
   language?: { current(): Lang; choose(lang: Lang): void };
+  /** A red dot on this row (src/ui/dots.ts): something in it not tried yet. Asked as the row is drawn. */
+  dot?(row: string): boolean;
+  /** This row was chosen (its dot, if any, goes for good). */
+  tried?(row: string): void;
 }
 
 export interface Menu {
@@ -134,18 +139,22 @@ export function createMenu(actions: MenuActions): Menu {
     work.then(done, done);
   };
 
-  const item = (id: string, iconId: string, label: string, run: () => void, keepOpen = false): HTMLButtonElement =>
-    iconButton(iconId, label, {
+  const item = (id: string, iconId: string, label: string, run: () => void, keepOpen = false): HTMLButtonElement => {
+    const row = iconButton(iconId, label, {
       class: 'lc-menu-item',
       showLabel: true,
       attrs: { role: 'menuitem', 'data-menu': id },
       on: {
         click: () => {
+          actions.tried?.(id);
           if (!keepOpen) api.close();
           run();
         },
       },
     });
+    if (actions.dot?.(id)) setDot(row, true);
+    return row;
+  };
 
   /** A row of a kind screen: its icon and a bare label. */
   const kindItem = (id: string, iconId: string, label: string, run: (signal: AbortSignal) => Work): HTMLButtonElement => {
