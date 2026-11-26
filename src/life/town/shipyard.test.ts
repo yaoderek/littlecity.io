@@ -184,7 +184,6 @@ describe('R-D05: the shipyard', () => {
     const rec = recordingStage(town);
     let hitAt = -1;
     let downAt = -1;
-    let smoke = 0;
     let keelAgain = -1;
     run(
       town,
@@ -207,7 +206,7 @@ describe('R-D05: the shipyard', () => {
       },
       { stage: rec },
     );
-    smoke = rec.spawned.filter((x) => x.spec && 'actor' in x.spec && x.spec.actor === 'puff' && x.spec.variant === 'smoke').length;
+    const smoke = rec.spawned.filter((x) => x.spec && 'actor' in x.spec && x.spec.actor === 'puff' && x.spec.variant === 'smoke').length;
     expect(hitAt).toBeGreaterThan(0);
     expect(downAt - hitAt).toBeGreaterThan(0.5);
     expect(downAt - hitAt).toBeLessThan(6);
