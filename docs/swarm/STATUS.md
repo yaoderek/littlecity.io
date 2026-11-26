@@ -2249,3 +2249,17 @@ key. Links that open on each feature: `?scenario=U18.orchard&season=winter`,
 `?scenario=grown-harbour` (castle with a garrison, for the Raid
 tool). All four checked to load with no page errors. Not signed off,
 not live.
+
+**2026-11-26: live is the build from `63329a6`** (bundle
+`app-DH66Dbk8.js`, published by the strategy chat with Derek's
+sign-off; checked on the site and on `gh-pages`): the Almanac build
+`6ae3da0` plus red dots on things to try (Almanac, wings, Mischief
+tab, Grow a town; `lc:dots`; `dot_cleared` in PostHog). Branch
+`preview/almanac-release`; in `main` as `06f6599`. The port update on
+`main` is still not live. The orchestrator's `preview/showcase` was
+one commit behind: `63329a6` merged in (clean), rebuilt and served
+again at :5180. Its gate on GitHub before that merge: unit green,
+browser 145 of 146, the touch-orbit test failing three tries there
+and passing three of three locally on the same build; phone-sized
+frame times equal to the live build's (16.7 ms median in `everything`
+and `grown-harbour`, twice each).
