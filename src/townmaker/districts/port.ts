@@ -1,13 +1,19 @@
 // The working waterfront (2026-11-26, Derek: "a harbour town, fishing
 // village etc. should get both the shipyard and the container ship ports"):
 //
-//   port      a container port (R-D00): a plain rectangle of docks against a
-//             straight stretch of shore, 4 deep where the sea allows (3 at
-//             least) and 10 or more long so a freighter fits its berth, open
-//             sea off its face and a clear way out to the edge of the map; a
-//             street along its back and warehouses behind it. The rules make
-//             it a port and fit it out (cranes, containers, an office); the
-//             planner only lays the docks.
+//   port      a container port (R-D00): a rectangle of docks against a
+//             stretch of shore, 3 to 5 deep and 10 to 14 long (Derek,
+//             2026-11-26: a harbour town has the big gantry crane, which
+//             comes at 10 along the shore), open sea off its face and a clear
+//             way out to the edge of the map; a street along its back and
+//             warehouses behind it. A coast is seldom dead straight for ten:
+//             where the shore juts into the first row it is left as land, and
+//             a little bay behind the first row is filled in with dock, as
+//             far as R-D00 still counts the rectangle (shore along half of it,
+//             dock along a third of its inner row). The rules make it a port
+//             and fit it out (cranes, containers, an office); the planner only
+//             lays the docks. A harbour town may grow a second one on another
+//             long stretch, well apart from the first.
 //   shipyard  a shipyard (R-D05): docks 3 wide running 8 (else 7, 6) straight
 //             out from the shore, open water down both sides and past the end
 //             with a way out to sea, and a warehouse (the timber shed) behind
@@ -70,6 +76,10 @@ export interface PortOptions {
   reach?: number;
   /** Open sea this far along the face past one end, for a freighter to line up in. */
   lineUp?: number;
+  /** Lanes straight out to the edge of the map needed (of three along the face). */
+  lanes?: number;
+  /** Keep this far (steps between middles) from these districts: a second port has its own stretch of coast. */
+  apart?: { names: readonly string[]; d: number };
 }
 
 /**
@@ -84,7 +94,10 @@ export function buildPort(town: Town, name: string, opts: PortOptions): boolean 
   for (const len of opts.lens) {
     for (const depth of opts.depths) {
       const found = search(g, `${name}-${len}-${depth}`, (f) => {
-        let gaps = 0;
+        // The first row against the coast: shore jutting in (left as it is), or sea with the street's land
+        // behind it, or (a little bay) sea with sea behind it and land behind that: that cell is filled in
+        // with dock too. R-D00 wants the shore along half the port and dock along a third of its inner row.
+        let gaps = 0, bays = 0;
         for (let u = 0; u < len; u++) {
           const x = f.x(u, 0), z = f.z(u, 0);
           if (shore(g, x, z)) {
@@ -93,9 +106,13 @@ export function buildPort(town: Town, name: string, opts: PortOptions): boolean 
           }
           if (!sea(town, x, z)) return null;
           const bx = f.x(u, -1), bz = f.z(u, -1);
-          if (!g.inMap(bx, bz) || g.h(bx, bz) !== 1 || !g.free(bx, bz)) return null;
+          if (g.inMap(bx, bz) && g.h(bx, bz) === 1 && g.free(bx, bz)) continue;
+          if (!sea(town, bx, bz) || seaBlockBeside(g, bx, bz)) return null;
+          const cx = f.x(u, -2), cz = f.z(u, -2);
+          if (!g.inMap(cx, cz) || g.h(cx, cz) !== 1 || !g.free(cx, cz)) return null;
+          bays++;
         }
-        if (gaps * 2 > len) return null;
+        if ((len - gaps) * 3 < len || bays * 3 > len) return null;
         // The docks, sea off the face, and no other dock touching (they would merge).
         for (let v = 1; v <= depth + 2; v++) for (let u = 0; u < len; u++) if (!sea(town, f.x(u, v), f.z(u, v))) return null;
         for (let v = depth; v <= depth + 2; v++) for (const u of [-1, len]) if (!sea(town, f.x(u, v), f.z(u, v))) return null;
@@ -115,13 +132,16 @@ export function buildPort(town: Town, name: string, opts: PortOptions): boolean 
           };
           if (!clear(len, len + opts.lineUp) && !clear(-1 - opts.lineUp, -1)) return null;
         }
-        for (const u of [1, len >> 1, len - 2]) if (!laneOut(town, f, u, depth + 3)) return null;
+        let lanes = 0;
+        for (const u of [1, len >> 1, len - 2]) if (laneOut(town, f, u, depth + 3)) lanes++;
+        if (lanes < (opts.lanes ?? 3)) return null;
         const mid: [number, number] = [f.x(len >> 1, 0), f.z(len >> 1, 0)];
+        if (opts.apart) for (const o of town.districts) if (opts.apart.names.includes(o.name) && Math.abs(o.x - mid[0]) + Math.abs(o.z - mid[1]) < opts.apart.d) return null;
         const sq = fromSquare(town, mid[0], mid[1]);
         if (opts.reach !== undefined && sq > opts.reach) return null;
         const d = Math.abs(mid[0] - anchor[0]) + Math.abs(mid[1] - anchor[1]);
         // Near the waterfront, but its own stretch of it; the fewer gaps the better.
-        return { score: Math.abs(d - 9) * 0.5 + sq * 0.15 + gaps, data: null };
+        return { score: Math.abs(d - 9) * 0.5 + sq * 0.15 + gaps + bays * 2 + (3 - lanes) * 3, data: null };
       });
       if (!found) continue;
       const f = found.frame;
@@ -133,9 +153,13 @@ export function buildPort(town: Town, name: string, opts: PortOptions): boolean 
         if (u >= 0 && u < len && land0) pave(g, f.x(u, 0), f.z(u, 0));
         if (g.h(f.x(u, -1), f.z(u, -1)) > 0 && g.free(f.x(u, -1), f.z(u, -1))) pave(g, f.x(u, -1), f.z(u, -1));
       }
-      L.claim(0, -1, len - 1, depth, CLAIM.built);
-      L.claim(-1, depth + 1, len, depth + 2, CLAIM.keep);
+      L.claim(0, -1, len - 1, depth - 1, CLAIM.built);
+      // The berth off its face and the water at its ends stay open: no pier or jetty may join it.
+      L.claim(-1, depth, len, depth + 2, CLAIM.keep);
+      for (let v = 0; v < depth; v++) for (const u of [-1, len]) if (g.h(f.x(u, v), f.z(u, v)) === 0) L.mark(u, v, CLAIM.keep);
       for (let v = 0; v < depth; v++) for (let u = 0; u < len; u++) if (g.h(f.x(u, v), f.z(u, v)) === 0) L.put('dock', u, 0, v, 'auto');
+      // The little bays behind the first row, filled in.
+      for (let u = 0; u < len; u++) if (g.h(f.x(u, 0), f.z(u, 0)) === 0 && g.h(f.x(u, -1), f.z(u, -1)) === 0) L.put('dock', u, 0, -1, 'auto');
       // Warehouses behind the street, facing the port across it.
       let stores = 0;
       for (let u = 0; u + 2 < len && stores < opts.stores; u += 4) {

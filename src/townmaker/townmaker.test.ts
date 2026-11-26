@@ -218,7 +218,12 @@ function survey(): Surveyed[] {
         roles: new Set([...town.shape.roles.values()].map((r) => r.role)),
         props: new Set([...town.dressing.props.map((p) => `${p.rule.split('.')[0]}/${p.type}`), ...town.dressing.actors.map((a) => `${a.rule.split('.')[0]}/${a.type}`), ...town.dressing.sockets.map((k) => k.rule.split('.')[0]!)]),
         rivers,
-        counts: emphasisCounts(w, roleCount, orchards(town.shape.facts).list.length),
+        counts: {
+          ...emphasisCounts(w, roleCount, orchards(town.shape.facts).list.length),
+          // The working waterfront: ports, and their large gantry cranes (D15-P).
+          ports: roleCount.get('port') ?? 0,
+          largeCranes: town.dressing.actors.filter((a) => a.type === 'port-crane' && a.variant === 'large').length,
+        },
       });
     }
   }
@@ -281,20 +286,24 @@ describe('grow a town: the survey (seeds 1 to 30, both generators)', () => {
     expect(misses.length).toBeLessThanOrEqual(Math.ceil(survey().length * 0.15));
   });
 
-  test('harbour towns grow the working waterfront: a port (a freighter calling) and a shipyard where the coast allows (counts printed)', () => {
+  test('harbour towns grow the working waterfront: a big port with a large crane (a second where there is room, freighters calling) and a shipyard where the coast allows (counts printed)', () => {
     const harbours = survey().filter((s) => s.character === 'harbour');
     const line = (s: Surveyed): string => {
       const why: string[] = [];
       if (!s.roles.has('port')) why.push('no port (no straight stretch of shore with open sea off it)');
       else if (!s.props.has('L38-F/ship-call')) why.push('a port, but no freighter can sail to its berth');
+      if (s.roles.has('port') && !s.counts.largeCranes) why.push('no stretch of 10 for a big port: one medium crane');
+      if ((s.counts.ports ?? 0) >= 2) why.push('two ports');
       if (!s.roles.has('shipyard')) why.push('no shipyard (no shore with sea down both sides of a slip and a shed site behind)');
       return `g${s.gen} s${s.seed}: ${why.join('; ') || 'port, freighter, shipyard'}`;
     };
     const ports = harbours.filter((s) => s.roles.has('port')).length, yards = harbours.filter((s) => s.roles.has('shipyard')).length;
     const freighters = harbours.filter((s) => s.props.has('L38-F/ship-call')).length;
-    console.log(`harbour towns: ${harbours.length}, with a port ${ports} (a freighter calling at ${freighters}), with a shipyard ${yards}\n${harbours.map(line).join('\n')}`);
-    // Every harbour town keeps its old waterfront; most also have the new one.
+    const large = harbours.filter((s) => (s.counts.largeCranes ?? 0) > 0).length, two = harbours.filter((s) => (s.counts.ports ?? 0) >= 2).length;
+    console.log(`harbour towns: ${harbours.length}, with a port ${ports} (a large gantry crane at ${large}, two ports at ${two}, a freighter calling at ${freighters}), with a shipyard ${yards}\n${harbours.map(line).join('\n')}`);
+    // Every harbour town keeps its old waterfront; most also have the new one, and a big port with a large crane (Derek, 2026-11-26).
     expect(ports).toBeGreaterThanOrEqual(Math.ceil(harbours.length * 0.7));
+    expect(large).toBeGreaterThanOrEqual(Math.ceil(harbours.length * 0.7));
     expect(yards).toBeGreaterThanOrEqual(Math.ceil(harbours.length * 0.5));
   });
 

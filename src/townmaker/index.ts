@@ -87,6 +87,11 @@ export function growTown(terrain: Terrain, seed: number, opts: GrowOptions = {})
 
 type Step = (town: Town) => unknown;
 
+/** A big port's lengths along the shore, longest first: 12 to 14 have a large crane and a medium one, or two large and a medium. */
+const BIG_PORT = [14, 13, 12, 11, 10];
+/** What a second port keeps its distance from. */
+const PORT_NEIGHBOURS = ['port', 'shipyard', 'harbour'];
+
 /** Every district the planner can ask for, by name. `name:n` asks again (a second barn, a second row). */
 const STEPS: Record<string, Step> = {
   square: (t) => buildSquare(t) || buildSmallSquare(t),
@@ -126,6 +131,8 @@ const STEPS: Record<string, Step> = {
   follyTower: buildFollyTower,
   walledLawn: buildWalledLawn,
   quay: (t) => buildQuayStretch(t, t.districts.length),
+  // A harbour town's last quays only where it has no second port: it should not take the whole coastline.
+  lateQuay: (t) => !t.districts.some((d) => d.name === 'port2') && buildQuayStretch(t, t.districts.length),
   waterfront: (t) => buildWaterfront(t, t.districts.length),
   fishMarket: buildFishMarket,
   townWall: (t) => buildTownWall(t, 9) || buildTownWall(t, 8) || buildTownWall(t, 11),
@@ -145,10 +152,19 @@ const STEPS: Record<string, Step> = {
   watermill: buildWatermill,
   flowers: (t) => buildFlowerBed(t, t.districts.length),
   // The working waterfront (port.ts): a container port a freighter can berth at (else a shorter one), a shipyard.
+  // A big port first (10 or more along the shore: a large gantry crane and a medium one), so a freighter
+  // lines up and berths; only where the coast has no such stretch a shorter one (one medium crane).
   port: (t) =>
-    buildPort(t, 'port', { lens: [14, 13, 12, 11, 10], depths: [5, 4], stores: 2, lineUp: 8 }) ||
-    buildPort(t, 'port', { lens: [14, 13, 12, 11, 10], depths: [5, 4], stores: 2 }) ||
+    buildPort(t, 'port', { lens: BIG_PORT, depths: [5, 4, 3], stores: 2, lineUp: 8 }) ||
+    buildPort(t, 'port', { lens: BIG_PORT, depths: [5, 4, 3], stores: 2 }) ||
+    buildPort(t, 'port', { lens: BIG_PORT, depths: [5, 4, 3], stores: 2, lanes: 1 }) ||
     buildPort(t, 'port', { lens: [9, 8, 7, 6], depths: [5, 4], stores: 1 }),
+  // A second port on another long stretch of coast, well apart from the first, the shipyard and the harbour.
+  // Only where a freighter can sail straight in to it too.
+  port2: (t) =>
+    buildPort(t, 'port2', { lens: BIG_PORT, depths: [5, 4, 3], stores: 1, lineUp: 8, apart: { names: PORT_NEIGHBOURS, d: 14 } }) ||
+    buildPort(t, 'port2', { lens: BIG_PORT, depths: [5, 4, 3], stores: 1, apart: { names: PORT_NEIGHBOURS, d: 14 } }) ||
+    buildPort(t, 'port2', { lens: [9], depths: [4, 3], stores: 1, lineUp: 6, apart: { names: PORT_NEIGHBOURS, d: 14 } }),
   smallPort: (t) => buildPort(t, 'port', { lens: [9, 8, 7, 6], depths: [4], stores: 1, reach: 22 }),
   shipyard: (t) => buildShipyard(t, 'shipyard'),
 };
@@ -159,7 +175,7 @@ const STEPS: Record<string, Step> = {
  * block about d steps from the square. See README.md for what each town is.
  */
 const PLANS: Record<Character, readonly string[]> = {
-  harbour: ['square', 'port', 'shipyard', 'greatHarbour', 'quay:1', 'quay:2', 'waterfront:1', 'quay:3', 'lighthouse', 'waterfront:2', 'fishMarket', 'willow', 'housing:0:8', 'chapel', 'courtyard', 'smithy', 'jetty', 'jetty:1', 'boardwalk', 'bridge', 'quay:4', 'riverside', 'housing:1:11', 'orchard', 'walledGarden'],
+  harbour: ['square', 'port', 'shipyard', 'greatHarbour', 'port2', 'quay:1', 'quay:2', 'waterfront:1', 'lateQuay:3', 'lighthouse', 'waterfront:2', 'fishMarket', 'willow', 'housing:0:8', 'chapel', 'courtyard', 'smithy', 'jetty', 'jetty:1', 'boardwalk', 'bridge', 'lateQuay:4', 'riverside', 'housing:1:11', 'orchard', 'walledGarden'],
   marble: ['forum', 'willow', 'acropolis', 'shrine:1', 'shrine:2', 'shrine:4', 'follyTower', 'housing:0:9', 'courtyard', 'viaduct', 'shrine:3', 'chapel', 'walledGarden', 'walledLawn', 'harbour', 'lighthouse', 'manor', 'courtyard:1', 'housing:1:12', 'viaduct:1', 'bridge', 'boardwalk', 'stairs'],
   castle: ['square', 'castle', 'smithy', 'chapel', 'wallTower', 'wallTower:1', 'hilltop', 'watchtower', 'housing:0:8', 'housing:1:11', 'walledGarden', 'walledLawn', 'wallTower:2', 'watchtower:1', 'cliff', 'harbour', 'lighthouse', 'willow', 'stairs', 'bridge', 'courtyard', 'walledLawn:1', 'fields', 'orchard'],
   market: ['square', 'greatMarket', 'housing:0:8', 'housing:1:10', 'millCorner', 'orchard', 'courtyard', 'school', 'chapel', 'smithy', 'courtyard:1', 'inhabitedBridge', 'harbour', 'smallPort', 'lighthouse', 'housing:2:13', 'fields', 'greenhouse', 'willow', 'bridge', 'stairs'],
