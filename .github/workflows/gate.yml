@@ -39,8 +39,10 @@ jobs:
 
   e2e:
     name: browser tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # A Mac, for its graphics card: on the Linux machines Chromium draws WebGL in software, and the
+    # first run there (2026-11-26) timed out in nearly every test. Free for a public repo all the same.
+    runs-on: macos-latest
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -48,6 +50,5 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      # No graphics card here: Chromium draws WebGL in software (tools/lib/browser.mjs).
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install chromium
       - run: npx vitest run --project e2e
