@@ -11,7 +11,7 @@ User=forum
 Group=forum
 WorkingDirectory=/var/lib/forum
 Environment=FORUM_DATA=/var/lib/forum/data
-Environment=PORT=8787
+Environment=PORT=8791
 Environment=HOST=127.0.0.1
 Environment=FORUM_PUBLIC_URL=https://towns.littlecity.io
 Environment=FORUM_GAME_URL=https://littlecity.io

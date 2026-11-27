@@ -3,7 +3,7 @@
 //
 // One Node program, no dependencies beyond Node: node:http in front of node:sqlite (store.ts). Caddy
 // stands before it for HTTPS only. createForum() makes the request handler (tests start it on a
-// random port, main.ts on 8787). Every answer to a refused request is a status and a fixed line
+// random port, main.ts on 8791). Every answer to a refused request is a status and a fixed line
 // (errors.ts); nothing a player sends is ever put on a page unescaped, and no error's details
 // (a stack, a SQL message) ever leave the server.
 //

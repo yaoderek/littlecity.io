@@ -17,11 +17,11 @@ own town decoder inside. Owner: Forum.
 ## Locally
 
 ```sh
-npm run forum          # builds and serves on http://localhost:8787, data in .context/forum-data
+npm run forum          # builds and serves on http://localhost:8791, data in .context/forum-data
 npm run forum:seed     # (another terminal) about 30 sample posts, likes and comments
 ```
 
-The local admin page is `http://localhost:8787/admin`, password `admin` (or `ADMIN_PASSWORD=... npm run forum`).
+The local admin page is `http://localhost:8791/admin`, password `admin` (or `ADMIN_PASSWORD=... npm run forum`).
 The sample towns are real grown towns; their pictures are placeholders (`server/seed/*.jpg`).
 
 The program also has these commands (on the server, prefix `sudo -u forum env FORUM_DATA=/var/lib/forum/data node /opt/forum/forum.mjs`):

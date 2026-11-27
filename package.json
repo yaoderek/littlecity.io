@@ -26,7 +26,7 @@
     "indexnow": "node tools/indexnow.mjs",
     "translate": "node tools/translate.mjs",
     "build:forum": "rolldown -c server/rolldown.config.mjs",
-    "forum": "npm run build:forum && FORUM_DATA=.context/forum-data PORT=8787 ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin} FORUM_GAME_URL=${FORUM_GAME_URL:-http://127.0.0.1:5173} node --disable-warning=ExperimentalWarning server/dist/forum.mjs",
+    "forum": "npm run build:forum && FORUM_DATA=.context/forum-data PORT=8791 ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin} FORUM_GAME_URL=${FORUM_GAME_URL:-http://127.0.0.1:5173} node --disable-warning=ExperimentalWarning server/dist/forum.mjs",
     "forum:seed": "node tools/forum-seed.mjs"
   },
   "dependencies": {

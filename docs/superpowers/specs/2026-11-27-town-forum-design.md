@@ -257,12 +257,12 @@ The server reads towns with the decoder it was built with; the game is released 
 
 - **New files** (Interface owns them): `src/forum/api.ts` (the calls, a 10-second timeout, the identity), `src/forum/sheet.ts` (the screen), `src/forum/post.ts` (a post and its comments), `src/forum/publish.ts` (the dialog), `src/forum/forum.css`, and tests beside them. Everything under `src/forum/` is loaded with a dynamic `import()` the first time the button is pressed (or when `?post=` is in the address), so it is not in the start bundle.
 - **Small hooks in existing files**: the button and its badge (src/ui/interface.ts); `forum` in the dots (src/ui/dots-state.ts); a Post button on My towns cards (src/ui/towns.ts); `visit`, `copy` and `?post=` in src/app/main.ts beside the share-link code, reusing `open()`, `leaving()`, `visiting`, `leaveSpecialTown()` and the banner; an optional `from?: string` (a post id) on `TownEntry` (src/app/library.ts), which old records simply lack.
-- **The address**: `VITE_FORUM_URL` in `.env.production` (`https://towns.littlecity.io`). Empty means no forum: no button at all. In dev and in the existing browser tests it is empty, so other chats' work and tests see no change; `npm run forum:dev` (and the forum's own tests) start the game with it set to `http://localhost:8787`.
+- **The address**: `VITE_FORUM_URL` in `.env.production` (`https://towns.littlecity.io`). Empty means no forum: no button at all. In dev and in the existing browser tests it is empty, so other chats' work and tests see no change; `npm run forum:dev` (and the forum's own tests) start the game with it set to `http://localhost:8791`.
 - **Words**: the forum's lines go in the existing language tables (a few KB per language, loaded as today). Accepted; the "start bundle grows by the button only" rule is about code.
 - The button is hidden in scenarios as well as in fly mode and under the loading drawing (the menu button is not hidden in scenarios today; the forum button is).
 - **The like count**: once per visit, after the town is on screen and only if `lc:forum` says the player has posted, one `GET /v1/me/news`. No answer: no number, no message.
 - **Analytics** (src/app/analytics.ts list): `forum_opened {tab}`, `post_opened`, `post_visited`, `post_copied`, `post_published {caption: bool, built_on: bool}`, `post_liked`, `comment_posted`, `post_shared`, `forum_unreachable`.
-- **Running it locally**: `npm run forum` starts the server on port 8787 with its data in `.context/forum-data`; `npm run forum:seed` fills it with about 30 sample posts made from the game's own grown towns, for previews and tests only.
+- **Running it locally**: `npm run forum` starts the server on port 8791 with its data in `.context/forum-data`; `npm run forum:seed` fills it with about 30 sample posts made from the game's own grown towns, for previews and tests only.
 
 ## Tests
 

@@ -7,7 +7,7 @@ towns.littlecity.io {
 	}
 	encode gzip
 	# Caddy sets X-Forwarded-For to the caller's address; the program trusts it only from this machine.
-	reverse_proxy 127.0.0.1:8787
+	reverse_proxy 127.0.0.1:8791
 	log {
 		output file /var/log/caddy/towns.log {
 			roll_size 20MiB

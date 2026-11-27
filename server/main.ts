@@ -11,7 +11,7 @@
 //
 // Settings, from the environment (the systemd unit sets them; server/README.md):
 //   FORUM_DATA        the data folder (default ./forum-data)
-//   PORT, HOST        where to listen (default 8787 on 127.0.0.1: Caddy is in front)
+//   PORT, HOST        where to listen (default 8791 on 127.0.0.1: Caddy is in front)
 //   ADMIN_PASSWORD    the admin page's password (unset: the page is off)
 //   FORUM_PUBLIC_URL  this server's address (default http://localhost:<port>)
 //   FORUM_GAME_URL    the game's address (default https://littlecity.io)
@@ -52,7 +52,7 @@ if (args[0] === '--codec') {
     store.close();
   }
 } else {
-  const port = Number(env.PORT || 8787);
+  const port = Number(env.PORT || 8791);
   const running = await startForum({
     dataDir,
     port,
