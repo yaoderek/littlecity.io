@@ -6,7 +6,7 @@ it's free, runs in your browser, works on your phone too.
 
 **[play it → littlecity.io](https://littlecity.io/?utm_source=github)**
 
-come hang out on [the discord](https://discord.gg/eVdQQVMzu): show off your towns, report bugs, ask for things.
+come hang out on [the discord](https://discord.gg/eGgTMmV2cr): show off your towns, report bugs, ask for things.
 
 [![a hand-drawn island town with a castle, a harbour and a lighthouse](docs/readme/welcome.jpg)](https://littlecity.io/?utm_source=github)
 
