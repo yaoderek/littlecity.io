@@ -1,4 +1,4 @@
-# Everyone's towns (the town forum) — Design
+# Global Village (the town forum) — Design
 
 Approved: pending (Derek). A project: a new server, and a new screen in the game.
 
@@ -18,7 +18,7 @@ Decided by Derek unless marked "(my call)".
 4. **On a post** a player can: like it (one like per person per post, can be taken back); read and write comments (one flat list, no replies to replies); **Visit** it (the town opens live, they can look and fly around); **Make a copy** (the town becomes a new town of theirs).
 5. **Copies credit the original.** A post made from a copy says "built on {name}'s town" and links to that post. The original shows how many copies were made.
 6. **No sign-up.** The first time a player posts or comments they pick a name; the browser remembers who they are.
-7. **No content checking.** People post whatever they like. Derek deals with bad posts himself, from a private admin page (my call: the page, and rate limits against scripted flooding).
+7. **No content checking and no cap on posting.** People post whatever they like, as often as they like. Derek deals with bad posts himself, from a private admin page (my call: the page).
 8. **One feed for every language**, posts mixed. Captions and comments are shown as written.
 9. **A like count on the forum button**, the way Instagram shows new likes: the number of new likes on the player's posts since they last opened the forum.
 10. **Players can delete their own posts and comments.**
@@ -71,7 +71,7 @@ How the game talks to it: plain HTTPS requests with JSON (no live connection: no
 
 | What | English text |
 |---|---|
-| The feature, the screen's title, the button's label | Everyone's towns |
+| The feature, the screen's title, the button's label | Global Village (Derek's name; Chinese 地球村, the everyday phrase) |
 | Tabs | Top · New · Mine |
 | Buttons | Post my town · Visit · Make a copy · Like · Share · Delete |
 
@@ -81,7 +81,7 @@ How the game talks to it: plain HTTPS requests with JSON (no live connection: no
 
 ### The button
 
-- Top centre of the screen, a pill: an icon of two little houses and the label "Everyone's towns". On a window narrower than 520 px the label is dropped and it is a round icon button the size of the menu button, still top centre.
+- Top centre of the screen, a pill: an icon of two little houses and the label "Global Village". On a window narrower than 520 px the label is dropped and it is a round icon button the size of the menu button, still top centre.
 - Hidden in fly mode, under the loading drawing, and in scenarios.
 - **The like count**: when the player has new likes on their posts, the button carries a heart and the number ("♥ 12"; 100 or more shows "99+"). New comments on their posts count into the same number (my call: one number, like a phone's app badge; the Mine tab says which is which). The number clears when the forum is opened (any tab).
 - Toasts and the visit banner sit at top centre today (`.lc-toasts`): they move to just below the button.
@@ -93,7 +93,7 @@ A full-window sheet built like My towns (src/ui/towns.ts): same card look, same 
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│ Everyone's towns        [ Top ] [ New ] [ Mine ]        ✕  │
+│ Global Village        [ Top ] [ New ] [ Mine ]        ✕  │
 │                                            [ Post my town ]│
 │ ┌───────────────┐ ┌───────────────┐ ┌───────────────┐      │
 │ │   picture     │ │   picture     │ │   picture     │      │
@@ -112,7 +112,7 @@ A full-window sheet built like My towns (src/ui/towns.ts): same card look, same 
 - **New**: newest first.
 - **Mine**: the player's own posts, newest first. Each card also shows what is new since they last opened the Mine tab ("+5 ♥", "2 new comments"). Two separate marks: the button's number counts from the last time the forum was opened; a card's "new" counts from the last time Mine was opened, so opening the forum on Top does not wipe what Mine has to show. Empty: "You haven't posted a town yet." and the Post my town button.
 - An empty Top or New: "No towns yet. Post the first one."
-- The server cannot be reached (no answer in 10 seconds, or an error): "Everyone's towns can't be reached right now." and a Try again button. Nothing else in the game changes.
+- The server cannot be reached (no answer in 10 seconds, or an error): "Global Village can't be reached right now." and a Try again button. Nothing else in the game changes.
 - Clicking a card opens the post.
 
 ### A post
@@ -205,7 +205,7 @@ One program (Node 24, TypeScript, in `server/` in this repo, MIT like the rest),
 
 - The town code decodes with the game's own `decodeTown` and has something built in it. A town from a modified copy with pieces this game does not know is refused: "This town can't be opened by Little City."
 - Limits: town code up to 200,000 characters; picture a JPEG up to 300 KB, 640 × 400; caption up to 140 characters; name 1 to 20; comment 1 to 280. Text is trimmed, and control characters and line breaks are removed.
-- Rate limits per player: 10 posts an hour, 30 comments an hour, 300 likes an hour. Per network address: 300 new identities a day (loose on purpose: mainland mobile carriers and VPN exits put many players behind one address; this only stops a script). Over the limit: "Slow down a little. Try again in a few minutes."
+- No limit on how many towns a player posts (Derek, 2026-11-27: "don't cap posts"). Rate limits per player on the rest: 30 comments an hour, 300 likes an hour. Per network address: 300 new identities a day (loose on purpose: mainland mobile carriers and VPN exits put many players behind one address; this only stops a script). Over the limit: "Slow down a little. Try again in a few minutes."
 - A blocked player (admin page) can read but not post, comment or like, and their posts and comments are hidden from everyone else.
 
 ### The API
