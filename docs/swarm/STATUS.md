@@ -2323,3 +2323,13 @@ lines removed the undo test still passed, so these guard a
 regression, they did not catch a bug. Merged into `main`; the live
 build is untouched (same test-only change kept on
 `fix/sally-undo-live` `0429af2c`, not needed for a publish).
+
+**2026-11-27, about 00:45: two releases queued by other chats on the
+live build `e55df96c`.** The PostHog numbers chat: `preview/tree-clear`
+(`ae7d9a32` = live + "a piece put on a tree takes the tree's place",
+signed off by Derek, in `main` as `482ccc5f`), to be published when
+its gate is green. Someone else (worktree `prague/.context/wt-raiders`,
+probably the strategy chat; not the orchestrator): `fix/raiders-off`
+(`0e5166e3`, raiders off until switched on in the menu). Whichever
+publishes second must carry the other's commit. The orchestrator told
+both chats; it has nothing of its own waiting to deploy.
