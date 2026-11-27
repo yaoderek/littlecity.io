@@ -25,7 +25,7 @@ import { createSlider, type SliderStop } from './slider';
 import type { CameraPose, Ghost, TownView } from '@/render/api';
 import { builtByHand, refused, tally, track, watchGrowth } from '@/app/analytics';
 import type { Game } from '@/app/game';
-import { brushAt, copyLook, landColumn, levelSteps, lineCells, planErase, planUse, type ActionContext, type Plan, type ToolState } from './actions';
+import { brushAt, copyLook, landColumn, levelSteps, lineCells, planErase, planUse, treeSwap, type ActionContext, type Plan, type ToolState } from './actions';
 import { el, iconButton, installTheme, isCoarsePointer, isPhone, PHONE_QUERY, setIcon } from './dom';
 import { icon } from './icons';
 import { createFeedback, wiggle, type Feedback } from './feedback';
@@ -1033,7 +1033,13 @@ export function createInterface(host: InterfaceHost): Interface {
       if (run.done.has(c)) continue;
       run.done.add(c);
       if (first.type === 'placeFloor') game.edit({ type: 'placeFloor', cell: c, floor: first.floor });
-      else if (first.type === 'placeBlock') game.edit({ type: 'placeBlock', cell: c, kind: first.kind, color: run.color, from: null });
+      else if (first.type === 'placeBlock') {
+        const place: Edit = { type: 'placeBlock', cell: c, kind: first.kind, color: run.color, from: null };
+        // A run through trees takes their places.
+        const swap = treeSwap(game.world, game.terrain, place);
+        if (swap) game.editAll(swap);
+        else game.edit(place);
+      }
     }
     run.last = cell;
   };
@@ -1250,7 +1256,8 @@ export function createInterface(host: InterfaceHost): Interface {
       const seen = look(x, y);
       if (!seen) return false;
       const plan = planUse(tool(), seen.pick, seen.ctx);
-      const first = plan.tries[0];
+      // A run that starts on a tree: the piece taking the tree's place sets the run.
+      const first = plan.steps?.at(-1) ?? plan.tries[0];
       if (!first) return false;
       game.begin();
       handAt = [seen.pick.point[0], seen.pick.point[1], seen.pick.point[2]];

@@ -4,8 +4,8 @@
 import { describe, expect, test } from 'vitest';
 import { CELL_H, E, edgeKey, key, N, NO_CELL, S, W } from '@/core/grid';
 import { flatTerrain, TerrainBuilder, TownBuilder } from '@/scenario';
-import { emptyWorld } from '@/world/world';
-import { CHANGE_CYCLE, lineCells, planErase, planUse, stairsRot, type ActionContext } from './actions';
+import { applyEdits, emptyWorld } from '@/world/world';
+import { CHANGE_CYCLE, lineCells, planErase, planUse, stairsRot, treeSwap, type ActionContext } from './actions';
 import { faceZone, pickCell, type Pick } from './pick';
 import { allPieceIds, drawerItems, DRAWER_IDS, paintsRuns, trayItem } from './pieces';
 
@@ -65,6 +65,33 @@ describe('placing', () => {
     expect(planUse({ item: 'plaza', swatch: 'auto' }, pickAt(ctx, down(12.5, 12.5)), ctx).tries).toEqual([{ type: 'placeFloor', cell: key(12, 1, 12), floor: 'plaza' }]);
     // A house is solid: a floor goes on top of it.
     expect(planUse({ item: 'garden', swatch: 'auto' }, pickAt(ctx, down(14.5, 12.5)), ctx).tries).toEqual([{ type: 'placeFloor', cell: key(14, 2, 12), floor: 'garden' }]);
+  });
+
+  test('a piece put on a tree takes its place, as one step; a tree on a tree, or a dock on land, does not', () => {
+    const ctx = setup((b) => b.put('tree', 12, 12));
+    const tree = key(12, 1, 12);
+    const house = planUse({ item: 'house', swatch: 'auto' }, pickAt(ctx, down(12.5, 12.5)), ctx);
+    expect(house).toEqual({
+      tries: [{ type: 'eraseBlock', cell: tree }],
+      at: tree,
+      steps: [{ type: 'eraseBlock', cell: tree }, { type: 'placeBlock', cell: tree, kind: 'house', color: 'auto', from: null }],
+    });
+    const after = applyEdits(ctx.world, ctx.terrain, house.steps!);
+    expect(after.applied).toBe(2);
+    expect(after.world.blocks.get(tree)?.kind).toBe('house');
+    // Nothing to gain from swapping a tree for a tree, and a dock never stands on land: refused as before.
+    for (const item of ['tree', 'dock'] as const) {
+      const plan = planUse({ item, swatch: 'auto' }, pickAt(ctx, down(12.5, 12.5)), ctx);
+      expect(plan.steps).toBeUndefined();
+      expect(plan.tries[0]).toMatchObject({ type: 'placeBlock', cell: key(12, 2, 12) });
+    }
+  });
+
+  test('treeSwap: a run crossing a tree takes its place', () => {
+    const ctx = setup((b) => b.put('tree', 12, 12));
+    const wall = { type: 'placeBlock' as const, cell: key(12, 1, 12), kind: 'wall' as const, color: 'auto' as const, from: null };
+    expect(treeSwap(ctx.world, ctx.terrain, wall)).toEqual([{ type: 'eraseBlock', cell: key(12, 1, 12) }, wall]);
+    expect(treeSwap(ctx.world, ctx.terrain, { ...wall, cell: key(13, 1, 12) })).toBeNull();
   });
 });
 

@@ -222,6 +222,27 @@ describe('desktop: mouse and keys', () => {
     expect(errors).toEqual([]);
   });
 
+  test('a house put on a tree takes its place, and one undo brings the tree back', async () => {
+    const { page, errors } = await open(TOWN);
+    const blocks = await count(page);
+    await pick(page, 'house');
+    await page.mouse.move(...(await blockTop(page, 27, 1, 22)));
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: path.join(SHOTS, 'tree-swap-ghost.png') });
+    await page.mouse.click(...(await blockTop(page, 27, 1, 22)));
+    expect((await blockAt(page, TREE))!.kind).toBe('house');
+    expect(await blockAt(page, key(27, 2, 22))).toBeNull();
+    expect(await count(page)).toBe(blocks);
+    expect(await page.locator('[data-ui="refusal"]').count()).toBe(0);
+    await page.mouse.move(5, 5);
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: path.join(SHOTS, 'tree-swap.png') });
+    await page.keyboard.press('ControlOrMeta+z');
+    expect((await blockAt(page, TREE))!.kind).toBe('tree');
+    expect(await count(page)).toBe(blocks);
+    expect(errors).toEqual([]);
+  });
+
   test('fence and wall: the centre of a square places a cell piece, its outer strip an edge piece', async () => {
     const { page, errors } = await open(TOWN);
     await pick(page, 'fence');

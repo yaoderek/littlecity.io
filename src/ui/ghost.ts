@@ -13,7 +13,7 @@ import { columnIndex, keyX, keyZ, NO_CELL, type CellKey } from '@/core/grid';
 import type { Edit, EditResult, Terrain, World } from '@/core/world';
 import type { Ghost } from '@/render/api';
 import type { ShapePlan, StructureId } from '@/resolve/plan';
-import { applyEdit } from '@/world/world';
+import { applyEdit, applyEdits } from '@/world/world';
 import type { Plan } from './actions';
 import type { Run } from './length';
 
@@ -58,12 +58,15 @@ const withShimmer = (cells: CellKey[]): { shimmer?: CellKey[] } => (cells.length
 
 /** The ghost for a planned placement, or null when there is nothing to show. */
 export function ghostFor(plan: Plan, host: GhostHost): Ghost | null {
-  const placing = plan.tries.some(isPlacement) || plan.refusal !== undefined;
+  // A piece put on a tree: the tree goes and the piece takes its place (steps), shown as one.
+  const steps = plan.steps && plan.steps.length > 1 ? plan.steps : null;
+  const placing = (steps ?? plan.tries).some(isPlacement) || plan.refusal !== undefined;
   if (!placing) return null;
-  const edit = plan.tries.find((e) => host.can(e).ok);
-  if (!edit) return plan.at === NO_CELL ? null : { plan: host.shape, show: [], refuse: plan.at };
+  const first = plan.tries.find((e) => host.can(e).ok);
+  if (!first) return plan.at === NO_CELL ? null : { plan: host.shape, show: [], refuse: plan.at };
+  const edit = steps ? steps.findLast(isPlacement)! : first;
 
-  const preview = host.preview(applyEdit(host.world, host.terrain, edit));
+  const preview = host.preview(steps ? applyEdits(host.world, host.terrain, steps).world : applyEdit(host.world, host.terrain, edit));
   let id: StructureId | undefined;
   if (edit.type === 'placeBlock') id = preview.structureAt.get(edit.cell);
   else if (edit.type === 'placeFloor') id = preview.floorAt.get(edit.cell);

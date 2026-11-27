@@ -179,8 +179,35 @@ export function planUse(tool: ToolState, pick: Pick, ctx: ActionContext): Plan {
     const style = houseStyle(tool.style);
     if (style && tool.swatch === 'auto') edit.color = style.wall;
   }
-  return { tries: [edit], at: target };
+  return clearingTree(edit, pick, ctx) ?? { tries: [edit], at: target };
 }
+
+/**
+ * A piece put on a tree takes the tree's place: the tree goes and the piece stands where it stood,
+ * as one undo step (a tree is not solid, so nothing can stand on it). Only when the piece could stand
+ * there once the tree is gone; otherwise null, and the click is refused as before.
+ */
+function clearingTree(edit: Edit & { type: 'placeBlock' }, pick: Pick, ctx: ActionContext): Plan | null {
+  if (keyY(edit.cell) === 0) return null;
+  const tree = below(edit.cell);
+  if (ctx.world.blocks.get(tree)?.kind !== 'tree') return null;
+  const place: Edit = { ...edit, cell: tree, from: ctx.world.blocks.has(below(tree)) ? below(tree) : null };
+  if (edit.kind === 'stairs') place.rot = stairsRot(tree, pick.point, { ...ctx, world: applyEdit(ctx.world, ctx.terrain, { type: 'eraseBlock', cell: tree }) });
+  const steps = treeSwap(ctx.world, ctx.terrain, place);
+  return steps ? { tries: [steps[0]!], at: tree, steps } : null;
+}
+
+/**
+ * Putting a piece where a tree stands: the tree's erasing and then the piece, when the piece could
+ * stand there once the tree is gone (never a tree for a tree); otherwise null.
+ */
+export function treeSwap(w: World, t: Terrain, place: Edit & { type: 'placeBlock' }): Edit[] | null {
+  if (place.kind === 'tree' || w.blocks.get(place.cell)?.kind !== 'tree') return null;
+  const erase: Edit = { type: 'eraseBlock', cell: place.cell };
+  return canApply(applyEdit(w, t, erase), t, place).ok ? [erase, place] : null;
+}
+
+const below = (cell: CellKey): CellKey => (keyY(cell) === 0 ? NO_CELL : key(keyX(cell), keyY(cell) - 1, keyZ(cell)));
 
 /** The column a land tool acts on: the ground, block or water pointed at. */
 export function landColumn(pick: Pick): { x: number; z: number } {
