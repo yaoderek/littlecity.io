@@ -46,6 +46,34 @@ function run(t: Turmoil, watch?: (raid: Raid) => void): { raid: Raid; burnt: num
   return { raid, burnt: raid.burnt, carried, age: raid.age, phases };
 }
 
+/**
+ * People the raid or the sally still holds: a raider still in the crowd, or anybody hidden in a dust cloud that is
+ * not the town's own street scuffle (L50: two residents who bump into each other may start one at any time,
+ * undo or not; it ends by itself).
+ */
+function held(t: Turmoil): string[] {
+  return crowdOf(t.stage)!
+    .people.filter((p) => (p.raider && p.mode !== 'gone') || (p.inCloud && !(p.scuffle && !p.scuffle.forced)))
+    .map((p) => `${p.id}${p.raider ? ' (raider)' : ''}${p.inCloud ? ' in a cloud' : ''}${p.scuffle?.forced ? ' (a brawl with a raider)' : ''}`);
+}
+
+/** Plays until the garrison is in a brawl with the band, and a bold townsman is in one with a raider too. */
+function brawling(t: Turmoil): void {
+  const crowd = crowdOf(t.stage)!;
+  const raid = raidsOf(t.stage).current!;
+  for (let s = 0; s < 150 && !(salliesOf(t.stage).list[0]?.brawls.length ?? 0); s++) t.run(0.5);
+  expect(salliesOf(t.stage).list[0]?.brawls.length ?? 0, 'a soldier in a brawl').toBeGreaterThan(0);
+  expect(raid.pinned.size).toBeGreaterThan(0);
+  // A townsman takes on a raider as well (the town's own fight back), if none is at it already.
+  if (!crowd.scuffles.now) {
+    const r = raid.raiders.find((x) => x.person && x.person.visible && !x.person.inCloud && (x.person.mode === 'walk' || x.person.mode === 'linger'));
+    const q = crowd.people.find((p) => !p.raider && !p.child && p.visible && !p.inCloud && (p.mode === 'walk' || p.mode === 'linger'));
+    if (r && q) crowd.scuffles.between(q, r.person!);
+  }
+  t.run(1 / 30);
+  expect(crowd.people.filter((p) => p.inCloud).length, 'people in clouds when it ends').toBeGreaterThan(1);
+}
+
 afterEach(() => {
   setStyle('raid', 'sally', 1);
 });
@@ -94,6 +122,7 @@ describe('the garrison against a raid', () => {
     expect(g.troop!.s, 'the troop marches its round again').not.toBe(s0);
     expect(raidsOf(t.stage).handles(), 'nothing of it left drawn').toBe(0);
     expect(crowdOf(t.stage)!.people.filter((p) => p.raider && p.mode !== 'gone').length).toBe(0);
+    expect(held(t), 'nobody left hidden in a cloud').toEqual([]);
   }, LONG);
 
   test('one at a time: a second party called while the garrison is out is not repelled; resting, it does not turn out', () => {
@@ -116,12 +145,12 @@ describe('the garrison against a raid', () => {
     expect(g.out).toBeNull();
   }, LONG);
 
-  test('undo while the garrison is out: every soldier straight back in his round, nothing left; the town as before', () => {
+  test('undo in the thick of the fight (soldiers and a townsman in brawls with raiders): every soldier straight back in his round, nobody left in a cloud, nothing left; the town as before', () => {
     const t = town('grown-harbour');
     const before = encodeTown(t.game.world);
     const raids = raidsOf(t.stage);
     raids.summon({ at: null, kind: 'landing' });
-    for (let s = 0; s < 120 && salliesOf(t.stage).list[0]?.phase !== 'fight'; s++) t.run(1);
+    brawling(t);
     const g = garrisonsOf(t.stage)[0]!;
     expect(g.out).not.toBeNull();
     t.mischief.cancel();
@@ -129,7 +158,7 @@ describe('the garrison against a raid', () => {
     expect(g.out).toBeNull();
     expect(salliesOf(t.stage).list.length).toBe(0);
     expect(raids.handles()).toBe(0);
-    expect(crowdOf(t.stage)!.people.filter((p) => p.raider && p.mode !== 'gone' || p.inCloud).length).toBe(0);
+    expect(held(t)).toEqual([]);
     expect(encodeTown(t.game.world)).toBe(before);
     const s0 = g.troop!.s;
     t.run(6);
@@ -149,6 +178,21 @@ describe('the garrison against a raid', () => {
     expect(raids.list.length).toBe(0);
     expect(g.out).toBeNull();
     expect(raids.handles()).toBe(0);
+    expect(held(t)).toEqual([]);
+  }, LONG);
+
+  test('the ship sunk in the thick of the fight: everybody let go of, the band swims off, the soldiers march home', () => {
+    const t = town('grown-harbour');
+    const raids = raidsOf(t.stage);
+    raids.summon({ at: null, kind: 'landing' });
+    const raid = raids.current!;
+    brawling(t);
+    t.mischief.dropBomb([raid.ship!.x, 0.5, raid.ship!.z]);
+    for (let s = 0; s < 400 && raids.list.length + salliesOf(t.stage).list.length > 0; s++) t.run(1);
+    expect(raids.list.length).toBe(0);
+    expect(garrisonsOf(t.stage)[0]!.out).toBeNull();
+    expect(raids.handles()).toBe(0);
+    expect(held(t)).toEqual([]);
   }, LONG);
 
   test('no castle, no garrison: a raid as before', () => {
