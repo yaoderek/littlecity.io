@@ -14,9 +14,6 @@ import { whenText } from '@/ui/towns';
 import { clip, codePoints, ForumError, LIMITS, type Comment, type ForumApi, type FullPost, type Post } from './api';
 import { glyph } from './glyphs';
 
-/** Comments shown at first; the older ones wait behind "Earlier comments". */
-export const COMMENTS_SHOWN = 40;
-
 export interface PostViewHost {
   api: ForumApi;
   app: ForumAppHost;
@@ -229,25 +226,31 @@ export function createPostView(host: PostViewHost, id: string): PostView {
     };
     const countLine = el('h3', { class: 'lc-forum-comments-head' });
     const showCount = (): void => {
-      countLine.textContent = post.thread.length ? t({ one: '{n} comment', other: '{n} comments' }, { n: post.thread.length }) : t('No comments yet.');
+      countLine.textContent = post.comments ? t({ one: '{n} comment', other: '{n} comments' }, { n: post.comments }) : t('No comments yet.');
     };
     showCount();
-    const hidden = Math.max(0, post.thread.length - COMMENTS_SHOWN);
-    list.replaceChildren(...post.thread.slice(hidden).map(row));
-    const earlier =
-      hidden > 0
-        ? el('button', {
-            class: 'lc-text-btn lc-forum-earlier',
-            text: t('Earlier comments'),
-            attrs: { type: 'button', 'data-forum': 'earlier' },
-            on: {
-              click: () => {
-                list.prepend(...post.thread.slice(0, hidden).map(row));
-                earlier?.remove();
-              },
-            },
-          })
-        : null;
+    list.replaceChildren(...post.thread.map(row));
+    // The server sends the latest 200; the ones before wait behind "Earlier comments".
+    let before = post.earlier;
+    const earlier = el('button', { class: 'lc-text-btn lc-forum-earlier', text: t('Earlier comments'), attrs: { type: 'button', 'data-forum': 'earlier' } });
+    earlier.toggleAttribute('hidden', !before);
+    earlier.addEventListener('click', () => {
+      if (!before) return;
+      earlier.disabled = true;
+      host.api.earlierComments(post.id, before).then(
+        (page) => {
+          post.thread.unshift(...page.thread);
+          list.prepend(...page.thread.map(row));
+          before = page.earlier;
+          earlier.toggleAttribute('hidden', !before);
+          earlier.disabled = false;
+        },
+        (e: unknown) => {
+          earlier.disabled = false;
+          host.say(e instanceof ForumError ? e.text : t("Global Village can't be reached right now."));
+        },
+      );
+    });
 
     // ── writing one ───────────────────────────────────────────────────────
     const me = host.api.me();

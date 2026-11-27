@@ -23,8 +23,9 @@ export function cannotPost(town: { code: string; worth: boolean; visiting: boole
 export function checkWords(name: string, caption: string): string | null {
   const n = codePoints(name.trim());
   if (n < 1) return t('Pick a name first.');
-  if (n > LIMITS.name) return t('A name can be up to {n} characters.', { n: LIMITS.name });
-  if (codePoints(caption.trim()) > LIMITS.caption) return t('Say it in {n} characters or fewer.', { n: LIMITS.caption });
+  // The server's own lines (server/errors.ts).
+  if (n > LIMITS.name) return t('A name is 1 to 20 characters.');
+  if (codePoints(caption.trim()) > LIMITS.caption) return t('A caption is at most 140 characters.');
   return null;
 }
 

@@ -1,7 +1,7 @@
 /* Global Village's button (src/ui/forum-button.ts): a pill at the top centre, a round button the size of the
    menu's on a narrow window, with a heart and a number when there is news. Owner: Interface. */
 
-.lc-forum-card {
+.lc-forum-pill {
   position: absolute;
   top: calc(10px + env(safe-area-inset-top));
   left: 50%;
@@ -20,7 +20,7 @@
   width: 27px;
   height: 27px;
 }
-.lc-forum-label {
+.lc-forum-btn-label {
   font-size: 13.5px;
   font-weight: 700;
   white-space: nowrap;
@@ -69,7 +69,7 @@
 }
 /* Narrow: the icon alone, round, the size of the menu button (44 px there: ui.css, .lc-round). */
 @media (max-width: 519.98px) {
-  .lc-forum-label {
+  .lc-forum-btn-label {
     display: none;
   }
   .lc-forum-btn {
@@ -96,4 +96,12 @@
 .lc-guide-forum-icon .lc-icon {
   width: 60%;
   height: 60%;
+}
+/* A narrow phone whose right-hand buttons have grown (undo and redo there, or the sky opened to its three):
+   they would reach the middle, so the button stands beside the menu instead. */
+@media (max-width: 430px) {
+  .lc-phone:has(.lc-corner-right > :is([data-ui='undo'], [data-ui='redo']):not(:disabled), .lc-corner-right.lc-sky-open) .lc-forum-pill {
+    left: calc(68px + env(safe-area-inset-left));
+    transform: none;
+  }
 }

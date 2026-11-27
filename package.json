@@ -25,7 +25,7 @@
     "seo": "node tools/seo.mjs",
     "indexnow": "node tools/indexnow.mjs",
     "translate": "node tools/translate.mjs",
-    "forum:dev": "VITE_FORUM_URL=http://localhost:8787 vite",
+    "forum:dev": "VITE_FORUM_URL=http://localhost:8791 vite",
     "forum:fake": "node tools/forum-fake.mjs"
   },
   "dependencies": {

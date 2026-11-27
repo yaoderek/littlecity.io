@@ -28,7 +28,8 @@ function fakeApi(over: Partial<ForumApi> = {}): ForumApi & { pages: Record<strin
     identity: async () => ({ id: 'p', secret: 's' }),
     setName: async () => undefined,
     posts: vi.fn((tab: string) => (pages[tab] ?? (async () => ({ posts: [], next: null })))()),
-    post: async (id: string): Promise<FullPost> => ({ ...post(id), code: 'CODE', thread: [] }),
+    post: async (id: string): Promise<FullPost> => ({ ...post(id), code: 'CODE', thread: [], earlier: null }),
+    earlierComments: async () => ({ thread: [], earlier: null }),
     publish: async () => 'new',
     remove: async () => undefined,
     like: vi.fn(async () => undefined),
@@ -164,7 +165,7 @@ describe('a post', () => {
     const visits: { id: string; code: string }[] = [];
     let backTo: (() => void) | null = null;
     const api = fakeApi({
-      post: async (id) => ({ ...post(id, { parent: { id: 'old', name: 'tom' } }), code: 'TOWNCODE', thread: [{ id: 'c1', name: '小林', text: '好可爱!', created: Date.now() - 60_000, mine: false }] }),
+      post: async (id) => ({ ...post(id, { parent: { id: 'old', name: 'tom' } }), code: 'TOWNCODE', thread: [{ id: 'c1', name: '小林', text: '好可爱!', created: Date.now() - 60_000, mine: false }], earlier: null }),
       me: () => ({ id: 'p', secret: 's', name: 'me' }),
     });
     const f = open(api, app({ visit: (p, then) => (visits.push(p), (backTo = then.back), null) }));
@@ -203,7 +204,7 @@ describe('player text is only ever text', () => {
     htmlWrites.length = 0;
     const evil = post('e', { name: EVIL, caption: EVIL, parent: { id: 'p', name: EVIL } });
     const api = fakeApi({
-      post: async () => ({ ...evil, code: 'C', thread: [{ id: 'c', name: EVIL, text: EVIL, created: Date.now(), mine: false }] }),
+      post: async () => ({ ...evil, code: 'C', thread: [{ id: 'c', name: EVIL, text: EVIL, created: Date.now(), mine: false }], earlier: null }),
     });
     api.pages.top = async () => ({ posts: [evil], next: null });
     const f = open(api);

@@ -19,8 +19,8 @@ describe('the limits', () => {
     expect(emoji.length).toBe(280);
     expect(checkWords('mira', chinese)).toBeNull();
     expect(checkWords('mira', emoji)).toBeNull();
-    expect(checkWords('mira', `${chinese}我`)).toBe('Say it in 140 characters or fewer.');
-    expect(checkWords('mira', `${emoji}🏡`)).toBe('Say it in 140 characters or fewer.');
+    expect(checkWords('mira', `${chinese}我`)).toBe('A caption is at most 140 characters.');
+    expect(checkWords('mira', `${emoji}🏡`)).toBe('A caption is at most 140 characters.');
     expect(checkWords('mira', '')).toBeNull();
   });
 
@@ -28,7 +28,7 @@ describe('the limits', () => {
     expect(checkWords('   ', 'hi')).toBe('Pick a name first.');
     expect(checkWords('小'.repeat(20), '')).toBeNull();
     expect(checkWords('🐱'.repeat(20), '')).toBeNull();
-    expect(checkWords('a'.repeat(21), '')).toBe('A name can be up to 20 characters.');
+    expect(checkWords('a'.repeat(21), '')).toBe('A name is 1 to 20 characters.');
   });
 
   test('an island with nothing built, a town too big, a town being visited: not posted, with a plain reason', () => {

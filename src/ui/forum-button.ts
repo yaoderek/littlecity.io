@@ -145,10 +145,10 @@ export function createForumButton(opts: ForumButtonOptions): ForumButton {
   const badge = el('span', { class: 'lc-forum-badge', attrs: { hidden: '', 'data-ui': 'forum-badge' } }, [el('span', { class: 'lc-forum-badge-heart', html: icon('heart') }), badgeCount]);
   const button = el('button', { class: 'lc-btn lc-forum-btn', title: label, attrs: { type: 'button', 'aria-label': label, 'data-ui': 'forum' } }, [
     el('span', { class: 'lc-btn-icon', html: icon('village') }),
-    el('span', { class: 'lc-forum-label', text: label }),
+    el('span', { class: 'lc-forum-btn-label', text: label }),
     badge,
   ]);
-  const card = el('div', { class: 'lc-card lc-forum-card', attrs: { hidden: '', 'data-ui': 'forum-card' } }, [button]);
+  const card = el('div', { class: 'lc-card lc-forum-pill', attrs: { hidden: '', 'data-ui': 'forum-card' } }, [button]);
 
   let controller: ForumController | null = null;
   let loadingModule: Promise<ForumController | null> | null = null;

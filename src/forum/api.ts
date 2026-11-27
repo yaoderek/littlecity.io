@@ -39,10 +39,12 @@ export interface Comment {
   mine: boolean;
 }
 
-/** One post, opened: its town and its comments, oldest first. */
+/** One post, opened: its town and its latest comments (up to 200), oldest first. */
 export interface FullPost extends Post {
   code: string;
   thread: Comment[];
+  /** The cursor for the comments before these; null when these are all. */
+  earlier: string | null;
 }
 
 export interface Page {
@@ -76,14 +78,31 @@ export class ForumError extends Error {
  * language files carry them; say() reads any of them in the player's language, and any other as it came.
  */
 export function serverLines(): string[] {
+  // server/errors.ts, character for character.
   return [
-    t("This town can't be opened by Little City."),
-    t('Slow down a little. Try again in a few minutes.'),
+    t("That request wasn't understood."),
+    t('Not found.'),
     t('That town is gone.'),
+    t('That comment is gone.'),
+    t("This browser's Global Village identity wasn't recognised."),
+    t("That isn't yours."),
+    t("You can't post, comment or like in Global Village."),
+    t('Slow down a little. Try again in a few minutes.'),
+    t('That is too big to send.'),
     t('This town is too big to post.'),
+    t("This town can't be opened by Little City."),
     t('Build something first.'),
+    t('The picture must be a JPEG of at most 640 × 400 and 300 KB.'),
+    t('A caption is at most 140 characters.'),
+    t('Pick a name first.'),
+    t('A name is 1 to 20 characters.'),
+    t('A comment is 1 to 280 characters.'),
+    t('Something went wrong on the server. Try again later.'),
   ];
 }
+
+/** The server no longer knows this browser's identity (its data was reset): a new one is made and the call tried once more. */
+export const WHO_ARE_YOU = "This browser's Global Village identity wasn't recognised.";
 
 /** Text counted as a reader sees it (code points): Chinese and emoji count one each. */
 export function codePoints(s: string): number {
@@ -122,6 +141,8 @@ export interface ForumApi {
   setName(name: string): Promise<void>;
   posts(tab: ForumTab, after?: string | null): Promise<Page>;
   post(id: string): Promise<FullPost>;
+  /** The comments before `before` (a post's `earlier` cursor), oldest first, and the cursor for the ones before those. */
+  earlierComments(id: string, before: string): Promise<{ thread: Comment[]; earlier: string | null }>;
   publish(p: { code: string; caption: string; picture: string; parent?: string | null }): Promise<string>;
   remove(id: string): Promise<void>;
   like(id: string, on: boolean): Promise<void>;
@@ -139,9 +160,9 @@ export interface ForumApi {
 
 const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : Number(v) || 0);
 const str = (v: unknown): string => (typeof v === 'string' ? v : v === null || v === undefined ? '' : String(v));
-/** A time as the server may write it: ms, seconds, or an ISO date. */
+/** A time as the server writes it: ms since 1970 (an ISO date is read too). */
 export function toTime(v: unknown): number {
-  if (typeof v === 'number' && Number.isFinite(v)) return v < 1e11 ? v * 1000 : v;
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
   if (typeof v === 'string') {
     const n = Number(v);
     if (v.trim() !== '' && Number.isFinite(n)) return toTime(n);
@@ -156,7 +177,7 @@ export function readPost(raw: unknown): Post {
   const parentRaw = p.parent as Record<string, unknown> | null | undefined;
   const parent =
     parentRaw && typeof parentRaw === 'object' && parentRaw.id !== undefined && parentRaw.id !== null
-      ? { id: str(parentRaw.id), name: str(parentRaw.name), ...(parentRaw.gone === true || !str(parentRaw.name) ? { gone: true } : {}) }
+      ? { id: str(parentRaw.id), name: str(parentRaw.name), ...(parentRaw.gone === true || parentRaw.name === null || parentRaw.name === undefined ? { gone: true } : {}) }
       : null;
   return {
     id: str(p.id),
@@ -196,6 +217,16 @@ export function createForumApi(opts: ForumApiOptions): ForumApi {
     }
   };
   const current = (): ForumIdentity | null => readIdentity(opts.storage) ?? held;
+  /** Forgets an identity the server does not know any more. */
+  const forget = (): void => {
+    held = null;
+    try {
+      opts.storage?.setItem(FORUM_KEY, 'null');
+    } catch {
+      // nothing kept to forget
+    }
+  };
+  const unknown = (e: unknown): boolean => e instanceof ForumError && e.line === WHO_ARE_YOU;
 
   async function call<T>(method: string, path: string, body?: unknown, secret?: string): Promise<T> {
     const stop = new AbortController();
@@ -247,9 +278,32 @@ export function createForumApi(opts: ForumApiOptions): ForumApi {
       });
     return making;
   };
-  const authed = async <T>(method: string, path: string, body?: unknown): Promise<T> => call<T>(method, path, body, (await identity()).secret);
+  const authed = async <T>(method: string, path: string, body?: unknown): Promise<T> => {
+    try {
+      return await call<T>(method, path, body, (await identity()).secret);
+    } catch (e) {
+      if (!unknown(e)) throw e;
+      // The server lost who this is (its data was reset): a new identity, the name carried over, one more try.
+      const name = current()?.name;
+      forget();
+      const who = await identity();
+      if (name) {
+        await call('PUT', '/v1/me', { name }, who.secret);
+        keep({ ...who, name });
+      }
+      return call<T>(method, path, body, who.secret);
+    }
+  };
   /** Reads that work without an identity, but say who is asking when there is one (liked, mine). */
-  const read = <T>(path: string): Promise<T> => call<T>('GET', path, undefined, current()?.secret);
+  const read = async <T>(path: string): Promise<T> => {
+    try {
+      return await call<T>('GET', path, undefined, current()?.secret);
+    } catch (e) {
+      if (!unknown(e)) throw e;
+      forget();
+      return call<T>('GET', path, undefined);
+    }
+  };
   const enc = encodeURIComponent;
 
   return {
@@ -263,34 +317,35 @@ export function createForumApi(opts: ForumApiOptions): ForumApi {
       keep({ ...(current() ?? who), name: clean });
     },
     async posts(tab, after) {
-      const data = await read<{ posts?: unknown[]; items?: unknown[]; next?: unknown; cursor?: unknown }>(`/v1/posts?tab=${tab}${after ? `&after=${enc(after)}` : ''}`);
-      const list = Array.isArray(data?.posts) ? data.posts : Array.isArray(data?.items) ? data.items : [];
-      const next = data?.next ?? data?.cursor ?? null;
+      const data = await read<{ posts?: unknown[]; next?: unknown }>(`/v1/posts?tab=${tab}${after ? `&after=${enc(after)}` : ''}`);
+      const list = Array.isArray(data?.posts) ? data.posts : [];
+      const next = data?.next ?? null;
       return { posts: list.map(readPost), next: next === null || next === undefined || next === '' ? null : str(next) };
     },
     async post(id) {
       const data = await read<Record<string, unknown>>(`/v1/posts/${enc(id)}`);
-      const raw = (data && typeof data.post === 'object' && data.post !== null ? data.post : data) as Record<string, unknown>;
-      const list = Array.isArray(raw?.comments) ? raw.comments : Array.isArray(data?.comments) ? (data.comments as unknown[]) : [];
-      const post = readPost(raw);
+      const list = Array.isArray(data?.commentList) ? (data.commentList as unknown[]) : [];
       const thread = list.map(readComment).sort((a, b) => a.created - b.created);
-      // The count in a list is a number; opened, `comments` is the list itself.
-      return { ...post, comments: Array.isArray(raw?.comments) ? thread.length : post.comments, code: str(raw?.code), thread };
+      const earlier = data?.earlierComments;
+      return { ...readPost(data), code: str(data?.code), thread, earlier: earlier ? str(earlier) : null };
+    },
+    async earlierComments(id, before) {
+      const data = await read<{ commentList?: unknown[]; earlierComments?: unknown }>(`/v1/posts/${enc(id)}/comments?before=${enc(before)}`);
+      const thread = (Array.isArray(data?.commentList) ? data.commentList : []).map(readComment).sort((a, b) => a.created - b.created);
+      return { thread, earlier: data?.earlierComments ? str(data.earlierComments) : null };
     },
     async publish(p) {
       const picture = p.picture.replace(/^data:image\/jpeg;base64,/, '');
-      const data = await authed<{ id?: unknown; post?: { id?: unknown } }>('POST', '/v1/posts', { code: p.code, caption: p.caption, picture, ...(p.parent ? { parent: p.parent } : {}) });
+      const data = await authed<{ id?: unknown }>('POST', '/v1/posts', { code: p.code, caption: p.caption, picture, ...(p.parent ? { parent: p.parent } : {}) });
       const who = current();
       if (who && !who.posted) keep({ ...who, posted: true });
-      return str(data?.post?.id ?? data?.id);
+      return str(data?.id);
     },
     remove: (id) => authed('DELETE', `/v1/posts/${enc(id)}`),
     like: (id, on) => authed(on ? 'PUT' : 'DELETE', `/v1/posts/${enc(id)}/like`),
     copied: (id) => authed('POST', `/v1/posts/${enc(id)}/copied`),
     async comment(id, text) {
-      const data = await authed<Record<string, unknown>>('POST', `/v1/posts/${enc(id)}/comments`, { text });
-      const raw = data && typeof data.comment === 'object' ? data.comment : data;
-      const c = readComment(raw);
+      const c = readComment(await authed<Record<string, unknown>>('POST', `/v1/posts/${enc(id)}/comments`, { text }));
       return { ...c, mine: true, name: c.name || current()?.name || '', text: c.text || text };
     },
     removeComment: (id) => authed('DELETE', `/v1/comments/${enc(id)}`),

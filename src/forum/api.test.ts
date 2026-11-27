@@ -104,6 +104,21 @@ describe('who the player is', () => {
 });
 
 describe('when the server is slow, down or says no', () => {
+  test('an identity the server no longer knows is thrown away, a new one made (name carried over), and the call tried once more', async () => {
+    const s = store({ [FORUM_KEY]: JSON.stringify({ id: 'old', secret: 'stale', name: 'mira', posted: true }) });
+    const srv = server({
+      'POST /v1/players': players,
+      'PUT /v1/me': () => ({ body: {} }),
+      'PUT /v1/posts/a/like': (c) => (c.headers.Authorization === 'Bearer stale' ? { status: 401, body: { error: "This browser's Global Village identity wasn't recognised." } } : { body: {} }),
+    });
+    const api = createForumApi({ base: BASE, storage: s, fetch: srv.fetch });
+    await api.like('a', true);
+    expect(srv.calls.map((c) => `${c.method} ${new URL(c.url).pathname}`)).toEqual(['PUT /v1/posts/a/like', 'POST /v1/players', 'PUT /v1/me', 'PUT /v1/posts/a/like']);
+    expect(readIdentity(s)).toMatchObject({ name: 'mira' });
+    expect(readIdentity(s)?.secret).not.toBe('stale');
+  });
+
+
   test('a call with no answer gives up after 10 seconds, as "can\'t be reached"', async () => {
     vi.useFakeTimers();
     const fetch = vi.fn(
@@ -152,11 +167,11 @@ describe('when the server is slow, down or says no', () => {
 });
 
 describe('reading what the server sends', () => {
-  test('a page of posts and its cursor; times as ms, seconds or a date', async () => {
+  test('a page of posts and its cursor; times as ms (or a date)', async () => {
     const srv = server({
       'GET /v1/posts': (c) => ({
         body: {
-          posts: [{ id: 'a', name: 'mira', caption: 'harbour', created: 1_700_000_000, likes: 3, comments: 1, copies: 0, liked: true, mine: false, parent: { id: 'b', name: 'tom' } }],
+          posts: [{ id: 'a', name: 'mira', caption: 'harbour', created: 1_700_000_000_000, likes: 3, comments: 1, copies: 0, liked: true, mine: false, parent: { id: 'b', name: 'tom' } }],
           next: new URL(c.url).searchParams.get('after') ? null : 'cur1',
         },
       }),
@@ -175,20 +190,28 @@ describe('reading what the server sends', () => {
 
   test('a post built on one that was deleted reads as gone', () => {
     expect(readPost({ id: 'a', parent: { id: 'b', name: null } }).parent).toEqual({ id: 'b', name: '', gone: true });
+    expect(readPost({ id: 'a', parent: { id: 'b', name: '' } }).parent).toEqual({ id: 'b', name: '' });
     expect(readPost({ id: 'a', parent: null }).parent).toBeNull();
   });
 
   test('one post: its town code and its comments, oldest first', async () => {
     const srv = server({
       'GET /v1/posts/a': () => ({
-        body: { id: 'a', name: 'mira', caption: '', created: 1, likes: 0, copies: 0, code: 'TOWN', comments: [{ id: 'c2', name: 'b', text: 'second', created: 2000 }, { id: 'c1', name: 'a', text: 'first', created: 1000 }] },
+        body: {
+          id: 'a', name: 'mira', caption: '', created: 1, likes: 0, comments: 3, copies: 0, code: 'TOWN',
+          commentList: [{ id: 'c2', name: 'b', text: 'second', created: 2000 }, { id: 'c1', name: 'a', text: 'first', created: 1000 }],
+          earlierComments: 'cur',
+        },
       }),
+      'GET /v1/posts/a/comments': (c) => ({ body: { commentList: [{ id: 'c0', name: 'z', text: `before ${new URL(c.url).searchParams.get('before')}`, created: 500 }], earlierComments: null } }),
     });
     const api = createForumApi({ base: BASE, storage: store(), fetch: srv.fetch });
     const p = await api.post('a');
     expect(p.code).toBe('TOWN');
     expect(p.thread.map((c) => c.text)).toEqual(['first', 'second']);
-    expect(p.comments).toBe(2);
+    expect(p.comments).toBe(3);
+    expect(p.earlier).toBe('cur');
+    expect(await api.earlierComments('a', 'cur')).toEqual({ thread: [{ id: 'c0', name: 'z', text: 'before cur', created: 500, mine: false }], earlier: null });
     expect(api.picture('a')).toBe(`${BASE}/pics/a.jpg`);
     expect(api.link('a')).toBe(`${BASE}/p/a`);
   });

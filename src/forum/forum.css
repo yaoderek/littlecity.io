@@ -192,7 +192,7 @@
   overflow-wrap: anywhere;
 }
 .lc-forum-caption-none {
-  min-height: 0;
+  visibility: hidden;
 }
 .lc-forum-meta {
   margin: 0 3px;
