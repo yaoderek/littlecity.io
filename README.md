@@ -6,6 +6,8 @@ it's free, runs in your browser, works on your phone too.
 
 **[play it → littlecity.io](https://littlecity.io/?utm_source=github)**
 
+come hang out on [the discord](https://discord.gg/eVdQQVMzu): show off your towns, report bugs, ask for things.
+
 [![a hand-drawn island town with a castle, a harbour and a lighthouse](docs/readme/welcome.jpg)](https://littlecity.io/?utm_source=github)
 
 you can fly down into it and just look around. yes, you can nuke it, they'll build it back. or hit "grow a town" and it builds a whole one for you.
