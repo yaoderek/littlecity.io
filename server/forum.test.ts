@@ -11,7 +11,7 @@ import type { FloorKind } from '@/core/kinds';
 import { encodeRanged, encodeTown } from '@/world/save';
 import { emptyWorld } from '@/world/world';
 import { codecFingerprint } from '@/world/codec-fingerprint';
-import { fakeJpeg } from './checks.test';
+import { fakeJpeg } from './test-helpers';
 import { ERRORS, ERROR_LINES } from './errors';
 import { startForum, TOP_RECENT_MS, type RunningForum } from './forum';
 import { LIMITS } from './limits';
