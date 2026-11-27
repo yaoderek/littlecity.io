@@ -2347,3 +2347,30 @@ published or raiders come back on: `preview/tree-clear` (`ae7d9a32`,
 the PostHog numbers chat's) does not contain it; that chat has been
 told not to publish it as it stands. The orchestrator has no release
 of its own waiting.
+
+**2026-11-27: `main` green again** (`8fbce67`, gate 45968285393: unit
+2,572 passed, browser 150 passed, one on a retry). It holds the
+release `e55df96c`, the port update, the tree fix, the garrison test
+fix and raiders off by default.
+
+**2026-11-27, 01:04 PST: live is the build from `92a741ce`** (bundle
+`app-Raz3ouNh.js`, published by the PostHog numbers chat with Derek's
+sign-off on the tree fix; checked by the orchestrator on the site and
+on `gh-pages`, whose commit is stamped 09:04 UTC). It is `0e5166e3`
+(raiders off by default, on top of the orchestrator's `e55df96c`)
+plus the tree fix (a piece put on a tree takes the tree's place, one
+undo step). Branch `preview/tree-clear`; gate 45968469169 green on
+that commit; the tree commit is in `main` as `482ccc5f`. The port
+update on `main` is still not live. **Base the next release on
+`site/preview/tree-clear` (`92a741ce`).**
+
+**Also from that chat, to avoid collisions:** two of its build agents
+are on a new feature, Global Village (the town forum; spec
+`docs/superpowers/specs/2026-11-27-town-forum-design.md` on
+`feat/town-forum`), in worktrees `workspaces/littlecity/town-forum-server`
+and `town-forum-game`. They add `src/forum/`, `server/`, and small
+hooks in `src/ui/interface.ts`, `src/ui/towns.ts`, `src/ui/dots*.ts`,
+`src/app/main.ts`, `src/app/library.ts`, `src/app/towns.ts`, the
+locale files and `tools/deploy-pages.sh`. Nothing pushed or published
+from them. Anything of the orchestrator's that touches those files
+should be kept small and merged early.
