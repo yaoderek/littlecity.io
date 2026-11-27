@@ -19,7 +19,8 @@
 // Stability: each tree's roll is its own cell's; the beehives are seeded by
 // the orchard's first tree.
 //
-// Reads: orchards, landUse (the orchard's grass), clearways. Claims: the
+// Reads: orchards, landUse (the orchard's grass), clearways, the trees'
+// roles (a fruit tree's ladder rests in its fork). Claims: the
 // slots of its ladders, baskets and hives; the sward claims nothing.
 
 import { keyX, keyY, keyZ, neighbor, NO_CELL, opposite, type CellKey, type Dir4 } from '@/core/grid';
@@ -37,8 +38,8 @@ export default defineRule<Placed[]>({
   part: 'urban',
   tier: 2,
   priority: 820,
-  about: 'Reads: orchards (trees on a grid of spacing 2), landUse (the grass between them), clearways. Claims: the slots of its ladders, baskets and hives; the mown sward claims nothing.',
-  find({ facts, seed }) {
+  about: 'Reads: orchards (trees on a grid of spacing 2), landUse (the grass between them), clearways, the trees\' roles (a fruit tree\'s ladder rests in its fork). Claims: the slots of its ladders, baskets and hives; the mown sward claims nothing.',
+  find({ facts, seed, plan }) {
     const clear = clearways(facts);
     const out: Candidate<Placed[]>[] = [];
     for (const use of landUse(facts).orchards) {
@@ -58,6 +59,10 @@ export default defineRule<Placed[]>({
       for (const t of o.trees) {
         const roll = hash(seed, RULE, 'tree', t) % 4;
         if (roll > 1) continue;
+        // A fruit tree's ladder rests in its fork (the ladder part); `tree` names the tree, so that the
+        // ladder is drawn again when another tree is planted there.
+        const sid = plan.structureAt.get(t);
+        const lean: Record<string, number> = sid !== undefined && plan.roles.get(sid)?.role === 'fruit-tree' ? { tree: sid } : {};
         // The side of the tree it is set on: the first open grass side, seeded.
         const start = hash(seed, RULE, 'side', t) % 4;
         for (let k = 0; k < 4; k++) {
@@ -66,7 +71,7 @@ export default defineRule<Placed[]>({
           if (n === NO_CELL || !grass.has(n)) continue;
           const ok =
             roll === 0
-              ? p.put({ type: 'ladder', cell: n, pos: edgePos(opposite(d)), face: d, activities: ['pick'], params: { back: 0.42, look: look('ladder', t) } })
+              ? p.put({ type: 'ladder', cell: n, pos: edgePos(opposite(d)), face: d, activities: ['pick'], params: { back: 0.42, look: look('ladder', t), ...lean } })
               : p.put({ type: 'basket', variant: 'apples', cell: n, pos: edgePos(opposite(d)), face: d, activities: ['basket'], params: { look: look('basket', t) } });
           if (ok) break;
         }

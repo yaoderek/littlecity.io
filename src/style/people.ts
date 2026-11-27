@@ -102,6 +102,15 @@ export const PEOPLE = defineStyle(
     kiteWind: 0.24,
     kiteOut: 0.95,
     kiteUp: 1.15,
+    /**
+     * How far out from the middle of a dock's cell somebody fishing is drawn standing: at the edge (a cell is 1
+     * across), in front of a pier head's seat and bucket, so the rod's tip and its line are well out over the water.
+     * Their place in the crowd stays where the fishing spot puts it (0.3 out, on the walking graph); the figure takes
+     * a short step from there to the edge as it starts to fish, and back as it stops (people.system.ts).
+     */
+    fishReach: 0.42,
+    /** How fast that step is taken, world units a second. */
+    fishStep: 0.45,
   },
   {
     cap: [0, 120, 1],

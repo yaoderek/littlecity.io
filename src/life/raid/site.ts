@@ -252,10 +252,16 @@ export function voyageTo(field: SeaField, h: HullSize, turn: Pose, pick: number,
 export interface PlanOptions {
   /** Force a kind (the scenarios, the tests); otherwise chosen by the shore and by chance. */
   kind?: RaidKind;
-  /** Near this point (the Raid tool's click): the landings nearest it are preferred. */
+  /**
+   * Where the Raid tool was clicked: they land on the shore nearest it (a longship if there is a beach there,
+   * rowing boats if not), coming in by the shortest clear way from the edge of the map. Without it (a raid on
+   * its own) the site is chosen by how good it is, near the town.
+   */
   near?: { x: number; z: number } | null;
-  /** Columns to keep clear of (ships moored in the harbour). */
+  /** Columns to keep clear of (ships moored in the harbour, other raids' ships on the beach). */
   extra?: Iterable<number>;
+  /** Other raids' landings now: none within 2.6 cells of one (a second ship lands beside the first). */
+  avoid?: readonly { x: number; z: number }[];
 }
 
 /** Plans a raid on this town, or null if no ship can reach a shore near it. */
@@ -263,9 +269,17 @@ export function planRaid(shape: ShapePlan, nav: NavGraph, seed: number, opts: Pl
   const heart = townHeart(shape);
   if (!heart) return null;
   const field = raidField(shape, opts.extra ?? []);
-  const shore = landingsOf(shape, nav, field);
+  const avoid = opts.avoid ?? [];
+  const all = landingsOf(shape, nav, field);
+  const clear = (gap: number): Landing[] => all.filter((l) => !avoid.some((a) => Math.hypot(a.x - l.x, a.z - l.z) < gap));
+  const shore = clear(2.6);
+  if (opts.near) {
+    // Every shore near it taken by other parties: closer in beside them, rather than not at all.
+    const site = planAt(field, shore, opts.near, opts.kind, seed) ?? (avoid.length ? planAt(field, clear(1.2), opts.near, opts.kind, seed) : null);
+    return site ? { ...site, heart } : null;
+  }
   if (shore.length === 0) return null;
-  const focus = opts.near ?? heart;
+  const focus = heart;
   const towns = (l: Landing): number => Math.hypot(l.x - heart.x, l.z - heart.z);
   const near = (l: Landing): number => Math.hypot(l.x - focus.x, l.z - focus.z);
   const landing = opts.kind !== 'boats' ? planLanding(field, shore, towns, near, seed) : null;
@@ -281,15 +295,24 @@ export function planRaid(shape: ShapePlan, nav: NavGraph, seed: number, opts: Pl
 type SiteFor = Omit<RaidSite, 'heart'>;
 
 function planLanding(field: SeaField, shore: readonly Landing[], towns: (l: Landing) => number, near: (l: Landing) => number, seed: number): SiteFor | null {
-  const size = 1;
-  const h = longshipHull(size);
-  const reach = Math.max(-h.stern, h.bow) + h.halfBeam * 0.5;
-  // Beaches first, then any low shore; nearest the town (and the click) first, never far from it.
+  // Beaches first, then any low shore; nearest the town first, never far from it.
   const ranked = shore
     .filter((l) => towns(l) < 18)
     .map((l) => ({ l, score: near(l) + towns(l) * 0.5 + (l.sand ? 0 : 6) + Math.max(0, 16 - l.open) * 0.8 + (l.near.length < 2 ? 3 : 0) + rand(seed, 'landing', l.cell) * 2 }))
     .sort((a, b) => a.score - b.score || a.l.cell - b.l.cell);
   for (const { l } of ranked.slice(0, 40)) {
+    const site = landingAt(field, l, rand(seed, 'voyage'));
+    if (site) return site;
+  }
+  return null;
+}
+
+/** A longship run up on the shore at this landing, its way in and out (the most direct when `pick` is 0); or null. */
+function landingAt(field: SeaField, l: Landing, pick: number): SiteFor | null {
+  const size = 1;
+  const h = longshipHull(size);
+  const reach = Math.max(-h.stern, h.bow) + h.halfBeam * 0.5;
+  {
     // Bow on the sand: the stem a little past the water's edge.
     const ex = l.x + l.ox * 0.5, ez = l.z + l.oz * 0.5;
     const yaw = Math.atan2(-l.ox, -l.oz);
@@ -299,7 +322,7 @@ function planLanding(field: SeaField, shore: readonly Landing[], towns: (l: Land
     for (let a = h.stern; a <= h.bow - 1.3 && ok; a += 0.3) {
       if (field.at(bx + Math.sin(yaw) * a, bz + Math.cos(yaw) * a) < h.halfBeam * 0.75) ok = false;
     }
-    if (!ok) continue;
+    if (!ok) return null;
     // A turning point straight out, with room to spin.
     let turn: Pose | null = null;
     for (const d of [2.5, 3.5, 4.5, 6, 7.5, 9]) {
@@ -313,10 +336,33 @@ function planLanding(field: SeaField, shore: readonly Landing[], towns: (l: Land
         break;
       }
     }
-    if (!turn) continue;
-    const voyage = voyageTo(field, h, turn, rand(seed, 'voyage'));
-    if (!voyage) continue;
+    if (!turn) return null;
+    const voyage = voyageTo(field, h, turn, pick);
+    if (!voyage) return null;
     return { kind: 'landing', size, hull: h, voyage, beached: { x: bx, z: bz, yaw }, landings: [l], boatPaths: [], boatWays: [] };
+  }
+}
+
+/**
+ * The Raid tool's click: the shore nearest the point (on the sea, the shore nearest that water; inland, the
+ * nearest coast). A longship where there is a beach to run up there, rowing boats where there is not (or the
+ * kind asked for); if no vessel can reach the very nearest bit of shore, the nearest that one can. Each comes
+ * in by the shortest clear way from the edge of the map, so it appears on the side that was clicked.
+ */
+function planAt(field: SeaField, shore: readonly Landing[], at: { x: number; z: number }, kind: RaidKind | undefined, seed: number): SiteFor | null {
+  const d = (l: Landing): number => Math.hypot(l.x - at.x, l.z - at.z);
+  const ranked = [...shore].sort((a, b) => d(a) - d(b) || a.cell - b.cell);
+  for (const l of ranked.slice(0, 160)) {
+    const beach = l.sand || l.near.some((n) => n.sand);
+    if (kind !== 'boats' && (kind === 'landing' || beach)) {
+      const site = landingAt(field, l, 0);
+      if (site) return site;
+      if (kind === 'landing') continue;
+    }
+    // Rowing boats: this landing first, then one or two beside it (a cell or more apart), all near the click.
+    const pool = [l, ...ranked.filter((o) => o !== l && Math.hypot(o.x - l.x, o.z - l.z) < 7 && o.open >= 6).sort((a, b) => Math.hypot(a.x - l.x, a.z - l.z) - Math.hypot(b.x - l.x, b.z - l.z))];
+    const site = boatsTo(field, pool, Math.min(3, Math.max(2, Math.round(2 + rand(seed, 'boats') * 1.2))), 2.5, 0, true);
+    if (site) return site;
   }
   return null;
 }
@@ -333,7 +379,11 @@ function planBoats(field: SeaField, shore: readonly Landing[], towns: (l: Landin
   const pool = shore.filter((l) => towns(l) < 14 && l.open >= 9).sort((a, b) => near(a) + Math.max(0, 16 - a.open) * 0.5 - near(b) - Math.max(0, 16 - b.open) * 0.5 || a.cell - b.cell);
   if (pool.length === 0) return null;
   const want = Math.min(4, Math.max(2, Math.round(2 + rand(seed, 'boats') * 2.2)));
-  const pick = rand(seed, 'voyage');
+  return boatsTo(field, pool, want, 4, rand(seed, 'voyage'), false);
+}
+
+/** Boats to up to `want` landings from `pool` in its order, `apart` cells apart at least (the first required when `first`). */
+function boatsTo(field: SeaField, pool: readonly Landing[], want: number, apart: number, pick: number, first: boolean): SiteFor | null {
   const kept: Landing[] = [];
   const ways: { arrive: Path; leave: Path }[] = [];
   // Each boat its own way in from beyond the edge of the map to its landing, and out again: no ship stands off.
@@ -351,8 +401,8 @@ function planBoats(field: SeaField, shore: readonly Landing[], towns: (l: Landin
   };
   for (const l of pool) {
     if (kept.length >= want) break;
-    if (kept.some((c) => Math.hypot(c.x - l.x, c.z - l.z) < 4)) continue;
-    tryOne(l);
+    if (kept.some((c) => Math.hypot(c.x - l.x, c.z - l.z) < apart)) continue;
+    if (!tryOne(l) && first && kept.length === 0) return null;
   }
   if (kept.length === 0) return null;
   return { kind: 'boats', size: 1, hull: BOAT_HULL, voyage: { arrive: ways[0]!.arrive, turn: { x: kept[0]!.x, z: kept[0]!.z, yaw: 0 }, leave: ways[0]!.leave }, beached: null, landings: kept, boatPaths: ways.map((w) => w.arrive), boatWays: ways };

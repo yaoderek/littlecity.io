@@ -7,6 +7,10 @@ import type { Vec3 } from '@/core/mat4';
 import { aimArm, applyHold, bodyToFigure, CHEST_TOOLS, handOf, handReach, holdLong, JUGGLE, loadGrips, longToolLine, SHAFTS } from './hands';
 import { HOLD_OF, holdAnchor, type Load } from './loads';
 import { lookOf, rigOf } from './person';
+import { castLine, castLineMesh, FLOAT_TOP, floatMesh, ROD_TIP, toolMesh } from './extras';
+import { findDuplicateFaces, validateMesh } from '@/gen/checks';
+import { CELL_H, SEA_Y } from '@/core/grid';
+import { PEOPLE } from '@/style/people';
 import { POSES, poseOf, rigMatrices, type PoseName } from './pose';
 import { CARGO_AT, CARGO_GRIP } from '@/life/ships/crew';
 import { REINS_HAND } from '@/life/people/garrison.system';
@@ -139,5 +143,62 @@ describe('hands on what they hold', () => {
     const ride = poseOf('stand', 0);
     aimArm(ride, rig, -1, REINS_HAND);
     expect(dist(handOf(ride, rig, -1), REINS_HAND)).toBeLessThan(NEAR);
+  });
+});
+
+describe('the fishing line reaches the sea', () => {
+  /** The rod's world matrix as the people system makes it: T(x, y, z) · Ry(heading) · S(scale) (the rod is in the figure's frame). */
+  const rodAt = (x: number, y: number, z: number, heading: number, scale: number): number[] => {
+    const c = Math.cos(heading) * scale, s = Math.sin(heading) * scale;
+    return [c, 0, -s, 0, 0, scale, 0, 0, s, 0, c, 0, x, y, z, 1];
+  };
+  const scales = [lookOf(1).scale, lookOf(77).scale, lookOf(5, true).scale];
+
+  test('from any height above the water, the line runs from the rod’s tip down to the float sitting on the surface', () => {
+    for (const deck of [CELL_H, 2 * CELL_H, 3 * CELL_H, SEA_Y + 0.2]) {
+      for (const heading of [0, 1.1, Math.PI, -2.4]) {
+        for (const scale of scales) {
+          for (const dip of [0, 0.012]) {
+            const rod = rodAt(10.3, deck, 20.7, heading, scale);
+            const line: number[] = [], float: number[] = [];
+            expect(castLine(rod, SEA_Y, dip, line, float), `deck ${deck}`).not.toBeNull();
+            const [x, y, z] = ROD_TIP;
+            const tx = rod[0]! * x + rod[8]! * z + rod[12]!, ty = rod[5]! * y + rod[13]!, tz = rod[2]! * x + rod[10]! * z + rod[14]!;
+            // The float on the water (a little under while a fish tugs), straight under the tip.
+            expect(float[13]).toBeCloseTo(SEA_Y - dip, 6);
+            expect(float[12]).toBeCloseTo(tx, 6);
+            expect(float[14]).toBeCloseTo(tz, 6);
+            // The line (one unit up +Y, stretched): from the top of the float's stalk to the tip, short of neither.
+            expect(line[13]).toBeCloseTo(SEA_Y - dip + FLOAT_TOP, 6);
+            expect(line[13]! + line[5]!).toBeCloseTo(ty, 6);
+            expect(line[12]).toBeCloseTo(tx, 6);
+            expect(line[14]).toBeCloseTo(tz, 6);
+            expect([line[0], line[10]]).toEqual([1, 1]);
+          }
+        }
+      }
+    }
+  });
+
+  test('the rod, the line and the float are sound meshes', () => {
+    for (const mesh of [toolMesh('rod'), castLineMesh(), floatMesh()]) {
+      expect(validateMesh(mesh)).toEqual([]);
+      expect(findDuplicateFaces(mesh)).toBe(0);
+    }
+  });
+
+  test('nothing hangs from a rod held below the water or just over it', () => {
+    const line: number[] = [], float: number[] = [];
+    expect(castLine(rodAt(0, SEA_Y - 0.8, 0, 0, scales[0]!), SEA_Y, 0, line, float)).toBeNull();
+  });
+
+  test('standing where people fish, the rod’s tip is well out past the end of the dock, and they stand clear of a pier head’s seat and bucket', () => {
+    for (const scale of scales) {
+      // From the middle of the cell, PEOPLE.fishReach out toward the water; the cell's edge is 0.5 out.
+      expect(PEOPLE.fishReach + ROD_TIP[2] * scale, `scale ${scale}`).toBeGreaterThan(0.5 + 0.25);
+    }
+    // The seat's and the bucket's fronts are about 0.4 out (pier-head.part.ts); the edge is 0.5.
+    expect(PEOPLE.fishReach).toBeGreaterThan(0.4);
+    expect(PEOPLE.fishReach).toBeLessThan(0.46);
   });
 });

@@ -5,13 +5,13 @@
 // Reads: the structure (cell, seed) and its role. Nothing else.
 
 import { CELL_H, keyX, keyY, keyZ } from '@/core/grid';
-import { compose, scaling, translation, type Mat4Like } from '@/core/mat4';
+import { compose, scaling, translation, type Mat4Like, type Vec3 } from '@/core/mat4';
 import type { RolesOf } from '@/core/vocab';
 import { defineGenerator } from '@/gen/api';
 import { MeshBuilder } from '@/gen/mesh';
 import { rngOf, type Rng } from '@/parts/ground/kit';
 import { TREE } from '@/style/ground';
-import { companion, cypress, fruitTree, groveTree, palm, pine, planterTree, roundTree, shrubbery, willow } from './species';
+import { companion, cypress, fruitFork, fruitTree, groveTree, palm, pine, planterTree, roundFork, roundTree, shrubbery, willow } from './species';
 
 export type TreeRole = RolesOf<'tree'>;
 
@@ -43,6 +43,35 @@ export function drawTree(b: MeshBuilder, species: TreeRole, seed: number, withCo
   }
 }
 
+/** The species a tree block is drawn as: the one its role names, or the seeded mix. */
+export function speciesOf(seed: number, role: string | undefined): TreeRole {
+  return role !== undefined && role in DRAW ? (role as TreeRole) : mixedSpecies(rngOf(seed)('species'));
+}
+
+/** Where a plant stands off its cell's centre, and its size. */
+function standing(seed: number, species: TreeRole): { jx: number; jz: number; scale: number } {
+  const r = rngOf(seed);
+  // A planter stands square on its cell; everything else wanders a little.
+  const loose = species === 'planter-tree' ? 0 : TREE.jitter;
+  return {
+    jx: (r('jx') - 0.5) * 2 * loose,
+    jz: (r('jz') - 0.5) * 2 * loose,
+    scale: TREE.scale * (species === 'planter-tree' ? 1 : 0.92 + r('scale') * 0.18),
+  };
+}
+
+/**
+ * Where the limbs of a broadleaf (round, fruit) leave its trunk, from the centre of its cell's floor, and
+ * the trunk's radius there; null for the other species. What the orchard's ladders rest on (U18): wood
+ * that is still there when the leaves have fallen.
+ */
+export function treeFork(seed: number, species: TreeRole): { at: Vec3; radius: number } | null {
+  const fork = species === 'fruit-tree' ? fruitFork(rngOf(seed)) : species === 'round-tree' ? roundFork(rngOf(seed)) : null;
+  if (!fork) return null;
+  const { jx, jz, scale } = standing(seed, species);
+  return { at: [jx + fork.at[0] * scale, fork.at[1] * scale, jz + fork.at[2] * scale], radius: fork.radius * scale };
+}
+
 export default defineGenerator({
   kind: 'tree',
   build(s, plan) {
@@ -51,11 +80,8 @@ export default defineGenerator({
     const given = plan.roles.get(s.id)?.role;
     for (const cell of s.cells) {
       const r = rngOf(s.seed);
-      const species: TreeRole = given !== undefined && given in DRAW ? (given as TreeRole) : mixedSpecies(r('species'));
-      // A planter stands square on its cell; everything else wanders a little.
-      const loose = species === 'planter-tree' ? 0 : TREE.jitter;
-      const jx = (r('jx') - 0.5) * 2 * loose, jz = (r('jz') - 0.5) * 2 * loose;
-      const scale = TREE.scale * (species === 'planter-tree' ? 1 : 0.92 + r('scale') * 0.18);
+      const species = speciesOf(s.seed, given);
+      const { jx, jz, scale } = standing(s.seed, species);
       const plain = species === 'round-tree' || species === 'cypress';
       out.at(compose(translation(keyX(cell) + 0.5 + jx, keyY(cell) * CELL_H, keyZ(cell) + 0.5 + jz), scaling(scale)), () =>
         drawTree(out, species, s.seed, plain && r('companion?') < TREE.companion),

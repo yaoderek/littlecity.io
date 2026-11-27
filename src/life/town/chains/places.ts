@@ -16,7 +16,7 @@
 //
 // Every one is a chain on the board (board.ts): they take their hands from the residents.
 
-import { DIR4, key, keyX, keyY, keyZ, type CellKey } from '@/core/grid';
+import { DIR4, key, keyX, keyY, keyZ, opposite, type CellKey } from '@/core/grid';
 import { rand } from '@/core/rand';
 import { APPLES, PLACES } from '@/style/town-life';
 import { fxOf } from '../../fx/fx';
@@ -321,7 +321,10 @@ export function pickChain(): Chain {
       if (i < 0 || !time.isDay || !harvestTime(board) || board.weather.rain > 0.4) return null;
       const pick = picks[(i + Math.floor(board.now / 20)) % picks.length]!;
       const into = baskets.slice().sort((a, b) => board.dist(a.cell, pick.cell) - board.dist(b.cell, pick.cell))[0];
-      const steps: PlanStep[] = [board.stepAt(pick.cell, { ...(pick.dir !== undefined ? standAt(board, pick, 0.2) : { spot: null, face: NaN }), pose: 'wave', linger: PLACES.pick, tag: 'pick:pick', done: (q) => void (q.load = 'basket') })];
+      // At the ladder's foot, facing the tree (the post's dir points away from it). A ladder whose tree is
+      // gone lies on the grass and has no post (src/resolve/ruins.ts), so nobody comes to it.
+      const foot = pick.dir !== undefined ? standAt(board, { cell: pick.cell, dir: opposite(pick.dir) }, 0.32) : { spot: null, face: NaN };
+      const steps: PlanStep[] = [board.stepAt(pick.cell, { ...foot, pose: 'wave', linger: PLACES.pick, tag: 'pick:pick', done: (q) => void (q.load = 'basket') })];
       // L68: tipped into the big basket, where the apples heap up for the carrier to take to market (apples.ts).
       if (into) steps.push(board.stepAt(into.cell, { ...(into.dir !== undefined ? standAt(board, into, 0.15) : { spot: null, face: NaN }), pose: 'tend', linger: 1, load: 'basket', tag: 'pick:basket', done: (q) => void ((q.load = null), fillBasket(board, into.ref, APPLES.perPick)) }));
       return { chain, at: 0, steps };

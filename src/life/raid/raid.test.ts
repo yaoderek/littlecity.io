@@ -2,7 +2,7 @@
 // the sail to the last of it, with the app's own wiring and no renderer
 // (tests/helpers/turmoil.ts). Waits on the raid's state, never on the clock.
 
-import { describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { encodeTown } from '@/world/save';
 import { setStyle } from '@/core/style';
 import { buildScenario } from '@/scenario';
@@ -18,7 +18,8 @@ import { crittersOf } from '../mischief/critters';
 import type { Raid } from './raid';
 import { mapEdge } from '@/rules/life/ship-routes';
 
-const LONG = FULL ? 400_000 : 200_000;
+// Generous: the gate runs files side by side on a loaded machine (timed out at 200 s with nothing wrong).
+const LONG = FULL ? 600_000 : 400_000;
 
 function town(name: string): Turmoil {
   const built = buildScenario(findScenario(name)!);
@@ -56,6 +57,19 @@ function onGraph(t: Turmoil, raid: Raid): string[] {
 }
 
 describe('the raid', () => {
+  // A shorter stay ashore than a raid's own 95 s (the horn sooner): every beat is still gone through, in less
+  // time (this file was over five minutes on its own).
+  const ashore = RAID.ashore;
+  beforeAll(() => {
+    setStyle('raid', 'ashore', 50);
+    // The raid itself: the harbour town's castle garrison kept in (sally.test.ts has it turn out).
+    setStyle('raid', 'sally', 0);
+  });
+  afterAll(() => {
+    setStyle('raid', 'ashore', ashore);
+    setStyle('raid', 'sally', 1);
+  });
+
   test('a landing raid on the harbour town: sighted, ashore, fires and loot, away, everything put away; undo puts the town back', () => {
     const t = town('grown-harbour');
     const before = encodeTown(t.game.world);

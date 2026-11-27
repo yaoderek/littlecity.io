@@ -154,18 +154,38 @@ export interface RoundOptions {
   fruitCount?: number;
 }
 
-/** The plain broadleaf: a leaning trunk and a cloud of a crown. Returns its height. */
-export function roundTree(b: MeshBuilder, r: Rng, o: RoundOptions = {}): number {
+/** The measures of a broadleaf (`roundTree`) from its seed: trunk height, crown radius and squash, the trunk's top, its radius at the foot. */
+function roundShape(r: Rng, o: RoundOptions): { th: number; R: number; squash: number; tx: number; tz: number; cy: number; top: number; radius: number } {
   const th = (0.3 + r('th') * 0.14) * (o.tall ?? 1);
   const R = (0.27 + r('R') * 0.06) * (o.size ?? 1);
   const squash = 0.8 + r('sq') * 0.14;
   const lean = (r('lean') - 0.5) * 2 * TREE.lean;
   const tx = lean * th * 1.6, tz = (r('lz') - 0.5) * 0.05;
   const cy = th + R * squash * 0.72;
-  const top = cy + R * squash;
+  return { th, R, squash, tx, tz, cy, top: cy + R * squash, radius: 0.05 + r('tr') * 0.016 };
+}
+
+/**
+ * Where a broadleaf's limbs leave its trunk (the fork the branches are drawn from), on the plant's own
+ * origin, and the trunk's radius there: what a ladder can rest on in every season (U18's orchard).
+ */
+export function roundFork(r: Rng, o: RoundOptions = {}): { at: Vec3; radius: number } {
+  const { th, R, tx, tz, radius } = roundShape(r, o);
+  return { at: [tx, th + R * 0.2, tz], radius: radius * 0.75 };
+}
+
+/** The fruit tree's options (its fruit is rolled from the same seed). */
+const FRUIT_TREE: RoundOptions = { tall: 0.85, size: 0.95 };
+
+/** `roundFork` of a fruit tree. */
+export const fruitFork = (r: Rng): { at: Vec3; radius: number } => roundFork(r, FRUIT_TREE);
+
+/** The plain broadleaf: a leaning trunk and a cloud of a crown. Returns its height. */
+export function roundTree(b: MeshBuilder, r: Rng, o: RoundOptions = {}): number {
+  const { th, R, squash, tx, tz, cy, top, radius } = roundShape(r, o);
   const sway = swayTo(top);
   const bark = vary(PALETTE.trunk, r('trunk'), 0.6);
-  trunk(b, r, [[0, 0, 0], [tx * 0.35, th * 0.55, tz * 0.5], [tx, th + R * 0.25, tz]], 0.05 + r('tr') * 0.016, sway, bark);
+  trunk(b, r, [[0, 0, 0], [tx * 0.35, th * 0.55, tz * 0.5], [tx, th + R * 0.25, tz]], radius, sway, bark);
   const color = o.color ?? vary(PALETTE.leaf, r('leaf'));
   branches(b, (...p) => r('branch', ...p), [tx, th + R * 0.2, tz], tx, cy, tz, R, R * squash, sway, bark);
   cloud(b, r, { x: tx, y: cy, z: tz, R, squash, color, sway });
@@ -442,7 +462,7 @@ const FRUIT = [PALETTE.red, PALETTE.yellow, PALETTE.pink, PALETTE.brick] as cons
 /** A fruit tree (on a garden): a small round tree hung with fruit or in blossom. */
 export function fruitTree(b: MeshBuilder, r: Rng): number {
   const kind = Math.floor(r('fruit') * FRUIT.length);
-  return roundTree(b, r, { tall: 0.85, size: 0.95, fruit: FRUIT[kind], fruitCount: kind === 2 ? 9 : 7 });
+  return roundTree(b, r, { ...FRUIT_TREE, fruit: FRUIT[kind], fruitCount: kind === 2 ? 9 : 7 });
 }
 
 /** A grove tree (five or more together): taller and darker, with ferns and a toadstool at its foot. */

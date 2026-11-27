@@ -4,6 +4,7 @@
 // ruined building houses nobody and carries no dressing.
 
 import { describe, expect, test } from 'vitest';
+import { neighbor, opposite, type Dir4 } from '@/core/grid';
 import { hash } from '@/core/rand';
 import type { Edit, Terrain, World } from '@/core/world';
 import { buildScenario, scenarioResolveOptions } from '@/scenario';
@@ -17,7 +18,7 @@ import { structureInfo } from './facts/structure.fact';
 import { withoutMemos } from './facts/content-keys.fact';
 import type { ResolveOptions } from './engine/api';
 import { resolveDressing, resolveShape, resolveTown } from './index';
-import type { DressingPlan, ShapePlan } from './plan';
+import type { DressingPlan, Prop, ShapePlan } from './plan';
 import { ruinedStructures } from './ruins';
 import { createStagedResolver } from './staged';
 
@@ -129,6 +130,46 @@ describe('ruins', () => {
     }
     for (const cell of s.cells) w = applyEdit(w, t, { type: 'repair', cell });
     expect(w.blocks).toEqual(built.world.blocks);
+    expect(resolveTown(w, t, opts).dressing.hash).toBe(before.dressing.hash);
+  });
+
+  test('an orchard ladder whose tree is a stump, burnt bare or growing back lies on the grass, and nobody picks from it; whole again, it stands', () => {
+    const scn = findScenario('U18.orchard')!;
+    const built = buildScenario(scn);
+    const t = built.terrain;
+    const opts = scenarioResolveOptions(scn);
+    const before = resolveTown(built.world, t, opts);
+    const ladder = before.dressing.props.find((p) => p.type === 'ladder')!;
+    expect(ladder).toBeDefined();
+    const at = ladder.at as { cell: number; face: Dir4 };
+    const tree = neighbor(at.cell, opposite(at.face));
+    expect(built.world.blocks.get(tree)?.kind).toBe('tree');
+    const down = (p: Prop): boolean => (p.params as { fallen?: number } | undefined)?.fallen === 1;
+    const picks = (d: DressingPlan): number => d.sockets.filter((s) => s.owner === ladder.id).length;
+    expect(picks(before.dressing)).toBe(1);
+    const fallen = (ruin: number): DressingPlan => resolveTown(applyEdit(built.world, t, { type: 'setRuin', cell: tree, ruin }), t, opts).dressing;
+    for (const ruin of [
+      packRuin({ stage: 3, cause: 'fire' }),
+      packRuin({ stage: 3, cause: 'blast' }),
+      packRuin({ stage: 2, cause: 'fire' }),
+      packRuin({ stage: 3, cause: 'blast', mending: true, progress: 20 }),
+    ]) {
+      const d = fallen(ruin);
+      const p = d.props.find((q) => q.id === ladder.id);
+      expect(p, 'the ladder is still there').toBeDefined();
+      expect(down(p!)).toBe(true);
+      expect(p!.hash, 'drawn again, lying down').not.toBe(ladder.hash);
+      expect(picks(d), 'nobody climbs a fallen ladder').toBe(0);
+      // The other ladders stand.
+      for (const q of d.props) if (q.type === 'ladder' && q.id !== ladder.id) expect(down(q)).toBe(false);
+    }
+    // Scorched or shaken, the tree is whole: the ladder stands.
+    for (const ruin of [packRuin({ stage: 1, cause: 'fire' }), packRuin({ stage: 1, cause: 'blast' })]) {
+      const d = fallen(ruin);
+      expect(down(d.props.find((q) => q.id === ladder.id)!)).toBe(false);
+      expect(picks(d)).toBe(1);
+    }
+    const w = applyEdit(applyEdit(built.world, t, { type: 'setRuin', cell: tree, ruin: packRuin({ stage: 3, cause: 'fire' }) }), t, { type: 'repair', cell: tree });
     expect(resolveTown(w, t, opts).dressing.hash).toBe(before.dressing.hash);
   });
 });

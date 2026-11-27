@@ -12,7 +12,14 @@ the ship and the town chases them into the sea.
   commands). Verbs `raid@x,0,z`, `raidland@…`, `raidboats@…`, `shipsink@d,0,0`;
   `--follow-raid` keeps the camera on it. Frame cost:
   `node src/life/testing/scene-cost.mjs grown-harbour --raid landing`.
-- `window.__lc.raids` (`summon({ at, kind })`, `current`, `auto`, `why`).
+- `window.__lc.raids` (`summon({ at, kind })`, `list` (every raid going on), `current` (the newest), `auto`,
+  `why`, `handles()`). Any number at once (catalogue L73): a click lands a party on the shore nearest it
+  (`site.ts` `planAt`); `RAID.ceiling` / `ceilingPhone` cap raiders alive, past it a token crew.
+- Cost of many: `node src/life/testing/raids-cost.mjs grown-harbour` (phone-sized, processor slowed 4x).
+- The garrison's sally (catalogue L74): `sally.ts` (driven by `raid.system.ts`), `salliesOf(stage)`; the hook in
+  `src/life/people/garrison.system.ts` is `garrisonsOf(stage)` and each garrison's `out` (while set, the troop and
+  rider are not stepped and are drawn where `out` says). The raid side: `raid.pin` / `unpin` / `repel`.
+  `RAID.sally` 0 keeps garrisons in (raid.test.ts does). Cost: `src/life/testing/sally-cost.mjs`.
 
 ## How it is built (`src/life/raid/`)
 - `site.ts` (pure): landings (walkable cells at the water's level with open
