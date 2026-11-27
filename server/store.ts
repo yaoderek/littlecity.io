@@ -309,7 +309,10 @@ export class Store {
       let id: string;
       do id = newId(12);
       while (this.one('SELECT 1 AS x FROM comments WHERE id = ?', id));
-      this.run('INSERT INTO comments (id, post, player, text, created) VALUES (?, ?, ?, ?, ?)', id, post, player, text, now);
+      // Two comments on a post in one millisecond would have no order of their own ("oldest first" is by
+      // time, then by a random id): a comment is always at least a millisecond after the post's last one.
+      const last = this.one<{ t: number | null }>('SELECT MAX(created) AS t FROM comments WHERE post = ?', post)?.t ?? 0;
+      this.run('INSERT INTO comments (id, post, player, text, created) VALUES (?, ?, ?, ?, ?)', id, post, player, text, Math.max(now, last + 1));
       this.run('UPDATE posts SET comments = comments + 1 WHERE id = ?', post);
       return id;
     });
