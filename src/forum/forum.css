@@ -684,3 +684,10 @@
     gap: 12px;
   }
 }
+
+/* The forum's own messages, over it (the game's .lc-toasts wait under it while it is open). */
+.lc-ui .lc-forum-back > .lc-forum-notes {
+  position: absolute;
+  z-index: 3;
+  top: calc(64px + env(safe-area-inset-top));
+}

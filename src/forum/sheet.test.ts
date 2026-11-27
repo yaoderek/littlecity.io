@@ -123,7 +123,9 @@ describe('the feed', () => {
     await settle();
     expect(heart.getAttribute('aria-pressed')).toBe('false');
     expect(heart.textContent).toBe('4');
-    expect(f.said).toEqual(['Slow down a little. Try again in a few minutes.']);
+    // Said over the forum, in its own messages (the game's wait under it while it is open).
+    expect(f.said).toEqual([]);
+    expect(f.root.querySelector('[data-forum="notes"]')!.textContent).toBe('Slow down a little. Try again in a few minutes.');
   });
 
   test('Mine shows what is new on each post', async () => {

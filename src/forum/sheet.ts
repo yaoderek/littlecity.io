@@ -43,7 +43,26 @@ const TABS: readonly ForumTab[] = ['top', 'new', 'mine'];
 export function createForum(opts: ForumOptions): ForumController {
   const api = opts.api ?? createForumApi({ base: opts.base, storage: opts.storage });
   const now = (): number => opts.now?.() ?? Date.now();
-  const say = opts.say;
+  // The forum says its own things over itself; the game's messages and banners wait under it (src/ui/forum-button.css).
+  const notes = el('div', { class: 'lc-toasts lc-forum-notes', attrs: { 'aria-live': 'polite', 'data-forum': 'notes' } });
+  const say = (text: string): void => {
+    if (!isOpen()) return opts.say(text);
+    const node = el('div', { class: 'lc-card lc-toast', text, attrs: { 'data-ui': 'toast' } });
+    node.addEventListener('animationend', () => node.remove());
+    notes.append(node);
+  };
+  const linkBox = (text: string, link: string): void => {
+    if (!isOpen()) return opts.linkBox?.(text, link) ?? opts.say(link);
+    const input = el('input', { attrs: { type: 'text', readonly: '', value: link, 'aria-label': t('Link') } });
+    const node = el('div', { class: 'lc-card lc-link-box', attrs: { 'data-ui': 'link-box' } }, [
+      el('span', { text }),
+      input,
+      el('button', { class: 'lc-text-btn', text: t('Done'), attrs: { type: 'button' }, on: { click: () => node.remove() } }),
+    ]);
+    notes.append(node);
+    input.focus();
+    input.select();
+  };
   const fresh = (): TabState => ({ posts: [], next: null, status: 'idle', error: '', more: 'idle', ticket: 0, scroll: 0 });
   const tabs: Record<ForumTab, TabState> = { top: fresh(), new: fresh(), mine: fresh() };
   let tab: ForumTab = 'top';
@@ -72,7 +91,7 @@ export function createForum(opts: ForumOptions): ForumController {
     grid,
   ]);
   const chip = el('div', { class: 'lc-card lc-forum-retake-chip', attrs: { hidden: '', 'aria-live': 'polite', 'data-forum': 'retake-chip' } });
-  const back = el('div', { class: 'lc-forum-back', attrs: { hidden: '', 'data-ui': 'forum-sheet' } }, [panel, chip]);
+  const back = el('div', { class: 'lc-forum-back', attrs: { hidden: '', 'data-ui': 'forum-sheet' } }, [panel, chip, notes]);
   back.addEventListener('pointerdown', (e) => {
     if (e.target === back) api_.back();
   });
@@ -306,7 +325,7 @@ export function createForum(opts: ForumOptions): ForumController {
         api,
         app: opts.app,
         say,
-        ...(opts.linkBox ? { linkBox: opts.linkBox } : {}),
+        linkBox,
         back: () => {
           closePost();
           if (tabs[tab].status === 'idle') void load(tab);

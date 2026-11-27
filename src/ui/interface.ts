@@ -731,6 +731,8 @@ export function createInterface(host: InterfaceHost): Interface {
           parent: root,
           say: (text) => feedback.toast(text),
           linkBox: (text, link) => feedback.linkBox(text, link),
+          // While the forum is open, the game's toasts and banners wait under it (./forum-button.css).
+          changed: (open) => void root.classList.toggle('lc-forum-open', open),
         })
       : null;
   if (forum) {

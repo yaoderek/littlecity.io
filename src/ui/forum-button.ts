@@ -8,15 +8,28 @@
 // is on screen, and only when lc:forum says the player has posted something. Nothing here touches a town.
 //
 // VITE_FORUM_URL (.env.production, like the PostHog key) is the server's address; empty means no forum at
-// all: no button, no request, nothing.
+// all: no button, no request, nothing. (In development, ?forum=<address> too: see devForum.)
 
 import { t } from '@/i18n';
 import { el } from './dom';
 import { icon } from './icons';
 import './forum-button.css';
 
+/**
+ * In development only (npm run dev, the browser tests; never in a build): ?forum=<address> points this page at a
+ * forum server, so tests/e2e/forum.e2e.test.ts can start one on a free port while every other test has no forum.
+ */
+function devForum(): string {
+  if (!import.meta.env.DEV) return '';
+  try {
+    return new URLSearchParams(location.search).get('forum') ?? '';
+  } catch {
+    return '';
+  }
+}
+
 /** The forum server's address, without a trailing slash; '' when there is no forum in this build. */
-export const FORUM_URL = ((import.meta.env.VITE_FORUM_URL as string | undefined) ?? '').trim().replace(/\/+$/, '');
+export const FORUM_URL = (((import.meta.env.VITE_FORUM_URL as string | undefined) ?? '').trim() || devForum()).trim().replace(/\/+$/, '');
 
 /** Who the player is on the forum (design, "Who a player is"): its own localStorage key, never part of a town. */
 export const FORUM_KEY = 'lc:forum';

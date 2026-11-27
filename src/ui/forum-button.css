@@ -105,3 +105,9 @@
     transform: none;
   }
 }
+
+/* The forum open: the game's own messages and banners (a town growing, a scene) wait under it and come back when
+   it closes; the forum says its own things over itself (src/forum/sheet.ts). */
+.lc-forum-open > .lc-toasts {
+  display: none !important;
+}
