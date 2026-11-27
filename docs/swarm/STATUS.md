@@ -2306,3 +2306,20 @@ everyone in its clouds) may exist there with other timing. Raid agent
 resumed on `fix/sally-undo` (from `site/main`), to say who the two
 are, whether live is affected, and to fix it for both lines. `main`
 is red until then; nothing is published from `main`.
+
+**2026-11-27: the garrison's undo failure on `main` was the test,
+not the game** (raid agent, `072ea39a`, test only). The two people
+were two residents in the town's own street scuffle (L50), begun
+0.83 s after the undo between people who bumped into each other, over
+by itself ten seconds later; the port update's busier harbour is why
+it shows on `main` only. No raider, soldier or bystander was held:
+the sally holds only its soldiers and raiders, and undo removes the
+raiders from the crowd. The test's last check now counts what the
+raid or sally holds (a raider still in the crowd, anyone in a cloud
+that is not an ordinary scuffle); undo is now tested in the thick of
+the fight, with a soldier's brawl and a townsman's; new test: the
+ship sunk mid-fight. Told plainly by the agent: with both clean-up
+lines removed the undo test still passed, so these guard a
+regression, they did not catch a bug. Merged into `main`; the live
+build is untouched (same test-only change kept on
+`fix/sally-undo-live` `0429af2c`, not needed for a publish).
