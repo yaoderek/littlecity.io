@@ -473,6 +473,9 @@ describe('desktop: mouse and keys', () => {
     await page.click('[data-ui="menu-button"]');
     expect(await js(page, `[...document.querySelectorAll('[data-menu]')].map((b) => b.dataset.menu)`)).toEqual(['grow', 'towns', 'new', 'share', 'postcard', 'download', 'open', 'sound', 'rebuild', 'raiders', 'stats', 'language']);
 
+    // Raiders are off until the player switches them on (since 2026-11-27).
+    expect(await js(page, `document.querySelector('[data-menu="raiders"]').textContent`)).toContain('off');
+
     // Sound is on until the player turns it off, and the switch governs the music as well.
     expect(await debug(page, 'sound')).toBe(true);
     expect(await js(page, `window.__lc.music.volume`)).toBe(0.4);
