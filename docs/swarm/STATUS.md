@@ -2294,3 +2294,15 @@ typecheck, lint and the tests round those files pass; the gate runs
 on GitHub. Known and told to Derek: the sally is small from the
 whole-island view; a rod with no line on quays with rowboats; ladders
 half hidden in summer leaves.
+
+**2026-11-27: the gate on `main` after the merge (`7826d4b`): one
+failure.** Browser job green (149). Unit job: 2,568 passed, 1 failed,
+`src/life/raid/sally.test.ts` "undo while the garrison is out": after
+the undo two people are still raiders not gone or flagged `inCloud`
+(line 132). Reproduces locally on `main` every time; passes on the
+live build `e55df96` (no port update). Not a problem of the live
+site by itself, but the bug under it (a sally's end not letting go of
+everyone in its clouds) may exist there with other timing. Raid agent
+resumed on `fix/sally-undo` (from `site/main`), to say who the two
+are, whether live is affected, and to fix it for both lines. `main`
+is red until then; nothing is published from `main`.
