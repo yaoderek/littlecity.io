@@ -33,7 +33,7 @@ export default mergeConfig(
             sequence: { groupOrder: 0 },
             // Several agents share this machine; the default 5 s is too tight under load.
             testTimeout: FULL ? 300_000 : 60_000,
-            include: ['{src,tests,scenarios,gallery,tools}/**/*.test.ts'],
+            include: ['{src,server,tests,scenarios,gallery,tools}/**/*.test.ts'],
             exclude: ['**/*.e2e.test.ts', '**/node_modules/**'],
           },
         },

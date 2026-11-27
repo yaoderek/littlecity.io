@@ -64,7 +64,7 @@ function importRules(dir) {
 }
 
 export default tseslint.config(
-  { ignores: ['dist/**', 'node_modules/**', 'spike/**', '.context/**', '.gstack/**', 'docs/**', 'coverage/**'] },
+  { ignores: ['dist/**', 'server/dist/**', 'node_modules/**', 'spike/**', '.context/**', '.gstack/**', 'docs/**', 'coverage/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

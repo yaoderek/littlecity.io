@@ -24,7 +24,10 @@
     "music": "node tools/music.mjs",
     "seo": "node tools/seo.mjs",
     "indexnow": "node tools/indexnow.mjs",
-    "translate": "node tools/translate.mjs"
+    "translate": "node tools/translate.mjs",
+    "build:forum": "rolldown -c server/rolldown.config.mjs",
+    "forum": "npm run build:forum && FORUM_DATA=.context/forum-data PORT=8787 ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin} node --disable-warning=ExperimentalWarning server/dist/forum.mjs",
+    "forum:seed": "node tools/forum-seed.mjs"
   },
   "dependencies": {
     "posthog-js": "1.453.2",
