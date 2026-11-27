@@ -2270,3 +2270,27 @@ where clicked + the garrison's sally): unit job 2,462 passed, browser
 job 149 passed, the touch-orbit test on its second try there (it
 passes first time locally). Served at :5180, waiting for Derek; not
 live.
+
+**2026-11-27, 00:08: live is the build from `e55df96`** (bundle
+`app-D4R0_yPX.js`), published by the orchestrator after Derek tried
+the showcase preview and said "looks good, merge and deploy all". It
+is the previous live build `63329a6` (Almanac, red dots) plus orchard
+ladders that rest in the fork and fall with their tree, the fishing
+line to a float on the water, raids landing where clicked and any
+number at once, and the castle's garrison repelling one raid. Branch
+`preview/showcase` on yaoderek/littlecity.io; its gate was green on
+GitHub on that exact commit. Published with the analytics key
+restored (`.env.production` was deleted in that worktree for
+previews; checked the key is in the build). Pages took six minutes to
+build (one build errored, the second succeeded); checked after: the
+home page, the bundle, /guide/, /about/, /zh/ and the sitemap answer
+200 and the bundle carries the raid's new hint. **The port update on
+`main` is still not live**: he signed off on what the preview held,
+and it did not hold the port update. Merged into `main` with two
+conflicts against the port update resolved by hand keeping both
+(`people.system.ts`: bikes and the fishing line; `places.ts`: the
+picker at the ladder's foot and the apples heaping in the basket);
+typecheck, lint and the tests round those files pass; the gate runs
+on GitHub. Known and told to Derek: the sally is small from the
+whole-island view; a rod with no line on quays with rowboats; ladders
+half hidden in summer leaves.
