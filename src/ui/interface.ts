@@ -516,10 +516,12 @@ export function createInterface(host: InterfaceHost): Interface {
     },
   });
   try {
-    // Raiders come on their own unless switched off (never in a town's first minutes: src/style/raid.ts).
-    raidsOf(view.stage).auto = localStorage.getItem(RAIDERS_KEY) !== 'off';
+    // Raiders come on their own only once the player has switched them on in the menu (off by default since
+    // 2026-11-27: a raid in the middle of building got in the way). Never in a town's first minutes: src/style/raid.ts.
+    raidsOf(view.stage).auto = localStorage.getItem(RAIDERS_KEY) === 'on';
   } catch {
-    // Default: on.
+    // No storage: off.
+    raidsOf(view.stage).auto = false;
   }
   try {
     mischiefOf(view.stage).rebuild = localStorage.getItem(REBUILD_KEY) !== 'off';

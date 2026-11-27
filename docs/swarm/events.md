@@ -7,7 +7,7 @@ always on (smoke, birds, flags, boats bobbing) are listed at the end.
 
 ## Big days
 - **A wedding** (guide) — a chapel whose door is on a path within 20 steps of a plaza (or a street), houses round about; by day, the first 25–45 s after the town opens, then every 300–420 s; up to 20 guests from within 32 steps. L57. Note with Watch.
-- **A raid** (guide) — by longship onto a beach, else rowing boats onto any low shore; on its own only in a town of 14 buildings or more with a shore a ship can reach, by day, after 8 minutes of play then every 12–20 minutes (the menu's Raiders switch, on by default); or any time with the Raid tool. Sink the ship (bomb, lightning) before it lands and nobody comes ashore. L69–L72. Note with Watch.
+- **A raid** (guide) — by longship onto a beach, else rowing boats onto any low shore; on its own only in a town of 14 buildings or more with a shore a ship can reach, by day, after 8 minutes of play then every 12–20 minutes (only while the menu's Raiders switch is on, off by default); or any time with the Raid tool. Sink the ship (bomb, lightning) before it lands and nobody comes ashore. L69–L72. Note with Watch.
 - **Market day** (guide) — the biggest square (a full 3 × 3 plaza) with two stalls or more on or beside it; market days (the first day, then 60 % of days) from dawn to early afternoon. L56.
 - **The midwinter festival** (guide) — every town: lights along streets and round squares, wreaths, a tree on the main square; the last third of winter, going up house by house, lit from dusk. D35 (seasons).
 
