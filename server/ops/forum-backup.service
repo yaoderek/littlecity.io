@@ -1,0 +1,14 @@
+# The nightly backup of Global Village (backup.sh), started by forum-backup.timer (server/README.md).
+# Installed as /etc/systemd/system/forum-backup.service. Owner: Forum.
+[Unit]
+Description=Back up Global Village to Alibaba OSS
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=forum
+Group=forum
+# FORUM_BACKUP_BUCKET=oss://... and the ossutil config file (root-only file, mode 600, readable by forum)
+EnvironmentFile=/etc/forum-backup.env
+ExecStart=/opt/forum/backup.sh

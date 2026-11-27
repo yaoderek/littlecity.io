@@ -417,7 +417,8 @@ export interface RunningForum {
 /** Starts the forum on a port (0: any free one) and host. */
 export function startForum(opts: ForumOptions & { port: number; host?: string }): Promise<RunningForum> {
   const forum = createForum(opts);
-  const server = createServer({ requestTimeout: 30_000, headersTimeout: 10_000 }, (req, res) => forum.handle(req, res));
+  // Two minutes for a request: a 700 KB post from a slow mobile connection behind Caddy (which streams it through).
+  const server = createServer({ requestTimeout: 120_000, headersTimeout: 15_000 }, (req, res) => forum.handle(req, res));
   server.keepAliveTimeout = 5_000;
   return new Promise((resolve, reject) => {
     server.once('error', reject);

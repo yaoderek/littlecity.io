@@ -1,0 +1,40 @@
+# Global Village (Little City's town forum) as a service that restarts by itself (server/README.md).
+# Installed as /etc/systemd/system/forum.service. Owner: Forum.
+[Unit]
+Description=Global Village, the Little City town forum
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=forum
+Group=forum
+WorkingDirectory=/var/lib/forum
+Environment=FORUM_DATA=/var/lib/forum/data
+Environment=PORT=8787
+Environment=HOST=127.0.0.1
+Environment=FORUM_PUBLIC_URL=https://towns.littlecity.io
+Environment=FORUM_GAME_URL=https://littlecity.io
+# ADMIN_PASSWORD=... (root-only file, mode 600)
+EnvironmentFile=/etc/forum.env
+ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning /opt/forum/forum.mjs
+Restart=always
+RestartSec=2
+TimeoutStopSec=10
+
+# It reads its program and writes its data folder, nothing else.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/forum
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LimitNOFILE=65536
+MemoryMax=1G
+
+[Install]
+WantedBy=multi-user.target

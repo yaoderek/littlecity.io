@@ -1,0 +1,17 @@
+# Caddy in front of Global Village (server/README.md): HTTPS certificates and nothing else.
+# Installed as /etc/caddy/Caddyfile. Owner: Forum.
+towns.littlecity.io {
+	# A post is at most about 700 KB (the program refuses more itself); stop anything far bigger here.
+	request_body {
+		max_size 1MB
+	}
+	encode gzip
+	# Caddy sets X-Forwarded-For to the caller's address; the program trusts it only from this machine.
+	reverse_proxy 127.0.0.1:8787
+	log {
+		output file /var/log/caddy/towns.log {
+			roll_size 20MiB
+			roll_keep 5
+		}
+	}
+}

@@ -1,0 +1,41 @@
+# Watching Global Village, the town forum server (server/README.md, "Watching"). Every 15 minutes
+# asks its /health; when it doesn't answer twice in a row (a minute apart) the run fails and GitHub
+# emails Derek. Does nothing, successfully, while the repository variable FORUM_URL is unset (before
+# the server exists). Set it under Settings > Secrets and variables > Actions > Variables, e.g.
+# https://towns.littlecity.io. Owner: Forum.
+name: forum-health
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: forum-health
+  cancel-in-progress: false
+
+jobs:
+  health:
+    name: ask /health
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ask the forum server
+        env:
+          FORUM_URL: ${{ vars.FORUM_URL }}
+        run: |
+          if [ -z "$FORUM_URL" ]; then
+            echo "FORUM_URL is not set: there is no forum server to watch yet."
+            exit 0
+          fi
+          for try in 1 2; do
+            if body=$(curl -fsS --max-time 20 "${FORUM_URL%/}/health") && echo "$body" | grep -q '"ok":true'; then
+              echo "Global Village answered: $body"
+              exit 0
+            fi
+            if [ "$try" = 1 ]; then echo "No answer; asking again in a minute."; sleep 60; fi
+          done
+          echo "::error::Global Village (${FORUM_URL}) did not answer /health twice in a row."
+          exit 1

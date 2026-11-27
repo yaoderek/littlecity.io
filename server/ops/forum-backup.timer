@@ -1,0 +1,12 @@
+# Every night at 03:30 Hong Kong time (19:30 UTC), Global Village's backup (server/README.md).
+# Installed as /etc/systemd/system/forum-backup.timer. Owner: Forum.
+[Unit]
+Description=Nightly backup of Global Village
+
+[Timer]
+OnCalendar=*-*-* 19:30:00 UTC
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target

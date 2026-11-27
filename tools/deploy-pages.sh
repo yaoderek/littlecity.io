@@ -12,6 +12,25 @@ ROOT=$(pwd)
 OUT="$ROOT/.context/pages-dist"
 SHA=$(git rev-parse --short HEAD)
 SITE=yaoderek/littlecity.io
+# Global Village (server/README.md): a build with a forum address must not publish towns its forum
+# server can't read. The address is VITE_FORUM_URL as the build sees it (the shell's, else
+# .env.production's). When it is set, the server's codec fingerprint (/health) must equal this
+# commit's; when it is empty there is no forum and nothing here runs.
+if [ -n "${VITE_FORUM_URL+set}" ]; then
+  FORUM=$VITE_FORUM_URL
+else
+  FORUM=$(sed -n "s/^VITE_FORUM_URL=//p" .env.production 2>/dev/null | tail -n 1 | tr -d "\"' ")
+fi
+if [ -n "$FORUM" ]; then
+  npm run --silent build:forum >/dev/null
+  WANT=$(node --disable-warning=ExperimentalWarning server/dist/forum.mjs --codec)
+  HAVE=$(curl -fsS --max-time 20 "${FORUM%/}/health" 2>/dev/null | node -e 'let d="";process.stdin.on("data",(c)=>(d+=c)).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).codec??""))}catch{}})') || HAVE=""
+  if [ "$HAVE" != "$WANT" ]; then
+    echo "The forum server at $FORUM reads town codec ${HAVE:-(no answer)}; this commit's is $WANT."
+    echo "put the forum server up first: tools/deploy-forum.sh"
+    exit 1
+  fi
+fi
 rm -rf "$OUT"
 VITE_BUILD="$SHA" npx vite build --base=/ --outDir "$OUT" --emptyOutDir >/dev/null
 # The pages search engines read: /about/, /guide/<id>/, the sitemap (tools/seo/site.ts).
