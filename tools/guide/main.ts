@@ -3,6 +3,11 @@
 // the pictures never change by chance, frames it tightly, and cuts it out
 // as a soft-edged vignette on a transparent background.
 //
+// With --clips, each building's clip instead (beginClip, clipFrame): the same
+// framing, the recipe built tap by tap in the order src/guide/steps.ts gives,
+// with the game's own landing, the tutorial's glove and the unlock stars, on
+// a clock stepped by hand at CLIP_FPS, on the Almanac's paper.
+//
 // Uses only TownView, Signals, LifeRuntime and the scenario builder, like
 // tools/shot.
 
@@ -39,7 +44,7 @@ const RESTLESS = new Set<string>([
 /** Wild tufts and beach finds strewn over open ground: at thumbnail size they read as specks of dirt. */
 const SCATTER = 'D24.';
 
-const canvas = document.getElementById('town') as HTMLCanvasElement;
+let canvas = document.getElementById('town') as HTMLCanvasElement;
 let view: TownView | null = null;
 let life: LifeRuntime | null = null;
 let signals: TownSignals | null = null;
@@ -238,6 +243,23 @@ interface ClipRun {
   next(): string;
 }
 let run: ClipRun | null = null;
+/**
+ * A fresh view (and canvas) for every clip: the last town leaves traces in a view that a still never shows
+ * but a clip's first frames do (the old ground's shade, its moving columns, for a second or two).
+ */
+function freshView(): void {
+  if (!view) return;
+  life?.dispose();
+  life = null;
+  view.dispose();
+  view = null;
+  signals = null;
+  const next = document.createElement('canvas');
+  next.id = 'town';
+  canvas.replaceWith(next);
+  canvas = next;
+}
+
 /** The life now running is this one (a clip opened its town afresh): the next stage() disposes it. */
 const adopt = (next: LifeRuntime): void => {
   life = next;
@@ -256,14 +278,19 @@ async function beginClip(id: string, opts: { hold?: number } = {}): Promise<{ fr
   if (!entry) throw new Error(`no guide entry '${id}'`);
   const plan = clipPlan(entry);
   const hand = await gloveImage();
+  freshView();
   let world = plan.setting;
   let shape = resolveShape(world, plan.terrain);
   let dressing = clipDressing(shape);
   const staged = stage(entry, entry.seed, shape, dressing, plan.final, 0.07);
   const { view, signals } = staged;
   let life = staged.life;
-  // Life settles on the setting first (trees still, water running), as a still's does.
-  for (let i = 0; i < 2 * CLIP_FPS; i++) life.update(signals.advance(1 / CLIP_FPS));
+  // Life settles on the setting first (trees still, water running), as a still's does; drawn as it goes,
+  // so whatever the view eases in over a few frames (the ground's shade) has settled by the first frame.
+  for (let i = 0; i < 2 * CLIP_FPS; i++) {
+    life.update(signals.advance(1 / CLIP_FPS));
+    view.render(signals);
+  }
   for (let i = 0; i < 4; i++) {
     view.render(signals);
     await nextFrame();

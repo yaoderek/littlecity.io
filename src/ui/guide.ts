@@ -20,6 +20,7 @@ import { track } from '@/app/analytics';
 import { t } from '@/i18n';
 import type { DressingPlan, ShapePlan } from '@/resolve/plan';
 import { el, iconButton } from './dom';
+import { createClipPlayer } from './guide-clips';
 import { icon } from './icons';
 import './guide.css';
 
@@ -53,6 +54,8 @@ export interface Guide {
   found(): string[];
   /** The player built something new: the stamps and the count follow. */
   collectionChanged(): void;
+  /** The ids of the buildings whose clips are playing now (browser tests, the console). */
+  clips(): string[];
   dispose(): void;
 }
 
@@ -90,6 +93,11 @@ export function createGuide(host: GuideHost): Guide {
     ],
   );
 
+  // The buildings' clips (./guide-clips.ts): played only while the Almanac is open, a few at a time.
+  const sheet = (): boolean => getComputedStyle(panel).getPropertyValue('--lc-guide-sheet').trim() === '1';
+  const coarse = typeof matchMedia === 'function' ? matchMedia('(pointer: coarse)') : null;
+  const clips = createClipPlayer(scroller, { phone: () => sheet() || coarse?.matches === true });
+
   // ── the pages ───────────────────────────────────────────────────────────
   const cards = new Map<string, { entry: GuideEntry; card: HTMLElement }>();
   const counts = new Map<string, HTMLElement>();
@@ -101,11 +109,15 @@ export function createGuide(host: GuideHost): Guide {
     const list = el('ul', { class: 'lc-guide-list' });
     for (const entry of entries) {
       const collect = collectable(entry.id);
+      const still = el('img', {
+        class: 'lc-guide-picture',
+        attrs: { src: pictureUrl(entry.id), alt: '', loading: 'lazy', decoding: 'async', width: '180', height: '135', draggable: 'false' },
+      });
+      // A building's picture is a clip of it being built (the still until it plays).
+      const shot = collect ? el('span', { class: 'lc-guide-shot' }, [still]) : null;
+      if (shot) clips.add(entry.id, shot, still);
       const card = el('li', { class: 'lc-guide-entry', attrs: { 'data-entry': entry.id, ...(collect ? { 'data-collect': '' } : {}) } }, [
-        el('img', {
-          class: 'lc-guide-picture',
-          attrs: { src: pictureUrl(entry.id), alt: '', loading: 'lazy', decoding: 'async', width: '180', height: '135', draggable: 'false' },
-        }),
+        shot ?? still,
         el('div', { class: 'lc-guide-words' }, [
           el('h4', {}, [
             el('span', { text: t(entry.name) }),
@@ -196,6 +208,7 @@ export function createGuide(host: GuideHost): Guide {
         refresh();
       }
       scroller.focus({ preventScroll: true });
+      clips.setOpen(true);
     },
     openAt(id) {
       api.open();
@@ -208,6 +221,7 @@ export function createGuide(host: GuideHost): Guide {
     },
     close() {
       if (!api.isOpen) return false;
+      clips.setOpen(false);
       scrollTop = scroller.scrollTop;
       const hadFocus = panel.contains(document.activeElement);
       panel.setAttribute('hidden', '');
@@ -241,7 +255,9 @@ export function createGuide(host: GuideHost): Guide {
       }
       return [...found];
     },
+    clips: () => clips.playing(),
     dispose() {
+      clips.dispose();
       panel.remove();
       button.remove();
     },
@@ -256,7 +272,6 @@ export function createGuide(host: GuideHost): Guide {
 
   // ── phone: swipe the sheet down to close it ─────────────────────────────
   let swipe: { y: number; t: number; dy: number; fromTop: boolean } | null = null;
-  const sheet = (): boolean => getComputedStyle(panel).getPropertyValue('--lc-guide-sheet').trim() === '1';
   panel.addEventListener(
     'touchstart',
     (e) => {

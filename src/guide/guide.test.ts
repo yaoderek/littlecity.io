@@ -8,6 +8,7 @@ import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import type { Role } from '@/core/vocab';
 import { resolveScenario } from '@/scenario';
+import { COLLECTION } from './collection';
 import { ENTRIES, GROUPS, guideScenario, NOT_SPECIAL, provenRoles } from './entries';
 import { contentsOf, holds } from './proof';
 
@@ -88,7 +89,7 @@ describe('the list', () => {
 
 describe('the pictures', () => {
   const dir = path.resolve(__dirname, '../../public/guide');
-  const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => !f.startsWith('.')) : [];
+  const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => !f.startsWith('.') && f !== 'clips') : [];
 
   test('every entry has its picture, small enough to load quickly', () => {
     let total = 0;
@@ -107,6 +108,33 @@ describe('the pictures', () => {
   test('no picture is left over from an entry that is gone', () => {
     // The Mischief group's Raid has a picture of its own (src/life/testing/raid-picture.mjs).
     const ids = new Set([...ENTRIES.map((e) => `${e.id}.webp`), 'raid.webp']);
+    expect(files.filter((f) => !ids.has(f))).toEqual([]);
+  });
+});
+
+describe('the clips', () => {
+  // Every building's picture in the Almanac is a clip of it being built (npm run guide -- --clips); the
+  // happenings keep their still.
+  const dir = path.resolve(__dirname, '../../public/guide/clips');
+  const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => !f.startsWith('.')) : [];
+
+  test('every building has its clip in both forms, small enough to fetch as it scrolls into view', () => {
+    let total = 0;
+    for (const e of COLLECTION) {
+      for (const ext of ['webm', 'mp4']) {
+        const file = path.join(dir, `${e.id}.${ext}`);
+        expect(fs.existsSync(file), `public/guide/clips/${e.id}.${ext} is missing: run npm run guide -- --clips ${e.id}`).toBe(true);
+        const size = fs.statSync(file).size;
+        expect(size, `${e.id}.${ext} is ${size} bytes`).toBeLessThan(160_000);
+        total += size;
+      }
+    }
+    // Both forms of every clip; a browser fetches one form, and only of the clips it plays.
+    expect(total).toBeLessThan(12_000_000);
+  });
+
+  test('no clip is left over from a building that is gone, and the happenings have none', () => {
+    const ids = new Set(COLLECTION.flatMap((e) => [`${e.id}.webm`, `${e.id}.mp4`]));
     expect(files.filter((f) => !ids.has(f))).toEqual([]);
   });
 });

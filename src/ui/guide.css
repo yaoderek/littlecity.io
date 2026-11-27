@@ -133,6 +133,35 @@
   object-fit: contain;
   -webkit-user-drag: none;
 }
+/* A building's picture: its still, and over it (only while it plays) the clip of it being built
+   (src/ui/guide-clips.ts), drawn on the page's own paper. The paper under the still is plain too (no
+   ruled lines), so nothing changes but the picture when the clip comes in. */
+.lc-guide-shot {
+  position: relative;
+  display: block;
+  width: 116px;
+  height: 87px;
+  background: var(--lc-card);
+}
+.lc-guide-shot .lc-guide-picture {
+  width: 100%;
+  height: 100%;
+}
+.lc-guide-clip {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--lc-card);
+  opacity: 0;
+  transition: opacity 0.16s ease-out;
+  pointer-events: none;
+}
+.lc-guide-shot[data-clip] .lc-guide-clip {
+  opacity: 1;
+}
 .lc-guide-words h4 {
   display: flex;
   align-items: center;
@@ -212,7 +241,7 @@
 .lc-guide-entry[data-built] .lc-guide-stamp {
   display: inline-block;
 }
-.lc-guide-entry[data-collect]:not([data-built]) .lc-guide-picture {
+.lc-guide-entry[data-collect]:not([data-built]) .lc-guide-shot {
   opacity: 0.55;
   filter: grayscale(0.75);
 }
@@ -297,7 +326,8 @@
   .lc-guide-entry {
     grid-template-columns: 124px minmax(0, 1fr);
   }
-  .lc-guide-picture {
+  .lc-guide-picture,
+  .lc-guide-shot {
     width: 124px;
     height: 93px;
   }
