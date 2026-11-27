@@ -41,9 +41,14 @@ const js = <T>(page: Page, expression: string): Promise<T> => page.evaluate(expr
 const isOpen = (page: Page): Promise<boolean> => js(page, 'window.__lc.ui.debug().guide');
 /** The buildings' clips playing now (src/ui/guide-clips.ts). */
 const playing = (page: Page): Promise<string[]> => js(page, 'window.__lc.ui.guide.clips()');
-/** The clip files the page has fetched. */
-const fetchedClips = (page: Page): Promise<string[]> =>
-  js(page, '[...new Set(performance.getEntriesByType("resource").map((r) => r.name).filter((n) => n.includes("/guide/clips/")))]');
+/** Collects the clip files the page asks for from now on (media fetches are not in the page's resource timing). */
+function clipRequests(page: Page): Set<string> {
+  const asked = new Set<string>();
+  page.on('request', (r) => {
+    if (r.url().includes('/guide/clips/')) asked.add(new URL(r.url()).pathname);
+  });
+  return asked;
+}
 /** Scrolls the pages so an entry is at the top. */
 const scrollTo = (page: Page, id: string): Promise<unknown> =>
   page.locator('[data-ui="guide"] .lc-guide-pages').evaluate((el, at) => {
@@ -125,8 +130,9 @@ describe('desktop', () => {
 
   test('a building\'s clip plays while its entry is in view, two at most; nothing is fetched before it opens and nothing plays once it shuts', async () => {
     const { page, errors } = await open();
+    const asked = clipRequests(page);
     await page.waitForTimeout(400);
-    expect(await fetchedClips(page)).toEqual([]);
+    expect([...asked]).toEqual([]);
     await page.click('[data-ui="guide-button"]');
     await settled(page);
     await scrollTo(page, 'chapel');
@@ -140,9 +146,9 @@ describe('desktop', () => {
       await page.waitForTimeout(150);
     }
     // Only the clips near the screen were made ready, and only the playing ones fetched.
-    const fetched = await fetchedClips(page);
-    expect(fetched.length).toBeGreaterThan(0);
-    expect(fetched.length).toBeLessThanOrEqual(2);
+    const ids = new Set([...asked].map((u) => u.replace(/^.*\/|\.(webm|mp4)$/g, '')));
+    expect(ids.size).toBeGreaterThan(0);
+    expect(ids.size).toBeLessThanOrEqual(2);
     await page.screenshot({ path: path.join(SHOTS, 'guide-clips-desktop.png') });
 
     // Further down, others take over.
