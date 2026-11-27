@@ -2347,3 +2347,8 @@ published or raiders come back on: `preview/tree-clear` (`ae7d9a32`,
 the PostHog numbers chat's) does not contain it; that chat has been
 told not to publish it as it stands. The orchestrator has no release
 of its own waiting.
+
+**2026-11-27: `main` green again** (`8fbce67`, gate 45968285393: unit
+2,572 passed, browser 150 passed, one on a retry). It holds the
+release `e55df96c`, the port update, the tree fix, the garrison test
+fix and raiders off by default.
