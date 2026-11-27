@@ -1,7 +1,8 @@
 // Red dots on things to try (Derek, 2026-11-26): the little red notification dot mobile games put on
 // anything new. One on the Almanac button until the Almanac is first opened (and again after a building
 // is unlocked, until it is next opened), on the wings until the player first flies, on the Mischief tab
-// until it is first opened, and on Grow a town in the menu until it is first chosen; the ☰ button carries
+// until it is first opened, on Grow a town in the menu until it is first chosen, and on Global Village's
+// button until the forum is first opened (where the build has one); the ☰ button carries
 // one while anything in the menu does (on a phone the Almanac is a menu row). The rules are
 // ./dots-state.ts.
 //
@@ -38,13 +39,13 @@ export interface DotsHost {
   /** What the game knows of a player from before the dots. */
   known: DotsKnown;
   /** The buttons that carry a dot. */
-  buttons: { almanac: HTMLElement; fly: HTMLElement; mischief: HTMLElement | null; menu: HTMLElement };
+  buttons: { almanac: HTMLElement; fly: HTMLElement; mischief: HTMLElement | null; menu: HTMLElement; forum?: HTMLElement | null };
   /** Dots are put away for now: a town growing, the tutorial hand on show, flying. */
   hidden(): boolean;
   /** The Almanac is a row in the menu, not a button of its own (a phone). */
   almanacInMenu(): boolean;
   /** Each frame: what is in use now (the Almanac open, flying, the Mischief drawer open). */
-  inUse(): { almanac: boolean; fly: boolean; mischief: boolean };
+  inUse(): { almanac: boolean; fly: boolean; mischief: boolean; forum?: boolean };
   /** The tutorial hand's place step is over. */
   placed(): boolean;
 }
@@ -101,11 +102,12 @@ export function createDots(host: DotsHost): Dots {
     if (cleared) {
       // Did the dots lead the player to try things? (PostHog: dot_cleared.) on_screen: its dot was drawn just then.
       const { what } = cleared;
-      const button = what === 'grow' || (what === 'almanac' && host.almanacInMenu()) ? host.buttons.menu : host.buttons[what];
+      const button = what === 'grow' || (what === 'almanac' && host.almanacInMenu()) ? host.buttons.menu : (host.buttons[what] ?? null);
       track('dot_cleared', { what, after_unlock: cleared.afterUnlock, on_screen: button ? drawn.get(button) === true : false });
     }
   };
-  const showing = (id: DotId): boolean => host.enabled && !host.hidden() && dotted(state, id);
+  // (A build with no forum has no Global Village button to carry its dot.)
+  const showing = (id: DotId): boolean => host.enabled && !host.hidden() && dotted(state, id) && (id !== 'forum' || !!host.buttons.forum);
 
   return {
     placed: () => apply({ type: 'ready' }),
@@ -118,6 +120,7 @@ export function createDots(host: DotsHost): Dots {
       if (now.almanac) apply({ type: 'used', id: 'almanac' });
       if (now.fly) apply({ type: 'used', id: 'fly' });
       if (now.mischief) apply({ type: 'used', id: 'mischief' });
+      if (now.forum) apply({ type: 'used', id: 'forum' });
       const { buttons } = host;
       const inMenu = host.almanacInMenu();
       const show = (button: HTMLElement | null, on: boolean): void => {
@@ -129,6 +132,7 @@ export function createDots(host: DotsHost): Dots {
       show(buttons.almanac, !hidden && !inMenu && dotted(state, 'almanac'));
       show(buttons.fly, !hidden && dotted(state, 'fly'));
       show(buttons.mischief, !hidden && dotted(state, 'mischief'));
+      show(buttons.forum ?? null, !hidden && dotted(state, 'forum'));
       show(buttons.menu, !hidden && menuDotted(state, inMenu));
     },
     debug: () => ({

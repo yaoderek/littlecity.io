@@ -359,6 +359,18 @@ const DRAWINGS: Record<string, string> = {
     `<path stroke-width="1.5" d="M28.4 31.4 L28.5 24.8 L32.8 20.6 L37 24.6 L37 31 Z" fill="${C.pink}"/>` +
     `<path ${thin} d="M31.6 31.2 L31.6 27.8 L34 27.8 L34 31.1"/>` +
     `<path stroke-width="1.5" d="M29.8 11.6 L29.9 4.8 L33.4 4.6 L33.4 10.8 L31.6 9.4 Z" fill="${C.red}"/>`,
+  // Global Village (src/ui/forum-button.ts): two little houses side by side on a curve of the round world.
+  village:
+    `<path d="M3.8 41.6 Q24 30.2 44.2 41.6 Z" fill="${C.grass}"/>` +
+    `<path d="M7.6 36.4 L7.8 24.4 L14.6 17.6 L21.4 24.2 L21.4 33.6 Q14 34 7.6 36.4 Z" fill="${C.wall}"/>` +
+    `<path d="M5.4 25.8 L14.6 15.6 L23.6 25.4" stroke-width="2.4" stroke="${C.ink}"/>` +
+    `<path d="M24.6 33.4 L24.6 19.4 L32.6 11 L40.6 19.2 L40.6 36.2 Q32.4 33.2 24.6 33.4 Z" fill="${C.pink}"/>` +
+    `<path d="M22.6 21 L32.6 8.8 L42.6 20.8" stroke-width="2.4" stroke="${C.ink}"/>` +
+    `<path stroke-width="1.6" d="M12.6 34.4 L12.6 28.6 L16.6 28.6 L16.6 33.8"/>` +
+    `<path stroke-width="1.5" d="M29.6 21.4 L35.4 21.4 L35.4 26.4 L29.6 26.4 Z" fill="${C.glass}"/>`,
+  // A heart: likes (Global Village), filled when the player has liked.
+  heart:
+    `<path d="M24 40.4 Q9.6 31 6.6 22.2 Q4.4 13.6 11.6 10.2 Q19 7.6 24 15.4 Q29 7.6 36.4 10.2 Q43.6 13.6 41.4 22.2 Q38.4 31 24 40.4 Z" fill="${C.red}" stroke-width="2.4"/>`,
   // A cup of coffee on its saucer, steam rising: the tip jar (Ko-fi link in the corner).
   coffee:
     `<path ${thin} d="M18.4 13.6 Q15.8 10.6 18.6 7.6 Q21 5 18.8 2.8 M26.4 13.6 Q23.8 10.6 26.6 7.6 Q29 5 26.8 2.8"/>` +

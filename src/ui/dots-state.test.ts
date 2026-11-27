@@ -25,12 +25,12 @@ describe('red dots', () => {
     expect(shown(start)).toEqual([]);
     expect(menuDotted(start, true)).toBe(false);
     const { state } = run(start, [{ type: 'ready' }]);
-    expect(shown(state)).toEqual(['almanac', 'fly', 'mischief', 'grow']);
+    expect(shown(state)).toEqual(['almanac', 'fly', 'mischief', 'grow', 'forum']);
     expect(menuDotted(state, false)).toBe(true);
   });
 
   test('the tutorial place step over (remembered) counts as the first piece', () => {
-    expect(shown(startDots(null, { placed: true }))).toEqual(['almanac', 'fly', 'mischief', 'grow']);
+    expect(shown(startDots(null, { placed: true }))).toEqual(['almanac', 'fly', 'mischief', 'grow', 'forum']);
     expect(shown(startDots(null, { placed: false }))).toEqual([]);
   });
 
@@ -41,14 +41,14 @@ describe('red dots', () => {
       { what: 'fly', afterUnlock: false },
       { what: 'mischief', afterUnlock: false },
     ]);
-    expect(shown(state)).toEqual(['almanac', 'grow']);
-    expect(shown(reload(state))).toEqual(['almanac', 'grow']);
+    expect(shown(state)).toEqual(['almanac', 'grow', 'forum']);
+    expect(shown(reload(state))).toEqual(['almanac', 'grow', 'forum']);
   });
 
   test('a thing used before the first piece never gets a dot, and clears none', () => {
     const { state, cleared } = run(startDots(null), [use('almanac'), use('grow'), { type: 'ready' }]);
     expect(cleared).toEqual([]);
-    expect(shown(state)).toEqual(['fly', 'mischief']);
+    expect(shown(state)).toEqual(['fly', 'mischief', 'forum']);
   });
 
   test('the Almanac comes back after an unlock, until it is next opened', () => {
@@ -68,8 +68,18 @@ describe('red dots', () => {
   });
 
   test('an unlock does not bring back any other dot', () => {
-    const { state } = run(startDots(null), [{ type: 'ready' }, use('fly'), use('grow'), use('mischief'), use('almanac'), { type: 'unlocked' }]);
+    const { state } = run(startDots(null), [{ type: 'ready' }, use('fly'), use('grow'), use('mischief'), use('almanac'), use('forum'), { type: 'unlocked' }]);
     expect(shown(state)).toEqual(['almanac']);
+  });
+
+  test('Global Village carries a dot until the forum is first opened, and never brings back the menu\'s', () => {
+    const ready = run(startDots(null), [{ type: 'ready' }]).state;
+    expect(dotted(ready, 'forum')).toBe(true);
+    const { state, cleared } = run(ready, [use('forum'), use('forum')]);
+    expect(cleared).toEqual([{ what: 'forum', afterUnlock: false }]);
+    expect(dotted(state, 'forum')).toBe(false);
+    expect(dotted(reload(state), 'forum')).toBe(false);
+    expect(menuDotted(run(state, [use('grow')]).state, false)).toBe(false);
   });
 
   test('the menu button is dotted while Grow a town is, or (on a phone) the Almanac', () => {
@@ -83,14 +93,14 @@ describe('red dots', () => {
   });
 
   test('a player who used Mischief before the dots gets no dot for it', () => {
-    expect(shown(startDots(null, { placed: true, mischief: true }))).toEqual(['almanac', 'fly', 'grow']);
+    expect(shown(startDots(null, { placed: true, mischief: true }))).toEqual(['almanac', 'fly', 'grow', 'forum']);
   });
 
   test('what is remembered is read defensively', () => {
-    expect(shown(startDots('not json', { placed: true }))).toEqual(['almanac', 'fly', 'mischief', 'grow']);
+    expect(shown(startDots('not json', { placed: true }))).toEqual(['almanac', 'fly', 'mischief', 'grow', 'forum']);
     expect(shown(startDots('null'))).toEqual([]);
     const odd = startDots(JSON.stringify({ ready: true, used: ['fly', 'rocket', 7], unlocked: 'yes' }));
-    expect(shown(odd)).toEqual(['almanac', 'mischief', 'grow']);
+    expect(shown(odd)).toEqual(['almanac', 'mischief', 'grow', 'forum']);
     expect(odd.unlocked).toBe(false);
   });
 

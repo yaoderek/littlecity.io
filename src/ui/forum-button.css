@@ -1,0 +1,99 @@
+/* Global Village's button (src/ui/forum-button.ts): a pill at the top centre, a round button the size of the
+   menu's on a narrow window, with a heart and a number when there is news. Owner: Interface. */
+
+.lc-forum-card {
+  position: absolute;
+  top: calc(10px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  padding: 3px;
+}
+.lc-forum-btn {
+  position: relative;
+  flex-direction: row;
+  gap: 6px;
+  height: 38px;
+  padding: 0 13px 0 7px;
+}
+.lc-forum-btn .lc-btn-icon {
+  width: 27px;
+  height: 27px;
+}
+.lc-forum-label {
+  font-size: 13.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+/* The news: a red tag with a white heart and the number, pinned to the button's corner like a phone's badge. */
+.lc-forum-badge {
+  position: absolute;
+  top: -11px;
+  right: -12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 20px;
+  padding: 0 6px 0 4px;
+  box-sizing: border-box;
+  border: 1.6px solid var(--lc-ink);
+  border-radius: 11px 9px 12px 9px / 9px 12px 9px 11px;
+  background: var(--lc-refuse);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 800;
+  line-height: 1;
+  pointer-events: none;
+}
+.lc-forum-badge-heart {
+  display: block;
+  width: 12px;
+  height: 12px;
+}
+.lc-forum-badge-heart path {
+  fill: #fff;
+  stroke: #fff;
+}
+.lc-forum-badge[hidden] {
+  display: none;
+}
+/* Toasts and the visit banner move to just below the button. */
+.lc-has-forum .lc-toasts {
+  top: calc(62px + env(safe-area-inset-top));
+}
+
+@media (pointer: coarse), (max-width: 640px) {
+  .lc-forum-btn {
+    height: 44px;
+  }
+}
+/* Narrow: the icon alone, round, the size of the menu button (44 px there: ui.css, .lc-round). */
+@media (max-width: 519.98px) {
+  .lc-forum-label {
+    display: none;
+  }
+  .lc-forum-btn {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+  }
+  .lc-forum-badge {
+    right: -16px;
+  }
+}
+.lc-phone.lc-has-forum .lc-toasts {
+  top: calc(72px + env(safe-area-inset-top));
+}
+
+/* Its page in the Almanac. */
+.lc-guide-forum-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, #bfe0ea 40%, var(--lc-card));
+  border-radius: 10px;
+}
+.lc-guide-forum-icon .lc-icon {
+  width: 60%;
+  height: 60%;
+}

@@ -55,6 +55,10 @@ export interface Keeper {
   detach(): void;
   /** A name for the town on screen (a grown town's kind), unless the player has named it. */
   suggestName(name: string): void;
+  /** The town on screen is a copy of a Global Village post: its name, and the post it came from (kept on its entry). Call after detach(). */
+  adopt(name: string, from: string): void;
+  /** The post the town on screen was copied from, if it was. */
+  readonly from: string | null;
   /** A picture of the town on screen. */
   thumb(dataUrl: string): void;
   /** Every kept town, the most recently changed first. */
@@ -104,6 +108,8 @@ export function createKeeper(opts: KeeperOptions): Keeper {
 
   const cache = new Map<string, TownEntry>();
   let pendingName: string | null = null;
+  /** The post a town not yet kept was copied from (Global Village): written on its entry when it is. */
+  let pendingFrom: string | null = null;
   let troubled = false;
   const trouble = (): void => {
     if (troubled) return;
@@ -221,10 +227,11 @@ export function createKeeper(opts: KeeperOptions): Keeper {
       const ok = writeSaved(code, id);
       if (id !== null) {
         const name = pendingName;
+        const from = pendingFrom;
         const at = now();
         queue(() => {
           const known = cache.get(id);
-          return putEntry(known ? { ...known, code, updated: at } : { id, code, name: name ?? nextName(), created: at, updated: at });
+          return putEntry(known ? { ...known, code, updated: at } : { id, code, name: name ?? nextName(), created: at, updated: at, ...(from ? { from } : {}) });
         });
       }
       return ok;
@@ -232,6 +239,15 @@ export function createKeeper(opts: KeeperOptions): Keeper {
     detach() {
       api.current = null;
       pendingName = null;
+      pendingFrom = null;
+    },
+    adopt(name, from) {
+      pendingName = name;
+      pendingFrom = from;
+    },
+    get from() {
+      const id = api.current;
+      return (id !== null ? cache.get(id)?.from : undefined) ?? pendingFrom;
     },
     suggestName(name) {
       pendingName = name;
@@ -261,6 +277,7 @@ export function createKeeper(opts: KeeperOptions): Keeper {
       if (!result.ok) return { ok: false, reason: t('{reason} It is kept here; a newer Little City may open it.', { reason: say(result.reason) }) };
       api.current = id;
       pendingName = null;
+      pendingFrom = null;
       writeSaved(entry.code, id);
       return { ok: true, world: result.world };
     },

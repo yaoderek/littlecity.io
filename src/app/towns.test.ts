@@ -148,6 +148,36 @@ describe('the keeper', () => {
     expect((await lib.all()).map((e: TownEntry) => e.id)).not.toContain(a);
   });
 
+  test('a copy of a Global Village post is a new town, named for its poster, remembering the post; the town it left is untouched', async () => {
+    const s = store();
+    const lib = memoryLibrary();
+    const k = createKeeper(opts(s, lib));
+    const own = town(1, 3);
+    k.save(own);
+    const mine = k.current!;
+    expect(k.from).toBeNull();
+    k.detach();
+    k.adopt("mira's town", 'post42');
+    expect(k.from).toBe('post42');
+    k.save(town(5, 4));
+    const copy = k.current!;
+    expect(copy).not.toBe(mine);
+    const all = await k.list();
+    expect(all.find((e) => e.id === copy)).toMatchObject({ name: "mira's town", from: 'post42' });
+    expect(all.find((e) => e.id === mine)).toMatchObject({ code: encodeTown(own) });
+    expect(all.find((e) => e.id === mine)!.from).toBeUndefined();
+    expect(k.from).toBe('post42');
+    // Kept across visits, and gone with the next town.
+    const again = createKeeper(opts(s, lib));
+    await again.list();
+    again.open(copy);
+    expect(again.from).toBe('post42');
+    again.open(mine);
+    expect(again.from).toBeNull();
+    k.detach();
+    expect(k.from).toBeNull();
+  });
+
   test('the library is read on start: a returning player sees every town, and the saved one is current-ready', async () => {
     const s = store();
     const lib = memoryLibrary();
