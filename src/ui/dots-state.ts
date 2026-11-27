@@ -13,8 +13,8 @@
 //
 // What is remembered is its own localStorage key (lc:dots), never part of a town.
 
-export type DotId = 'almanac' | 'fly' | 'mischief' | 'grow';
-export const DOT_IDS: readonly DotId[] = ['almanac', 'fly', 'mischief', 'grow'];
+export type DotId = 'almanac' | 'fly' | 'mischief' | 'grow' | 'forum';
+export const DOT_IDS: readonly DotId[] = ['almanac', 'fly', 'mischief', 'grow', 'forum'];
 
 export interface DotsState {
   /** The player has placed a first piece (or the tutorial's place step is over): dots may show. */
@@ -28,7 +28,7 @@ export interface DotsState {
 export type DotsEvent =
   /** A piece placed by hand, or the tutorial's place step is over. */
   | { type: 'ready' }
-  /** The player used a thing (opened the Almanac, flew, opened the Mischief drawer, chose Grow a town). */
+  /** The player used a thing (opened the Almanac, flew, opened the Mischief drawer, chose Grow a town, opened Global Village). */
   | { type: 'used'; id: DotId }
   /** A building was unlocked for the first time (while the Almanac was closed). */
   | { type: 'unlocked' };

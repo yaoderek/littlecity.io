@@ -44,6 +44,7 @@ import { clampLength, createScrollSteps, growthOf, maxLengthOf, planRun, type Ru
 import { createMarkers } from './markers';
 import { COFFEE_URL, createMenu } from './menu';
 import { createTownsSheet, type TownsHost } from './towns';
+import { createForumButton, FORUM_URL, forumGuideSection, type ForumAppHost, type ForumButton } from './forum-button';
 import { faceZone, pickCell, type Pick } from './pick';
 import { allPieceIds, DRAWER_IDS, drawerItems, isLandTool, isMischiefTool, isToolId, paintsRuns, trayItem, type DrawerId, type ItemId } from './pieces';
 import { createMischiefTools, HINTS_KEY as MISCHIEF_HINTS_KEY } from './mischief';
@@ -99,6 +100,8 @@ export interface InterfaceHost {
   parent?: HTMLElement;
   /** The language the game speaks (src/i18n): the one in use, and the player's choice of another. Without it, no menu entry. */
   language?: { current(): Lang; choose(lang: Lang): void };
+  /** Added by Global Village (./forum-button.ts): what the game does for the forum. Without it, or with no VITE_FORUM_URL, no forum. */
+  forum?: ForumAppHost;
 }
 
 export interface Interface {
@@ -111,6 +114,8 @@ export interface Interface {
   readonly guide: Guide;
   /** Fly mode (design section 7, "Fly mode"). main.ts calls fly.frame before each frame is drawn. */
   readonly fly: FlyMode;
+  /** Global Village's button (./forum-button.ts); null where there is no forum (no address in the build, a scenario). */
+  readonly forum: ForumButton | null;
   /** The dressing for the newest world arrived (the guide's ticks for lamps, laundry and parks), and the town it is for. */
   dressed(dressing: DressingPlan, shape?: ShapePlan): void;
   /** L57: glides the camera to look at a place (as Escape glides back to the whole island). */
@@ -426,6 +431,22 @@ export function createInterface(host: InterfaceHost): Interface {
             return townsHost.open(id);
           },
           newIsland: () => leaveForNewIsland(),
+          // Global Village: the town opened (unless it is the one on screen), then Post my town for it once it is drawn.
+          ...(host.forum && FORUM_URL
+            ? {
+                post(id: string, here: boolean) {
+                  if (!here) {
+                    mischief.undo();
+                    growth.stop();
+                    const reason = townsHost.open(id);
+                    if (reason) return feedback.toast(reason);
+                  }
+                  towns?.close();
+                  if (here) forum?.publish();
+                  else whenDressed(() => forum?.publish());
+                },
+              }
+            : {}),
         },
         (text) => feedback.toast(text),
       )
@@ -700,6 +721,35 @@ export function createInterface(host: InterfaceHost): Interface {
     fly.el,
     ...(towns ? [towns.el] : []),
   );
+  // Global Village (./forum-button.ts): the pill at the top centre; never in a scenario.
+  const forum: ForumButton | null =
+    host.forum && FORUM_URL && !scenarioPage
+      ? createForumButton({
+          base: FORUM_URL,
+          app: host.forum,
+          storage: store,
+          parent: root,
+          say: (text) => feedback.toast(text),
+          linkBox: (text, link) => feedback.linkBox(text, link),
+        })
+      : null;
+  if (forum) {
+    root.classList.add('lc-has-forum');
+    root.append(forum.el);
+    guide.el.querySelector('.lc-guide-pages')?.append(forumGuideSection());
+  }
+  /** Runs once the next dressed town is on screen (the picture of a town just opened shows it whole); at most a few seconds later. */
+  let dressedWaiters: (() => void)[] = [];
+  const whenDressed = (run: () => void): void => {
+    let done = false;
+    const once = (): void => {
+      if (done) return;
+      done = true;
+      run();
+    };
+    dressedWaiters.push(() => requestAnimationFrame(() => requestAnimationFrame(once)));
+    setTimeout(once, 3000);
+  };
 
   // The keys, very small in the bottom corner (Derek, 2026-11-21: "a small hint in the corner of controls…
   // F to enter flying mode, escape to return to main"). Only with a keyboard and room for it (ui.css hides
@@ -1354,6 +1404,12 @@ export function createInterface(host: InterfaceHost): Interface {
   // (While flying, fly mode takes Escape first.)
   const onEscape = (e: KeyboardEvent): void => {
     if (e.key !== 'Escape' || typing(e) || growth.active || fly.active) return;
+    // Global Village open: Escape closes what is innermost there (a dialog, a post, the forum) and nothing else.
+    if (forum?.isOpen) {
+      e.stopPropagation();
+      forum.back();
+      return;
+    }
     // Holding something in the Hand: it is put down, and nothing else happens.
     if (hand.holding) {
       hand.drop();
@@ -1364,7 +1420,7 @@ export function createInterface(host: InterfaceHost): Interface {
   };
   window.addEventListener('keydown', onEscape, true);
   const onKey = (e: KeyboardEvent): void => {
-    if (typing(e) || fly.active) return;
+    if (typing(e) || fly.active || forum?.isOpen) return;
     const key = e.key.toLowerCase();
     // F takes off: what is open closes; a growing town goes on growing; not mid-drag.
     if (key === 'f' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.repeat) {
@@ -1620,10 +1676,11 @@ export function createInterface(host: InterfaceHost): Interface {
       fly: fly.button,
       mischief: tray.el.querySelector<HTMLElement>('.lc-tab[data-drawer="mischief"]'),
       menu: menu.button,
+      forum: forum?.button ?? null,
     },
     hidden: () => growth.active || welcome.waiting || tutorial.showing || fly.active || root.classList.contains('lc-flying'),
     almanacInMenu: () => phones.matches,
-    inUse: () => ({ almanac: guide.isOpen, fly: fly.active, mischief: tray.state.drawer === 'mischief' }),
+    inUse: () => ({ almanac: guide.isOpen, fly: fly.active, mischief: tray.state.drawer === 'mischief', forum: forum?.isOpen ?? false }),
     placed: () => tutorial.step !== 'place',
   });
   let lastFrame = performance.now();
@@ -1646,12 +1703,16 @@ export function createInterface(host: InterfaceHost): Interface {
     growth,
     guide,
     fly,
+    forum,
     dressed(dressing, shape) {
       collector.dressed(shape ?? game.shape, dressing);
       guide.dressed(dressing);
       fly.dressed(dressing);
       ghostPace.heavy();
       dressedThisFrame = true;
+      const waiting = dressedWaiters;
+      dressedWaiters = [];
+      for (const run of waiting) run();
     },
     glideTo(target, zoom) {
       const now = view.getCamera();
@@ -1673,6 +1734,7 @@ export function createInterface(host: InterfaceHost): Interface {
       tutorial.frame(Math.min(0.25, (now - lastFrame) / 1000));
       lastFrame = now;
       dots.frame();
+      forum?.frame();
       unlockNotes.frame();
     },
     sync() {

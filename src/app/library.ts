@@ -19,6 +19,8 @@ export interface TownEntry {
   updated: number;
   /** A small picture of the town (a JPEG data URL), taken when the player last left it. */
   thumb?: string;
+  /** Made as a copy of a Global Village post: that post's id (posting this town says it was built on it). Old records lack it. */
+  from?: string;
 }
 
 export interface TownLibrary {

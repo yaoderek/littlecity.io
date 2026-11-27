@@ -24,6 +24,8 @@ export interface TownsHost {
   remove(id: string): Promise<boolean>;
   download(id: string): void;
   newIsland(): void;
+  /** Added by Global Village: opens the town (unless it is the one on screen, `here`) and the Post my town dialog for it. Without it, no Post button. */
+  post?(id: string, here: boolean): void;
 }
 
 export interface TownsSheet {
@@ -102,6 +104,7 @@ export function createTownsSheet(host: TownsHost, say: (text: string) => void): 
       }
     });
     const tools = el('div', { class: 'lc-town-tools' }, [
+      host.post ? iconButton('village', t('Post to Global Village'), { class: 'lc-town-tool', attrs: { 'data-towns': 'post' }, on: { click: () => host.post?.(town.id, here) } }) : null,
       iconButton('download', t('Save to a file'), { class: 'lc-town-tool', attrs: { 'data-towns': 'download' }, on: { click: () => host.download(town.id) } }),
       here ? null : iconButton('trash', t('Delete'), { class: 'lc-town-tool', attrs: { 'data-towns': 'delete' }, on: { click: () => askDelete() } }),
     ]);

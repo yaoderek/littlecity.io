@@ -5,6 +5,7 @@
 //
 // Which town opens:
 //   #t=<code>          a share link: that town, as a copy (design section 15)
+//   ?post=<id>         a Global Village post: the player's own town, then that post's town as a visit
 //   ?scenario=<name>   a scenario (never saved)
 //   ?seed=<n>          a fresh island with that seed (&gen=1 for the first island generator)
 //   otherwise          the autosaved town, or a fresh island
@@ -45,7 +46,8 @@ import { download, townFromHash, townPicture } from '@/ui/files';
 import { dressDue, onlyStartingTrees } from '@/ui/growth';
 import { isPhone } from '@/ui/dom';
 import { createInterface, type Interface } from '@/ui/interface';
-import { loadTown } from '@/world/save';
+import { decodeTown, encodeTown, loadTown } from '@/world/save';
+import type { PostTown } from '@/ui/forum-button';
 import { frameDrawn, slowDevice, startAnalytics, track, townShown } from './analytics';
 import { setLifeLow } from '@/life/quality';
 import { createAutosave } from './autosave';
@@ -256,10 +258,94 @@ let grownWorld: World | null = null;
 const fileName = (name: string): string => `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'my-town'}.littlecity`;
 
 function leaveSpecialTown(): void {
+  endForumVisit();
   scn = undefined;
   visiting = false;
   autosave.enabled = true;
   if (location.search || location.hash) history.replaceState(null, '', location.pathname);
+}
+
+// ── Global Village: visiting a post's town, and making it the player's (src/ui/forum-button.ts) ──
+/** A forum visit under way: the post, the player's own world held in memory to go back to, and the banner. */
+let forumVisit: {
+  post: PostTown;
+  mine: { start: GameStart; current: string | null; autosave: boolean; visiting: boolean; camera: CameraPose };
+  closeBanner(): void;
+} | null = null;
+function endForumVisit(): void {
+  forumVisit?.closeBanner();
+  forumVisit = null;
+}
+/**
+ * Opens a post's town to look at: the player's own town saved and its picture taken first, then held in
+ * memory (Back to my town reopens it from there, not from storage, which a browser may refuse). Always
+ * visiting mode, also for a player with no town of their own; nothing of theirs is written.
+ */
+function visitPost(post: PostTown, then: { back(): void; copied(): void }): string | null {
+  const read = decodeTown(post.code);
+  if (!read.ok) return t('This town needs a newer Little City.');
+  const mine = forumVisit?.mine ?? (leaving(), { start: { world: game.world, terrain: game.terrain }, current: keeper.current, autosave: autosave.enabled, visiting, camera: view.getCamera() });
+  endForumVisit();
+  visiting = true;
+  autosave.enabled = false;
+  keeper.current = null;
+  open(townOf(read.world));
+  view.setCamera(homeCamera());
+  const closeBanner = ui!.feedback.banner(t("This is {name}'s town.", { name: post.name }), [
+    {
+      label: t('Make a copy'),
+      primary: true,
+      run() {
+        const why = copyPost(post);
+        if (why) ui?.feedback.toast(why);
+        else then.copied();
+      },
+    },
+    {
+      label: t('Back to my town'),
+      run() {
+        backFromVisit();
+        then.back();
+      },
+    },
+  ]);
+  forumVisit = { post, mine, closeBanner };
+  return null;
+}
+/** Back to my town after a forum visit: the world held in memory, as it was, where the camera was. */
+function backFromVisit(): void {
+  const v = forumVisit;
+  if (!v) return;
+  endForumVisit();
+  open(v.mine.start);
+  view.setCamera(v.mine.camera);
+  keeper.current = v.mine.current;
+  visiting = v.mine.visiting;
+  autosave.enabled = v.mine.autosave;
+}
+/**
+ * Make a copy: the post's town becomes a new town in My towns, named for its poster, remembering the post
+ * (posting it later says what it was built on). From a visit of this post, with what the player built.
+ * Never written over a town of the player's: the keeper starts a new entry.
+ */
+function copyPost(post: PostTown): string | null {
+  const name = t("{name}'s town", { name: post.name });
+  if (forumVisit?.post.id === post.id) {
+    endForumVisit();
+  } else {
+    const read = decodeTown(post.code);
+    if (!read.ok) return t('This town needs a newer Little City.');
+    leaving();
+    endForumVisit();
+    open(townOf(read.world));
+    view.setCamera(homeCamera());
+  }
+  keeper.detach();
+  keeper.adopt(name, post.id);
+  leaveSpecialTown();
+  autosave.schedule();
+  ui?.feedback.toast(t('{town} is yours now. It is in My towns.', { town: name }));
+  return null;
 }
 
 function resize(): void {
@@ -344,6 +430,20 @@ ui = createInterface({
   },
   renderNow: render,
   homeCamera,
+  forum: {
+    town() {
+      let code = '';
+      try {
+        code = encodeTown(game.world);
+      } catch {
+        // a town that cannot be written cannot be posted either
+      }
+      return { code, worth: code !== '' && isTown(game.world), from: forumVisit ? null : keeper.from, visiting };
+    },
+    picture: () => townPicture(canvas, render, 640),
+    visit: visitPost,
+    copy: copyPost,
+  },
   newIsland(seed) {
     leaving();
     keeper.detach();
@@ -434,6 +534,15 @@ if (shared && !shared.ok) {
   // Nobody's town is at stake: the copy simply becomes the player's town.
   leaveSpecialTown();
   autosave.schedule();
+}
+
+// ── a Global Village post (?post=<id>, the link a post travels by): fetched, then visited ──
+const postParam = params.get('post');
+if (postParam !== null) {
+  const url = new URL(location.href);
+  url.searchParams.delete('post');
+  history.replaceState(null, '', url.pathname + url.search + url.hash);
+  if (postParam && !scn) ui.forum?.visitLink(postParam);
 }
 
 window.addEventListener('pagehide', () => autosave.flush());

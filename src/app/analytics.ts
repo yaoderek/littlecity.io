@@ -22,13 +22,21 @@
 //   tutorial_shown    {step: place | undo, touch}: the tutorial hand came up (src/ui/tutorial.ts), once per step a visit
 //   tutorial_step     {step: placed | undone | moved-on | timed-out | rested, from, seconds, touch}: what the player
 //                     did about it (moved-on: built on instead of undoing; rested: left alone, put away for the visit)
-//   dot_cleared       {what: almanac | fly | mischief | grow, after_unlock, on_screen}: the player first used a thing that
+//   dot_cleared       {what: almanac | fly | mischief | grow | forum, after_unlock, on_screen}: the player first used a thing that
 //                     carried a red dot (src/ui/dots.ts), or the Almanac after an unlock brought its dot back
 //                     (after_unlock); on_screen: the dot was drawn at that moment (not hidden by a growing town)
 //   town_grew         {blocks, grown}: this browser's biggest town passed 10, 25, 50, 100, 250, 500 or 1000 blocks
 //   town_shared       {via: link | link_box | file}
 //   postcard_saved, town_downloaded, town_file_opened, shared_town_kept, shared_town_left,
 //   town_grown {new_island}, new_island, guide_opened (the Almanac), fly_started
+// Global Village (src/ui/forum-button.ts, src/forum/; never with VITE_FORUM_URL empty):
+//   forum_opened      {tab: top | new | mine}: the forum's button pressed
+//   post_opened       a post opened (from the feed, a link to the post it was built on, Back to my town)
+//   post_visited      {from?: link}: a post's town opened to look at (from: link, by ?post=<id>)
+//   post_copied       a post's town made a town of the player's (from the post or the visit's banner)
+//   post_published    {caption, built_on}: a town posted; caption: it said something; built_on: a copy of a post
+//   post_liked, comment_posted, post_shared (the post's link copied or shown to copy)
+//   forum_unreachable {where: top | new | mine | more | retry | post | link}: no answer from the server (once per opening)
 // Every event carries build, lang (the language the game is shown in, src/i18n), touch, and (for telling slow devices apart) gpu, cores and memory.
 // PostHog adds its own: $pageview, $pageleave, $web_vitals, clicks on the interface (autocapture), and session
 // replays (desktops only, and not slow ones, with the town in them).
