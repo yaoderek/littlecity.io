@@ -2333,3 +2333,17 @@ probably the strategy chat; not the orchestrator): `fix/raiders-off`
 (`0e5166e3`, raiders off until switched on in the menu). Whichever
 publishes second must carry the other's commit. The orchestrator told
 both chats; it has nothing of its own waiting to deploy.
+
+**2026-11-27, 00:45: live is the build from `0e5166e3`** (bundle
+`app-DL0xnUTw.js`, published by the strategy chat at Derek's request;
+checked by the orchestrator on the site and on `gh-pages`): the
+orchestrator's `e55df96c` plus raiders off by default
+(`src/ui/interface.ts`: raids come by themselves only when
+`localStorage['little-city.raiders'] === 'on'`; a player who switched
+them on keeps them; `events.md` and the interface browser test
+updated). Branch `fix/raiders-off`; in `main` as `8fbce67`. Any
+release built on `e55df96c` must take `0e5166e3` in before it is
+published or raiders come back on: `preview/tree-clear` (`ae7d9a32`,
+the PostHog numbers chat's) does not contain it; that chat has been
+told not to publish it as it stands. The orchestrator has no release
+of its own waiting.
