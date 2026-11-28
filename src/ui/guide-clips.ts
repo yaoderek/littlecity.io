@@ -6,13 +6,14 @@
 // What it costs, and the rules that keep it small:
 //   - nothing is fetched until the Almanac is open and the entry is near the screen; then a <video
 //     preload="none"> is put over the still, and only playing it fetches it (60 KB or so);
-//   - only clips well in view play, the topmost first: at most two at once on a computer, one on a phone;
+//   - every clip well in view plays (Derek: all the entries on screen, not just the top one or two), with a
+//     ceiling well above what fits on a screen;
 //   - everything pauses the moment the Almanac closes or the page is hidden;
 //   - the still shows until the clip is really playing, and again whenever it is paused;
 //   - with reduced motion asked for, nothing plays by itself.
 
-/** At most this many clips play at once. */
-export const PLAY_AT_ONCE = { desktop: 2, phone: 1 } as const;
+/** At most this many clips play at once: more than fit on a screen, so every one in view plays. */
+export const PLAY_AT_ONCE = { desktop: 8, phone: 5 } as const;
 /** A clip plays only when this much of it is in view. */
 export const IN_VIEW = 0.6;
 /** How far off the screen (CSS px) an entry is made ready: its video element, not yet its file. */

@@ -9,6 +9,7 @@ import path from 'node:path';
 import type { CDPSession, Page } from 'playwright';
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
 import { ENTRIES } from '@/guide/entries';
+import { PLAY_AT_ONCE } from '@/ui/guide-clips';
 import { startApp, type App } from '../helpers/browser';
 
 const SHOTS = path.resolve(__dirname, '../../.context/shots');
@@ -128,7 +129,7 @@ describe('desktop', () => {
     expect(errors).toEqual([]);
   });
 
-  test('a building\'s clip plays while its entry is in view, two at most; nothing is fetched before it opens and nothing plays once it shuts', async () => {
+  test('a building\'s clip plays while its entry is in view, every one in view; nothing is fetched before it opens and nothing plays once it shuts', async () => {
     const { page, errors } = await open();
     const asked = clipRequests(page);
     await page.waitForTimeout(400);
@@ -137,24 +138,25 @@ describe('desktop', () => {
     await settled(page);
     await scrollTo(page, 'chapel');
     await page.waitForFunction('window.__lc.ui.guide.clips().length > 0', null, { timeout: 20_000 });
-    // Shown over the still once it plays; at most two at once, all of them in view.
+    // Shown over the still once it plays; every one well in view, under the ceiling.
     await page.waitForFunction('document.querySelectorAll("[data-ui=guide] .lc-guide-shot[data-clip]").length > 0');
     for (let i = 0; i < 4; i++) {
       const now = await playing(page);
-      expect(now.length).toBeLessThanOrEqual(2);
+      expect(now.length).toBeGreaterThanOrEqual(2);
+      expect(now.length).toBeLessThanOrEqual(PLAY_AT_ONCE.desktop);
       expect(now).toContain('chapel');
       await page.waitForTimeout(150);
     }
     // Only the clips near the screen were made ready, and only the playing ones fetched.
     const ids = new Set([...asked].map((u) => u.replace(/^.*\/|\.(webm|mp4)$/g, '')));
     expect(ids.size).toBeGreaterThan(0);
-    expect(ids.size).toBeLessThanOrEqual(2);
+    expect(ids.size).toBeLessThanOrEqual(PLAY_AT_ONCE.desktop);
     await page.screenshot({ path: path.join(SHOTS, 'guide-clips-desktop.png') });
 
     // Further down, others take over.
     await scrollTo(page, 'temple');
     await page.waitForFunction('window.__lc.ui.guide.clips().includes("temple")', null, { timeout: 20_000 });
-    expect((await playing(page)).length).toBeLessThanOrEqual(2);
+    expect((await playing(page)).length).toBeLessThanOrEqual(PLAY_AT_ONCE.desktop);
     expect(await playing(page)).not.toContain('chapel');
 
     // Shut: everything stops at once.
@@ -264,7 +266,7 @@ describe('phone', () => {
     expect(errors).toEqual([]);
   });
 
-  test('one clip plays at a time on a phone, and none once the sheet is shut', async () => {
+  test('every clip in view plays on a phone too, and none once the sheet is shut', async () => {
     const { page, errors } = await open(PHONE);
     await page.tap('[data-ui="menu-button"]');
     await page.tap('[data-menu="guide"]');
@@ -272,7 +274,8 @@ describe('phone', () => {
     await scrollTo(page, 'chapel');
     await page.waitForFunction('window.__lc.ui.guide.clips().length > 0', null, { timeout: 20_000 });
     for (let i = 0; i < 4; i++) {
-      expect((await playing(page)).length).toBe(1);
+      expect((await playing(page)).length).toBeGreaterThanOrEqual(1);
+      expect((await playing(page)).length).toBeLessThanOrEqual(PLAY_AT_ONCE.phone);
       await page.waitForTimeout(150);
     }
     await page.tap('[data-ui="guide-close"]');

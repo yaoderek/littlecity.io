@@ -1,5 +1,5 @@
 // Which of the Almanac's clips play (guide-clips.ts): only while it is open, only clips well in view, the
-// topmost first, two at once on a computer and one on a phone.
+// every one in view (under a ceiling above what fits on a screen).
 
 import { describe, expect, test } from 'vitest';
 import { choosePlaying, clipUrls, IN_VIEW, PLAY_AT_ONCE, type Seen } from './guide-clips';
@@ -9,11 +9,13 @@ const seen = (id: string, top: number, ratio: number): Seen => ({ id, top, ratio
 describe('which clips play', () => {
   const page = [seen('chapel', 100, 1), seen('shop', 200, 1), seen('inn', 300, 1), seen('manor', 400, 0.2)];
 
-  test('the topmost ones well in view, at most two on a computer and one on a phone', () => {
-    expect(choosePlaying(page, PLAY_AT_ONCE.desktop, true)).toEqual(['chapel', 'shop']);
-    expect(choosePlaying(page, PLAY_AT_ONCE.phone, true)).toEqual(['chapel']);
+  test('every clip well in view plays, top first, on a computer and on a phone', () => {
+    expect(choosePlaying(page, PLAY_AT_ONCE.desktop, true)).toEqual(['chapel', 'shop', 'inn']);
+    expect(choosePlaying(page, PLAY_AT_ONCE.phone, true)).toEqual(['chapel', 'shop', 'inn']);
     // In whatever order the observer reports them.
-    expect(choosePlaying([...page].reverse(), PLAY_AT_ONCE.desktop, true)).toEqual(['chapel', 'shop']);
+    expect(choosePlaying([...page].reverse(), PLAY_AT_ONCE.desktop, true)).toEqual(['chapel', 'shop', 'inn']);
+    // The ceiling still holds.
+    expect(choosePlaying(page, 2, true)).toEqual(['chapel', 'shop']);
   });
 
   test('nothing while the Almanac is shut', () => {
