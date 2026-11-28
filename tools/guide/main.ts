@@ -298,14 +298,16 @@ async function beginClip(id: string, opts: { hold?: number } = {}): Promise<{ fr
 
   const width = window.innerWidth, height = window.innerHeight, dpr = window.devicePixelRatio;
   const n = plan.steps.length;
-  // About three seconds of tapping whatever the recipe's size; a hold on the finished building; a short fade
-  // back to the first frame so the loop has no jump.
-  const gap = n <= 1 ? 0 : Math.min(0.5, Math.max(0.13, 2.8 / n));
-  const lead = 0.55;
+  // About three and a half seconds of tapping whatever the recipe's size (Derek, 2026-11-27: a little slower),
+  // then a long hold on the finished building. The clip ends on the finished building and tools/guide.mjs puts
+  // that same picture in front, fading into the empty ground: it starts and loops on the finished building.
+  const gap = n <= 1 ? 0 : Math.min(0.65, Math.max(0.17, 3.5 / n));
+  const lead = 0.6;
   const taps = plan.steps.map((_, i) => lead + i * gap);
   const lastTap = taps[n - 1]!;
-  const end = Math.max(lastTap + 0.45 + (opts.hold ?? 1.3), taps[plan.formed]! + FEEDBACK.unlockStarTime + 0.45, 3.2);
-  const FADE = 0.3;
+  const end = Math.max(lastTap + 0.45 + (opts.hold ?? 2.4), taps[plan.formed]! + FEEDBACK.unlockStarTime + 0.9, 4);
+  // No fade at the end: the opening (tools/guide.mjs) is the finished building, so the loop has no jump.
+  const FADE = 0;
   const frames = Math.round((end + FADE) * CLIP_FPS);
 
   // Where each tap is in the picture (CSS px), and where the glove comes from and goes.

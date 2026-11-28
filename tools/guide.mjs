@@ -34,6 +34,8 @@ const quality = Number(flags.quality ?? 0.8);
 const WIDTH = 180, HEIGHT = 135, SCALE = 2;
 /** Clip frames a second (tools/guide/main.ts CLIP_FPS). */
 const FPS = 24;
+/** Seconds a clip opens on the finished building, then seconds of fading into the empty ground. */
+const OPEN = 1.2, XF = 0.5;
 
 const server = await startServer();
 const browser = await launchBrowser();
@@ -123,9 +125,13 @@ async function clips(page) {
       const url = await page.evaluate(() => window.__guide.clipFrame());
       fs.writeFileSync(path.join(dir, `f${String(f).padStart(4, '0')}.png`), Buffer.from(url.slice(url.indexOf(',') + 1), 'base64'));
     }
-    const input = ['-y', '-v', 'error', '-framerate', String(FPS), '-i', path.join(dir, 'f%04d.png')];
+    // The clip opens on the finished building (its last frame), held OPEN seconds, then fades over XF seconds
+    // into the empty ground where the building starts: it starts, and loops, on the finished building.
+    const last = path.join(dir, `f${String(frames - 1).padStart(4, '0')}.png`);
+    const input = ['-y', '-v', 'error', '-loop', '1', '-framerate', String(FPS), '-t', String(OPEN + XF), '-i', last, '-framerate', String(FPS), '-i', path.join(dir, 'f%04d.png')];
     // sRGB frames as BT.709 video, said so in the file: browsers then show the paper as the page's own colour.
-    const colour = ['-vf', 'scale=out_color_matrix=bt709:out_range=tv,format=yuv420p', '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv'];
+    const graph = `[0:v]format=rgb24,fps=${FPS},settb=AVTB[a];[1:v]format=rgb24,fps=${FPS},settb=AVTB[b];[a][b]xfade=transition=fade:duration=${XF}:offset=${OPEN},scale=out_color_matrix=bt709:out_range=tv,format=yuv420p`;
+    const colour = ['-filter_complex', graph, '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv'];
     const w = path.join(clipDir, `${id}.webm`), m = path.join(clipDir, `${id}.mp4`);
     execFileSync(ffmpeg, [...input, ...colour, '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', String(flags.crf ?? 46), '-deadline', 'good', '-cpu-used', '1', '-row-mt', '1', '-g', '600', '-an', w]);
     execFileSync(ffmpeg, [...input, ...colour, '-c:v', 'libx264', '-preset', 'veryslow', '-tune', 'animation', '-crf', String(flags['crf-mp4'] ?? 31), '-profile:v', 'high', '-g', '600', '-movflags', '+faststart', '-an', m]);
@@ -138,7 +144,7 @@ async function clips(page) {
     const ws = fs.statSync(w).size, ms = fs.statSync(m).size;
     webm += ws;
     mp4 += ms;
-    console.log(`public/guide/clips/${id}  ${(frames / FPS).toFixed(1)} s, ${taps.length} taps (built at ${formed + 1})  webm ${(ws / 1024).toFixed(0)} KB  mp4 ${(ms / 1024).toFixed(0)} KB  (${((Date.now() - started) / 1000).toFixed(0)} s)`);
+    console.log(`public/guide/clips/${id}  ${(OPEN + frames / FPS).toFixed(1)} s, ${taps.length} taps (built at ${formed + 1})  webm ${(ws / 1024).toFixed(0)} KB  mp4 ${(ms / 1024).toFixed(0)} KB  (${((Date.now() - started) / 1000).toFixed(0)} s)`);
   }
   if (!positional.length) {
     for (const f of fs.readdirSync(clipDir)) {
