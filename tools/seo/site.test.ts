@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { COLLECTION } from '@/guide/collection';
 import { ENTRIES } from '@/guide/entries';
 import { LANGS } from '@/i18n';
 import { homeAbout, homePages, ORIGIN, sitemap, sitePages } from './site';
@@ -19,6 +20,21 @@ describe('the pages search engines and link previews read', () => {
         expect(pages.some((p) => p.file === file), file).toBe(true);
       }
       expect(fs.existsSync(path.join('public', 'guide', `${e.id}.webp`)), `public/guide/${e.id}.webp`).toBe(true);
+    }
+  });
+
+  it('shows a building being built (the Almanac\'s clip, its still as the poster); a happening keeps its picture', () => {
+    for (const e of ENTRIES) {
+      const html = pages.find((p) => p.file === `guide/${e.id}/index.html`)!.html;
+      const sources = [...html.matchAll(/<source src="([^"]+)"/g)].map((m) => m[1]!);
+      if (!COLLECTION.includes(e)) {
+        expect(sources, e.id).toEqual([]);
+        continue;
+      }
+      expect(sources, e.id).toEqual([`/guide/clips/${e.id}.webm`, `/guide/clips/${e.id}.mp4`]);
+      for (const s of sources) expect(fs.existsSync(path.join('public', s)), s).toBe(true);
+      expect(html, e.id).toContain(`poster="/guide/${e.id}.webp"`);
+      expect(html, e.id).toMatch(/<video [^>]*autoplay muted loop playsinline/);
     }
   });
 

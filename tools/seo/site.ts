@@ -23,6 +23,7 @@
 //
 // Pure: pages in, strings out. tools/seo.mjs writes them to disk.
 
+import { collectable } from '@/guide/collection';
 import { ENTRIES, GROUPS, type GuideEntry, type GuideGroup } from '@/guide/entries';
 import { currentLang, langPath, LANGS, setLanguage, t, type Lang, type Table } from '@/i18n';
 
@@ -120,6 +121,8 @@ p,li{color:var(--ink)}
 .crumbs{font-size:14px;color:var(--soft);margin-top:20px}
 .crumbs a{color:var(--soft)}
 .shot{display:block;margin:12px auto 4px;width:360px;max-width:100%;height:auto}
+.clip{margin:12px auto 4px;width:360px;max-width:100%;background:#fdfaf3;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.clip .shot{margin:0;width:100%;aspect-ratio:4/3}
 .how{font-size:20px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 20px;margin:14px 0}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;padding:0;margin:12px 0;list-style:none}
 .grid a{display:block;text-align:center;text-decoration:none;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 6px 10px;font-size:15px;font-weight:600}
@@ -373,6 +376,17 @@ ${sections}
   };
 }
 
+/**
+ * An entry's picture. A building's is the Almanac's clip of it being built (public/guide/clips/, made by
+ * `npm run guide -- --clips`), looping like a GIF, on the Almanac's paper in a card, with the still as its
+ * poster and, for anything that shows no video, in its place.
+ */
+function shot(e: GuideEntry, alt: string): string {
+  const still = `<img class="shot" src="/guide/${e.id}.webp" alt="${esc(alt)}" width="360" height="270">`;
+  if (!collectable(e.id)) return still;
+  return `<figure class="clip"><video class="shot" autoplay muted loop playsinline disablepictureinpicture poster="/guide/${e.id}.webp" width="360" height="270" aria-label="${esc(alt)}"><source src="/guide/clips/${e.id}.webm" type="video/webm"><source src="/guide/clips/${e.id}.mp4" type="video/mp4">${still}</video></figure>`;
+}
+
 export function entryPage(e: GuideEntry): SitePage {
   const group = groupTitle(e.group);
   const others = ENTRIES.filter((x) => x.group === e.group && x.id !== e.id);
@@ -388,7 +402,7 @@ export function entryPage(e: GuideEntry): SitePage {
   const body = `
 <p class="crumbs"><a href="${here('/')}">${NAME}</a> › <a href="${here('/guide/')}">${esc(t('Almanac'))}</a> › <a href="${here('/guide/')}#${e.group}">${esc(group)}</a></p>
 <h1>${esc(heading)}</h1>
-<img class="shot" src="/guide/${e.id}.webp" alt="${esc(t('{name} in Little City, drawn in ink and pencil', { name }))}" width="360" height="270">
+${shot(e, t('{name} in Little City, drawn in ink and pencil', { name }))}
 <p class="how"><strong>${esc(t('How to get it:'))}</strong> ${esc(how)}</p>
 <p>${esc(intro)}</p>
 <a class="play big" href="${here('/')}">${esc(t('Try it, free in your browser'))}</a>
